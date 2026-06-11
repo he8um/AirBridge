@@ -106,3 +106,24 @@ These items cover the backup planning flow added in v0.1. A "plan" is a dry-run 
 - [ ] **No token appears in plan output.** Inspect the plan JSON and confirm no token string is present.
 - [ ] **Plan estimate shows "unknown" when record counts are unavailable.** The record read pages field reads "unknown (no record counts available)".
 - [ ] **Plan scope matches the request scope.** If "Full backup" is the scope, the plan `scope` field is `full`.
+
+---
+
+## Package Format (Writer / Reader / Validator)
+
+These items cover the package format foundation added in V0.1. The writer and validator are tested with synthetic data only; live backup export is not yet wired to the UI.
+
+- [ ] **"Package Format" section is visible on the Backups page.** The section explains that the package writer is available but live export is not yet enabled.
+- [ ] **No backup file is created from the UI.** Confirm there is no file picker and no "create package" button that writes to disk.
+- [ ] **Writer produces a valid ZIP.** Open a test-generated `.airbridge` file with a standard ZIP tool and confirm it opens without errors.
+- [ ] **manifest.json is present and parseable.** Extract `manifest.json` from a test package and confirm it contains `format`, `formatVersion`, `appVersion`, `createdAt`, `source`, `contents`, `security`, and `package` fields.
+- [ ] **checksums/sha256.json is present and lists all entries.** Confirm the checksums file exists and each key is a relative archive path with no leading `/`.
+- [ ] **SHA-256 hashes validate correctly.** For each entry in `checksums/sha256.json`, manually compute `sha256(<entry content>)` and confirm it matches.
+- [ ] **No token appears in any package entry.** Search all text entries in the test package for `pat`, `Bearer`, or any known token string.
+- [ ] **No local filesystem paths in archive entries.** Confirm no archive entry name starts with `/`, `Users/`, or `home/`.
+- [ ] **Validator returns `valid` for a correctly written package.** Run `validate_package` (test path) and confirm `status == "valid"` and `errors` is empty.
+- [ ] **Validator returns `invalid` for a package with a missing required entry.** Remove `manifest.json` or `checksums/sha256.json` from a copy of the test package and confirm the validator reports `MISSING_REQUIRED_ENTRY`.
+- [ ] **Validator returns `invalid` for a tampered entry.** Modify any text entry after write and confirm the validator reports `CHECKSUM_MISMATCH`.
+- [ ] **Validator returns `invalid` for an unsupported format version.** Change `formatVersion` in manifest to `"99.0.0"` and confirm the validator reports `UNSUPPORTED_FORMAT_VERSION`.
+- [ ] **JSONL records are preserved line-by-line.** Open `tables/<id>/records.jsonl` and confirm each line is a valid JSON object with an `id` field.
+- [ ] **Attachment metadata-only policy is documented.** `security.containsAttachmentUrls` is `false` in a V0.1 package; attachment file content is not present.

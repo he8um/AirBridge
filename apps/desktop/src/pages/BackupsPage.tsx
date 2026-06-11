@@ -487,6 +487,42 @@ export function BackupsPage({ service = liveAirBridgeService }: BackupsPageProps
           <BackupPlanningCard accessibleBases={accessibleBases} service={service} />
         </section>
 
+        {/* Package Format section */}
+        <section aria-labelledby="package-format-heading">
+          <SectionHeader title="Package Format" />
+          <div className="card notice-neutral" style={{ maxWidth: 560 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-3)" }}>
+              <p style={{ fontSize: "var(--text-sm)", margin: 0, fontWeight: 500 }}>
+                .airbridge package format — foundation ready
+              </p>
+              <p
+                style={{ fontSize: "var(--text-sm)", color: "var(--color-text-muted)", margin: 0 }}
+              >
+                The package writer, reader, and validator are implemented and tested. Backup files
+                are not yet created from the UI. Live export will be enabled in a future release
+                once the record export engine is connected to this package format.
+              </p>
+              <ul
+                style={{
+                  fontSize: "var(--text-xs)",
+                  color: "var(--color-text-muted)",
+                  margin: 0,
+                  paddingLeft: "var(--space-4)",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "var(--space-1)",
+                }}
+              >
+                <li>ZIP-compatible .airbridge archive</li>
+                <li>manifest.json, schema.json, base.json, per-table records.jsonl</li>
+                <li>SHA-256 checksums for all entries</li>
+                <li>Attachment metadata only (no file content) in V0.1</li>
+                <li>No tokens or local filesystem paths stored inside the package</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
         {/* New Backup section */}
         <section aria-labelledby="new-backup-heading">
           <SectionHeader title="New Backup" />

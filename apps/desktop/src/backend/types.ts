@@ -150,3 +150,31 @@ export interface BackupPlan {
   /** Always absent in this phase — no output file is written. */
   outputPackagePath?: string;
 }
+
+// Package format validation types (mirrors Rust backup::validation)
+
+export type PackageValidationStatus = "valid" | "invalid" | "warning";
+
+export interface PackageValidationIssue {
+  code: string;
+  message: string;
+}
+
+export interface PackageManifestSummary {
+  format: string;
+  formatVersion: string;
+  appVersion: string;
+  createdAt: string;
+  baseId: string;
+  baseName: string;
+  tableCount: number;
+  recordCount: number;
+}
+
+export interface PackageValidationReport {
+  status: PackageValidationStatus;
+  errors: PackageValidationIssue[];
+  warnings: PackageValidationIssue[];
+  entryCount: number;
+  manifestSummary?: PackageManifestSummary;
+}
