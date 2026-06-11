@@ -2,9 +2,9 @@
 
 ## Status
 
-Skeleton implementation — module structure, typed models, and mock-tested
-behaviour are in place. The client is not yet wired to Tauri commands or
-any live network path.
+Active. The client skeleton is complete and the live connection check is wired
+to the `check_connection` Tauri command via `ReqwestHttpTransport`. All tests
+use `MockHttpTransport` — no live network calls in the test suite.
 
 ## Purpose
 
@@ -117,8 +117,8 @@ HTTP status codes are mapped to `AirtableClientError` variants:
 
 ## Future Work
 
-- **Live connection check**: wire `check_connection` Tauri command to
-  `AirtableClient::get_base_schema` with a real token path.
+- **Live connection check**: Done — wired to `check_connection` Tauri command
+  via `check_connection_for_token()` and `ReqwestHttpTransport`.
 - **Schema read**: full schema fetch feeding the compatibility engine.
 - **Record export**: paginated record listing with continuation logic.
 - **Write batching**: automatic splitting of large create/update payloads

@@ -118,3 +118,37 @@ pub struct AirtableErrorResponse {
     pub error_type: Option<String>,
     pub message: Option<String>,
 }
+
+// ── Connection check result ────────────────────────────────────────────────
+
+/// A base entry returned in a connection check result.
+/// Contains only public, non-sensitive metadata.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AccessibleBase {
+    pub id: AirtableBaseId,
+    pub name: String,
+}
+
+/// Structured result from a connection check via list-bases endpoint.
+/// Never contains the token or any secret.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ConnectionCheckOutcome {
+    /// Bases visible to the token, from list-bases response.
+    pub accessible_bases: Vec<AccessibleBase>,
+}
+
+/// Partial list-bases API response shape, used to parse the connection check.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ListBasesResponse {
+    pub bases: Vec<ListBasesEntry>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ListBasesEntry {
+    pub id: String,
+    pub name: String,
+}

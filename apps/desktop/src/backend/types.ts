@@ -16,6 +16,11 @@ export interface ConnectionCheckResult {
     status: "unknown" | "checking" | "passed" | "failed";
     detail?: string;
   }>;
+  /** Bases visible to the token, populated on successful connection check. */
+  accessibleBases?: Array<{
+    id: string;
+    name: string;
+  }>;
 }
 
 // AirBridgeError structure returned on command failure

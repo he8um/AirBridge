@@ -122,6 +122,69 @@ impl HttpTransport for MockHttpTransport {
     }
 }
 
+// ── Reqwest (live) transport ───────────────────────────────────────────────
+
+/// HTTP transport backed by a blocking reqwest client.
+///
+/// Used in production Tauri commands. Never logs request headers or token.
+pub struct ReqwestHttpTransport {
+    client: reqwest::blocking::Client,
+}
+
+impl ReqwestHttpTransport {
+    pub fn new() -> Result<Self, String> {
+        let client = reqwest::blocking::Client::builder()
+            .build()
+            .map_err(|e| format!("failed to build HTTP client: {e}"))?;
+        Ok(ReqwestHttpTransport { client })
+    }
+}
+
+impl Default for ReqwestHttpTransport {
+    fn default() -> Self {
+        ReqwestHttpTransport::new().expect("reqwest client construction failed")
+    }
+}
+
+impl HttpTransport for ReqwestHttpTransport {
+    fn send(&self, request: HttpRequest) -> Result<HttpResponse, String> {
+        let method = match request.method {
+            HttpMethod::Get => reqwest::Method::GET,
+            HttpMethod::Post => reqwest::Method::POST,
+            HttpMethod::Patch => reqwest::Method::PATCH,
+            HttpMethod::Delete => reqwest::Method::DELETE,
+        };
+
+        let mut builder = self.client.request(method, &request.url);
+
+        for (k, v) in &request.headers {
+            builder = builder.header(k, v);
+        }
+
+        if !request.query.is_empty() {
+            let pairs: Vec<(&str, &str)> = request
+                .query
+                .iter()
+                .map(|(k, v)| (k.as_str(), v.as_str()))
+                .collect();
+            builder = builder.query(&pairs);
+        }
+
+        if let Some(body) = request.body {
+            builder = builder.body(body);
+        }
+
+        let resp = builder.send().map_err(|e| format!("network error: {e}"))?;
+
+        let status = resp.status().as_u16();
+        let body = resp
+            .text()
+            .map_err(|e| format!("response read error: {e}"))?;
+
+        Ok(HttpResponse { status, body })
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

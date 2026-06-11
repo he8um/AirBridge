@@ -2,6 +2,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, it, expect } from "vitest";
 import { ConnectionForm } from "../features/connections/ConnectionForm";
+import { mockAirBridgeService } from "../services/mockAirBridgeService";
 
 // A valid-looking synthetic token (no real token — just sufficient length and no "fail")
 const VALID_TOKEN = "example_valid_token_abcdefgh12345";
@@ -9,9 +10,10 @@ const SHORT_TOKEN = "tooshort";
 const FAIL_TOKEN = "example_fail_token_abcdefgh12345xx";
 const VALID_NAME = "Test Connection";
 
+// Inject the mock service so tests never reach the Tauri IPC or live network.
 function setup() {
   const user = userEvent.setup();
-  const view = render(<ConnectionForm />);
+  const view = render(<ConnectionForm service={mockAirBridgeService} />);
   return { user, ...view };
 }
 
@@ -76,13 +78,33 @@ describe("ConnectionForm", () => {
     });
   });
 
+  it("shows write permissions as unknown after successful connection", async () => {
+    const { user } = setup();
+    await user.type(screen.getByLabelText("Connection name"), VALID_NAME);
+    await user.type(screen.getByLabelText("Personal access token"), VALID_TOKEN);
+    await user.click(screen.getByRole("button", { name: "Test connection" }));
+    await waitFor(() => {
+      expect(screen.getByText("Connected")).toBeInTheDocument();
+    });
+    // Write permissions are present but should not show "passed"
+    const bodyText = document.body.textContent ?? "";
+    expect(bodyText).toContain("Schema write");
+    expect(bodyText).toContain("Records write");
+    // The mock returns "unknown" for write — should not say "Passed"
+    const writeRows = screen.getAllByText(/write/i);
+    for (const row of writeRows) {
+      const rowText = row.closest("[role='listitem']")?.textContent ?? row.textContent ?? "";
+      expect(rowText).not.toMatch(/passed/i);
+    }
+  });
+
   it("shows failed status after failed check", async () => {
     const { user } = setup();
     await user.type(screen.getByLabelText("Connection name"), VALID_NAME);
     await user.type(screen.getByLabelText("Personal access token"), FAIL_TOKEN);
     await user.click(screen.getByRole("button", { name: "Test connection" }));
     await waitFor(() => {
-      expect(screen.getByText(/failed/i)).toBeInTheDocument();
+      expect(screen.getAllByText(/failed/i).length).toBeGreaterThanOrEqual(1);
     });
   });
 
@@ -114,7 +136,7 @@ describe("ConnectionForm", () => {
     await user.type(screen.getByLabelText("Personal access token"), FAIL_TOKEN);
     await user.click(screen.getByRole("button", { name: "Test connection" }));
     await waitFor(() => {
-      expect(screen.getByText(/failed/i)).toBeInTheDocument();
+      expect(screen.getAllByText(/failed/i).length).toBeGreaterThanOrEqual(1);
     });
     const bodyText = document.body.textContent ?? "";
     expect(bodyText).not.toContain(FAIL_TOKEN);
@@ -128,7 +150,6 @@ describe("ConnectionForm", () => {
     await waitFor(() => {
       expect(screen.getByText("Connected")).toBeInTheDocument();
     });
-    // Grab entire document serializable text
     const allText = document.body.innerHTML;
     expect(allText).not.toContain(VALID_TOKEN);
   });
@@ -145,5 +166,17 @@ describe("ConnectionForm", () => {
     await user.type(screen.getByLabelText("Connection name"), VALID_NAME);
     await user.type(screen.getByLabelText("Personal access token"), SHORT_TOKEN);
     expect(screen.getByRole("button", { name: "Test connection" })).toBeDisabled();
+  });
+
+  it("mock service fallback works without Tauri runtime", async () => {
+    // This test runs in jsdom where Tauri IPC is unavailable.
+    // The mock service is injected directly and resolves deterministically.
+    const { user } = setup();
+    await user.type(screen.getByLabelText("Connection name"), VALID_NAME);
+    await user.type(screen.getByLabelText("Personal access token"), VALID_TOKEN);
+    await user.click(screen.getByRole("button", { name: "Test connection" }));
+    await waitFor(() => {
+      expect(screen.getByText("Connected")).toBeInTheDocument();
+    });
   });
 });

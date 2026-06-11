@@ -52,19 +52,19 @@ function checkConnectionImpl(input: { token: string }): Promise<ConnectionCheckR
       connectionId: "conn-preview",
       status: "connected",
       permissions: [
-        { key: "schema-read", label: "Schema read", status: "passed" },
-        { key: "records-read", label: "Records read", status: "passed" },
+        { key: "schema.bases:read", label: "Schema read", status: "passed" },
+        { key: "data.records:read", label: "Records read", status: "passed" },
         {
-          key: "schema-write",
+          key: "schema.bases:write",
           label: "Schema write",
-          status: "failed",
-          detail: "Token scope does not include write access",
+          status: "unknown",
+          detail: "Write access not verified",
         },
         {
-          key: "records-write",
+          key: "data.records:write",
           label: "Records write",
-          status: "failed",
-          detail: "Token scope does not include write access",
+          status: "unknown",
+          detail: "Write access not verified",
         },
       ],
     });
@@ -73,7 +73,27 @@ function checkConnectionImpl(input: { token: string }): Promise<ConnectionCheckR
   return Promise.resolve({
     connectionId: "conn-preview",
     status: "failed",
-    permissions: [],
+    permissions: [
+      {
+        key: "schema.bases:read",
+        label: "Schema read",
+        status: "failed",
+        detail: "Invalid or expired token",
+      },
+      { key: "data.records:read", label: "Records read", status: "unknown" },
+      {
+        key: "schema.bases:write",
+        label: "Schema write",
+        status: "unknown",
+        detail: "Write access not verified",
+      },
+      {
+        key: "data.records:write",
+        label: "Records write",
+        status: "unknown",
+        detail: "Write access not verified",
+      },
+    ],
   });
 }
 

@@ -1,17 +1,21 @@
 import { useState } from "react";
 import type { ConnectionCheckResult } from "../../backend/types";
+import type { AirBridgeService } from "../../services/airBridgeService";
 import { validateConnectionForm } from "./connectionValidation";
 import { sanitizeConnectionError, hasSecretLeak } from "./connectionSecurity";
 import { PermissionCheckList } from "./PermissionCheckList";
 import { StatusBadge } from "../../components/StatusBadge";
-import { mockCheckConnection } from "../../services/mockAirBridgeService";
+import { liveAirBridgeService } from "../../services/liveAirBridgeService";
 
 interface ConnectionFormProps {
   onSuccess?: (result: ConnectionCheckResult) => void;
   onError?: (message: string) => void;
+  /** Service used for the connection check. Defaults to the live service.
+   *  Inject a mock service in tests or jsdom environments. */
+  service?: Pick<AirBridgeService, "checkConnection">;
 }
 
-export function ConnectionForm({ onSuccess, onError }: ConnectionFormProps) {
+export function ConnectionForm({ onSuccess, onError, service }: ConnectionFormProps) {
   const [name, setName] = useState("");
   const [token, setToken] = useState("");
   const [isChecking, setIsChecking] = useState(false);
@@ -19,6 +23,8 @@ export function ConnectionForm({ onSuccess, onError }: ConnectionFormProps) {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const canSubmit = validateConnectionForm({ name, token }).valid;
+
+  const checkService = service ?? liveAirBridgeService;
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -38,13 +44,7 @@ export function ConnectionForm({ onSuccess, onError }: ConnectionFormProps) {
     const capturedToken = token;
 
     try {
-      const response = await mockCheckConnection({ token: capturedToken });
-
-      if (response === null) {
-        setErrorMessage("Connection check returned no result. Please try again.");
-        onError?.("Connection check returned no result. Please try again.");
-        return;
-      }
+      const response = await checkService.checkConnection({ token: capturedToken });
 
       if (hasSecretLeak(JSON.stringify(response), capturedToken)) {
         setErrorMessage("Connection check returned unexpected data.");

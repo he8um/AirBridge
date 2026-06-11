@@ -39,16 +39,20 @@ Separating frontend and backend through a named command layer provides several g
 
 ## Current Implementation Status
 
-The Rust command handlers are stubs. The frontend uses `mockAirBridgeService` (backed by
-`MOCK_STATE`) during development so that the full UI is exercisable without a live
-Airtable token. The TypeScript command bridge (`src/backend/commands.ts`) is wired up and
-returns `null` in any environment where Tauri IPC is not present.
+`check_connection` is live — the Rust handler calls the Airtable list-bases endpoint
+via `ReqwestHttpTransport` and returns a typed `ConnectionCheckResult`. Write permissions
+are marked `Unknown` (not verified destructively). All other command handlers remain stubs
+backed by mock state.
+
+The `liveAirBridgeService` wires the frontend to real Tauri commands. `ConnectionForm`
+accepts a `service` prop (defaults to `liveAirBridgeService`) so tests inject
+`mockAirBridgeService` without touching the Tauri IPC.
 
 ## Future Path
 
-When the Rust layer is complete, each stub handler will be replaced by real Airtable API
-calls. The TypeScript bridge requires no changes — the typed function signatures and the
-`safeInvoke` pattern remain the same. The mock service will continue to serve as a
+Remaining stub handlers will be replaced by real Airtable API calls as each workflow
+is implemented. The TypeScript bridge requires no changes — the typed function signatures
+and the `safeInvoke` pattern remain the same. The mock service continues to serve as a
 development and testing fixture independent of the Rust implementation.
 
 ## Security Expectations

@@ -68,6 +68,19 @@ describe("mockAirBridgeService", () => {
     expect(JSON.stringify(result)).not.toContain("example_valid_token_abcdefgh12345");
   });
 
+  it("checkConnection write permissions are not marked passed on success", async () => {
+    const result = await mockAirBridgeService.checkConnection({
+      token: "example_valid_token_abcdefgh12345",
+    });
+    const writePerms = result.permissions.filter(
+      (p) => p.key === "schema.bases:write" || p.key === "data.records:write",
+    );
+    expect(writePerms.length).toBe(2);
+    for (const p of writePerms) {
+      expect(p.status).not.toBe("passed");
+    }
+  });
+
   it("mock service satisfies AirBridgeService interface", () => {
     const _: AirBridgeService = mockAirBridgeService;
     expect(_).toBeDefined();

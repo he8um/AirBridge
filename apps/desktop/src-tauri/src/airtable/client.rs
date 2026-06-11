@@ -3,7 +3,8 @@ use super::endpoints;
 use super::errors::{map_http_error, AirtableClientError};
 use super::http::{HttpRequest, HttpTransport};
 use super::models::{
-    AirtableListRecordsResponse, AirtableRecordFields, AirtableRecordUpdate, AirtableTable,
+    AccessibleBase, AirtableListRecordsResponse, AirtableRecordFields, AirtableRecordUpdate,
+    AirtableTable, ConnectionCheckOutcome, ListBasesResponse,
 };
 use super::pagination::ListRecordsOptions;
 
@@ -132,6 +133,30 @@ impl<T: HttpTransport> AirtableClient<T> {
         serde_json::from_str::<AirtableListRecordsResponse>(&body)
             .map_err(|e| AirtableClientError::MalformedResponse(e.to_string()))
     }
+
+    /// Performs a read-only connection check by calling the list-bases endpoint.
+    ///
+    /// This is the only method used for live connection verification. It does
+    /// not perform any write operations. The token is used for this call only
+    /// and is never included in the returned `ConnectionCheckOutcome`.
+    pub fn check_connection_for_token(&self) -> ClientResult<ConnectionCheckOutcome> {
+        let url = endpoints::list_bases_path();
+        let body = self.send_get(url, vec![])?;
+
+        let response = serde_json::from_str::<ListBasesResponse>(&body)
+            .map_err(|e| AirtableClientError::MalformedResponse(e.to_string()))?;
+
+        let accessible_bases = response
+            .bases
+            .into_iter()
+            .map(|b| AccessibleBase {
+                id: super::models::AirtableBaseId(b.id),
+                name: b.name,
+            })
+            .collect();
+
+        Ok(ConnectionCheckOutcome { accessible_bases })
+    }
 }
 
 #[cfg(test)]
@@ -258,5 +283,107 @@ mod tests {
         let client = client_with(transport);
         let err = client.get_base_schema("appTestBase001").unwrap_err();
         assert_eq!(err, AirtableClientError::NotFound);
+    }
+
+    // ── check_connection_for_token tests ──────────────────────────────────
+
+    #[test]
+    fn check_connection_success_returns_accessible_bases() {
+        let body = r#"{"bases":[{"id":"appExampleBase01","name":"Example Base","permissionLevel":"create"}]}"#;
+        let transport = MockHttpTransport::ok(body);
+        let client = client_with(transport);
+        let outcome = client.check_connection_for_token().expect("should succeed");
+        assert_eq!(outcome.accessible_bases.len(), 1);
+        assert_eq!(outcome.accessible_bases[0].name, "Example Base");
+    }
+
+    #[test]
+    fn check_connection_empty_bases_is_valid() {
+        let transport = MockHttpTransport::ok(r#"{"bases":[]}"#);
+        let client = client_with(transport);
+        let outcome = client.check_connection_for_token().expect("should succeed");
+        assert_eq!(outcome.accessible_bases.len(), 0);
+    }
+
+    #[test]
+    fn check_connection_401_maps_to_invalid_token() {
+        let transport = MockHttpTransport::with_status(401, r#"{"error":"UNAUTHORIZED"}"#);
+        let client = client_with(transport);
+        let err = client.check_connection_for_token().unwrap_err();
+        assert_eq!(err, AirtableClientError::InvalidToken);
+    }
+
+    #[test]
+    fn check_connection_403_maps_to_permission_denied() {
+        let transport = MockHttpTransport::with_status(403, r#"{"error":"forbidden"}"#);
+        let client = client_with(transport);
+        let err = client.check_connection_for_token().unwrap_err();
+        assert_eq!(err, AirtableClientError::PermissionDenied);
+    }
+
+    #[test]
+    fn check_connection_403_scope_maps_to_missing_scope() {
+        let transport =
+            MockHttpTransport::with_status(403, r#"{"error":"missing required scope"}"#);
+        let client = client_with(transport);
+        let err = client.check_connection_for_token().unwrap_err();
+        assert_eq!(err, AirtableClientError::MissingScope);
+    }
+
+    #[test]
+    fn check_connection_429_maps_to_rate_limited() {
+        let transport = MockHttpTransport::with_status(429, r#"{"error":"RATE_LIMITED"}"#);
+        let client = client_with(transport);
+        let err = client.check_connection_for_token().unwrap_err();
+        assert_eq!(err, AirtableClientError::RateLimited);
+    }
+
+    #[test]
+    fn check_connection_malformed_json_maps_to_malformed_response() {
+        let transport = MockHttpTransport::ok("this is not json");
+        let client = client_with(transport);
+        let err = client.check_connection_for_token().unwrap_err();
+        match err {
+            AirtableClientError::MalformedResponse(_) => {}
+            other => panic!("expected MalformedResponse, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn check_connection_transport_error_maps_to_transient() {
+        struct FailingTransport;
+        impl crate::airtable::http::HttpTransport for FailingTransport {
+            fn send(
+                &self,
+                _r: crate::airtable::http::HttpRequest,
+            ) -> Result<crate::airtable::http::HttpResponse, String> {
+                Err("network error: connection refused".to_string())
+            }
+        }
+        let client = AirtableClient::new(AirtableToken::new(SENTINEL), FailingTransport);
+        let err = client.check_connection_for_token().unwrap_err();
+        assert_eq!(err, AirtableClientError::TransientServerError(0));
+    }
+
+    #[test]
+    fn check_connection_result_does_not_contain_token() {
+        let body = r#"{"bases":[{"id":"appExampleBase01","name":"Example Base","permissionLevel":"create"}]}"#;
+        let transport = MockHttpTransport::ok(body);
+        let client = client_with(transport);
+        let outcome = client.check_connection_for_token().expect("should succeed");
+        let serialized = serde_json::to_string(&outcome).expect("serialize");
+        assert!(!serialized.contains(SENTINEL));
+    }
+
+    #[test]
+    fn check_connection_write_permissions_not_verified_in_outcome() {
+        let body = r#"{"bases":[{"id":"appExampleBase01","name":"Example Base","permissionLevel":"create"}]}"#;
+        let transport = MockHttpTransport::ok(body);
+        let client = client_with(transport);
+        let outcome = client.check_connection_for_token().expect("should succeed");
+        // ConnectionCheckOutcome has no write-permission fields — write checks
+        // are not performed at this stage.
+        let serialized = serde_json::to_string(&outcome).expect("serialize");
+        assert!(!serialized.contains("write"));
     }
 }
