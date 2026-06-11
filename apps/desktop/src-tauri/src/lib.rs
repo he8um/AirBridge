@@ -1,13 +1,40 @@
+mod commands;
+mod errors;
+mod models;
+
+use models::common::AppHealth;
+
 #[tauri::command]
 fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)
+}
+
+#[tauri::command]
+fn get_app_health() -> AppHealth {
+    AppHealth {
+        app_name: "AirBridge".to_string(),
+        version: "0.1.0".to_string(),
+        status: "ok".to_string(),
+        backend: "tauri".to_string(),
+    }
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![greet])
+        .invoke_handler(tauri::generate_handler![
+            greet,
+            get_app_health,
+            commands::connection::check_connection,
+            commands::catalog::list_workspaces,
+            commands::catalog::list_bases,
+            commands::backup::list_backup_packages,
+            commands::restore::list_restore_plans,
+            commands::reports::list_reports,
+            commands::logs::list_logs,
+            commands::compatibility::list_compatibility_rules,
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
@@ -15,22 +42,67 @@ pub fn run() {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::commands::compatibility::list_compatibility_rules;
+    use crate::commands::connection::check_connection;
+    use crate::commands::logs::list_logs;
+    use crate::commands::reports::list_reports;
+    use crate::errors::{AirBridgeError, ErrorCode};
+    use crate::models::compatibility::FieldRestoreSupport;
 
     #[test]
-    fn greet_returns_expected_message() {
-        let result = greet("AirBridge");
-        assert_eq!(result, "Hello, AirBridge! You've been greeted from Rust!");
+    fn health_returns_app_name() {
+        let health = get_app_health();
+        assert_eq!(health.app_name, "AirBridge");
     }
 
     #[test]
-    fn greet_handles_empty_name() {
-        let result = greet("");
-        assert!(result.contains("Hello, !"));
+    fn health_returns_ok_status() {
+        let health = get_app_health();
+        assert_eq!(health.status, "ok");
     }
 
     #[test]
-    fn greet_handles_unicode_name() {
-        let result = greet("Ünïcödé");
-        assert!(result.starts_with("Hello, Ünïcödé!"));
+    fn check_connection_does_not_expose_token() {
+        let result = check_connection("super-secret-token".to_string());
+        let json = serde_json::to_string(&result).expect("serialization failed");
+        assert!(!json.contains("super-secret-token"));
+    }
+
+    #[test]
+    fn compatibility_rules_include_restorable() {
+        let rules = list_compatibility_rules().expect("command failed");
+        assert!(rules
+            .iter()
+            .any(|r| r.support == FieldRestoreSupport::Restorable));
+    }
+
+    #[test]
+    fn compatibility_rules_include_unsupported() {
+        let rules = list_compatibility_rules().expect("command failed");
+        assert!(rules
+            .iter()
+            .any(|r| r.support == FieldRestoreSupport::UnsupportedForRestore));
+    }
+
+    #[test]
+    fn reports_return_deterministic_data() {
+        let reports = list_reports().expect("command failed");
+        assert_eq!(reports.len(), 3);
+        assert_eq!(reports[0].id, "report-001");
+    }
+
+    #[test]
+    fn logs_return_deterministic_data() {
+        let logs = list_logs().expect("command failed");
+        assert_eq!(logs.len(), 6);
+        assert_eq!(logs[0].id, "log-001");
+    }
+
+    #[test]
+    fn error_serializes_with_code_and_message() {
+        let err = AirBridgeError::new(ErrorCode::InternalError, "test");
+        let json = serde_json::to_string(&err).expect("serialization failed");
+        assert!(json.contains("INTERNAL_ERROR"));
+        assert!(json.contains("test"));
     }
 }
