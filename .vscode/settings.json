@@ -1,0 +1,9 @@
+{
+  "rust-analyzer.linkedProjects": ["apps/desktop/src-tauri/Cargo.toml"],
+  "rust-analyzer.check.command": "check",
+  "rust-analyzer.check.extraArgs": ["--all-targets"],
+  "rust-analyzer.cargo.targetDir": "apps/desktop/src-tauri/target/rust-analyzer",
+  "rust-analyzer.server.extraEnv": {
+    "PATH": "/Users/amirhesampiri/.cargo/bin:/opt/homebrew/bin:/usr/local/bin:${env:PATH}"
+  }
+}
