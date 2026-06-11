@@ -1,0 +1,52 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs
+dist/
+build/
+out/
+target/
+src-tauri/target/
+
+# Tauri generated outputs
+src-tauri/gen/
+src-tauri/binaries/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Local/private workspace
+.local/
+.local/**
+.workbench/
+.workbench/**
+private/
+private/**
+scratch/
+scratch/**
+*.local.md
+*.private.md
+*.scratch.md
+*.context.md
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.token
+secrets.*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE/editor
+.vscode/
+.idea/
