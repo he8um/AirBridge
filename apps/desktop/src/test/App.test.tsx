@@ -271,10 +271,8 @@ describe("AirBridge App", () => {
       expect(screen.getByRole("button", { name: "Errors" })).toBeInTheDocument();
     });
 
-    it("shows empty state message", () => {
-      expect(
-        screen.getByText("Logs will appear here during and after backup or restore jobs."),
-      ).toBeInTheDocument();
+    it("shows log entries from state", () => {
+      expect(screen.getByRole("list", { name: "Log entries" })).toBeInTheDocument();
     });
   });
 });

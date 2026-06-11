@@ -1,6 +1,11 @@
 import { SectionHeader } from "../components/SectionHeader";
+import { useAppState } from "../state/useAppState";
 
 export function RestorePage() {
+  const { state, compatibilitySummary } = useAppState();
+  const plan = state.restorePlans[0];
+  const bases = state.bases;
+
   return (
     <div className="page">
       <div className="page-content">
@@ -36,7 +41,6 @@ export function RestorePage() {
                   aria-label="Choose .airbridge backup file"
                   style={{ flexShrink: 0, whiteSpace: "nowrap" }}
                 >
-                  {/* File icon */}
                   <svg
                     width="13"
                     height="13"
@@ -135,7 +139,15 @@ export function RestorePage() {
                     disabled
                     aria-label="Select target Airtable base for restore"
                   >
-                    <option value="">No bases connected</option>
+                    {bases.length === 0 ? (
+                      <option value="">No bases connected</option>
+                    ) : (
+                      bases.map((base) => (
+                        <option key={base.id} value={base.id}>
+                          {base.name}
+                        </option>
+                      ))
+                    )}
                   </select>
                 </div>
 
@@ -147,7 +159,6 @@ export function RestorePage() {
                     disabled
                     aria-label="Start restore job"
                   >
-                    {/* Restore icon */}
                     <svg
                       width="14"
                       height="14"
@@ -173,10 +184,108 @@ export function RestorePage() {
         <section aria-labelledby="compatibility-heading">
           <SectionHeader title="Compatibility" />
 
-          <div className="card notice-neutral" style={{ maxWidth: 600 }}>
-            <p style={{ fontSize: "var(--text-sm)", color: "var(--color-text-muted)" }}>
-              Field compatibility and warnings will appear here after selecting a backup file.
-            </p>
+          <div
+            className="card"
+            style={{
+              maxWidth: 600,
+              display: "flex",
+              flexDirection: "column",
+              gap: "var(--space-4)",
+            }}
+          >
+            {/* Summary row */}
+            <div style={{ display: "flex", gap: "var(--space-6)", flexWrap: "wrap" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-1)" }}>
+                <span
+                  style={{
+                    fontSize: "var(--text-xs)",
+                    color: "var(--color-text-muted)",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.06em",
+                  }}
+                >
+                  Restorable
+                </span>
+                <span style={{ fontSize: "var(--text-lg)", fontWeight: 600 }}>
+                  {compatibilitySummary.bySupport.restorable}
+                </span>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-1)" }}>
+                <span
+                  style={{
+                    fontSize: "var(--text-xs)",
+                    color: "var(--color-text-muted)",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.06em",
+                  }}
+                >
+                  Partial
+                </span>
+                <span style={{ fontSize: "var(--text-lg)", fontWeight: 600 }}>
+                  {compatibilitySummary.bySupport.partially_restorable}
+                </span>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-1)" }}>
+                <span
+                  style={{
+                    fontSize: "var(--text-xs)",
+                    color: "var(--color-text-muted)",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.06em",
+                  }}
+                >
+                  Unsupported
+                </span>
+                <span style={{ fontSize: "var(--text-lg)", fontWeight: 600 }}>
+                  {compatibilitySummary.bySupport.unsupported_for_restore}
+                </span>
+              </div>
+            </div>
+
+            {/* Plan warnings */}
+            {plan && plan.warnings.length > 0 && (
+              <div>
+                <p
+                  style={{
+                    fontSize: "var(--text-xs)",
+                    fontWeight: 600,
+                    color: "var(--color-text-muted)",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.06em",
+                    marginBottom: "var(--space-2)",
+                  }}
+                >
+                  Warnings for selected plan
+                </p>
+                <ul
+                  style={{
+                    listStyle: "none",
+                    margin: 0,
+                    padding: 0,
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "var(--space-2)",
+                  }}
+                >
+                  {plan.warnings.map((w) => (
+                    <li
+                      key={w.fieldId}
+                      className={`notice notice-${w.severity === "warning" ? "warning" : w.severity === "error" ? "danger" : "info"}`}
+                    >
+                      <span>
+                        <strong>{w.fieldName}</strong> ({w.fieldType}): {w.message}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {!plan && (
+              <p style={{ fontSize: "var(--text-sm)", color: "var(--color-text-muted)" }}>
+                Field compatibility and warnings will appear here after selecting a backup file.
+              </p>
+            )}
           </div>
         </section>
       </div>

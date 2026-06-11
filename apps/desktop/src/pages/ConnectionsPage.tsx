@@ -1,9 +1,41 @@
 import { SectionHeader } from "../components/SectionHeader";
 import { StatusBadge } from "../components/StatusBadge";
+import { useAppState } from "../state/useAppState";
+import type { PermissionCheckStatus } from "../domain/connection";
 
-const PERMISSIONS = ["Schema read", "Records read", "Schema write", "Records write"] as const;
+function permissionStatusLabel(status: PermissionCheckStatus): string {
+  switch (status) {
+    case "passed":
+      return "Passed";
+    case "failed":
+      return "Failed";
+    case "checking":
+      return "Checking…";
+    default:
+      return "—";
+  }
+}
+
+function permissionStatusBadge(
+  status: PermissionCheckStatus,
+): "connected" | "error" | "warning" | "idle" {
+  switch (status) {
+    case "passed":
+      return "connected";
+    case "failed":
+      return "error";
+    case "checking":
+      return "warning";
+    default:
+      return "idle";
+  }
+}
 
 export function ConnectionsPage() {
+  const { state } = useAppState();
+  const selected =
+    state.connections.find((c) => c.id === state.selectedConnectionId) ?? state.connections[0];
+
   return (
     <div className="page">
       <div className="page-content">
@@ -48,8 +80,48 @@ export function ConnectionsPage() {
                 <span style={{ fontSize: "var(--text-sm)", color: "var(--color-text-muted)" }}>
                   Status:
                 </span>
-                <StatusBadge status="idle" label="Not connected" />
+                {selected ? (
+                  <StatusBadge
+                    status={
+                      selected.status === "connected"
+                        ? "connected"
+                        : selected.status === "failed"
+                          ? "error"
+                          : selected.status === "checking"
+                            ? "warning"
+                            : "idle"
+                    }
+                    label={
+                      selected.status === "connected"
+                        ? "Connected"
+                        : selected.status === "failed"
+                          ? "Failed"
+                          : selected.status === "checking"
+                            ? "Checking…"
+                            : "Not connected"
+                    }
+                  />
+                ) : (
+                  <StatusBadge status="idle" label="Not connected" />
+                )}
               </div>
+
+              {selected?.connectedAt && (
+                <p
+                  style={{
+                    fontSize: "var(--text-xs)",
+                    color: "var(--color-text-muted)",
+                    margin: 0,
+                  }}
+                >
+                  Connected since{" "}
+                  {new Date(selected.connectedAt).toLocaleDateString(undefined, {
+                    year: "numeric",
+                    month: "short",
+                    day: "numeric",
+                  })}
+                </p>
+              )}
 
               <div className="divider" style={{ margin: 0 }} />
 
@@ -68,14 +140,28 @@ export function ConnectionsPage() {
                   Required Permissions
                 </p>
                 <div className="check-list" role="list" aria-label="Required permissions">
-                  {PERMISSIONS.map((perm) => (
-                    <div key={perm} className="check-list-row" role="listitem">
-                      <span className="check-list-label">{perm}</span>
-                      <span className="check-list-status" aria-label={`${perm}: not verified`}>
-                        —
-                      </span>
+                  {selected?.permissions.map((perm) => (
+                    <div key={perm.key} className="check-list-row" role="listitem">
+                      <span className="check-list-label">{perm.label}</span>
+                      <StatusBadge
+                        status={permissionStatusBadge(perm.status)}
+                        label={permissionStatusLabel(perm.status)}
+                      />
                     </div>
-                  ))}
+                  )) ?? (
+                    <>
+                      {(
+                        ["Schema read", "Records read", "Schema write", "Records write"] as const
+                      ).map((label) => (
+                        <div key={label} className="check-list-row" role="listitem">
+                          <span className="check-list-label">{label}</span>
+                          <span className="check-list-status" aria-label={`${label}: not verified`}>
+                            —
+                          </span>
+                        </div>
+                      ))}
+                    </>
+                  )}
                 </div>
               </div>
             </div>

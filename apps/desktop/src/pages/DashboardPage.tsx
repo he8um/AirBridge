@@ -1,7 +1,10 @@
 import { StatCard } from "../components/StatCard";
 import { SectionHeader } from "../components/SectionHeader";
+import { useAppState } from "../state/useAppState";
 
 export function DashboardPage() {
+  const { dashboardStats } = useAppState();
+
   function handleNewBackup() {
     console.log("New Backup clicked");
   }
@@ -70,9 +73,17 @@ export function DashboardPage() {
             Activity Summary
           </h2>
           <div className="stat-grid">
-            <StatCard label="Recent Backups" value={0} note="Last 30 days" />
-            <StatCard label="Restore Jobs" value={0} note="Last 30 days" />
-            <StatCard label="Connected Bases" value={0} note="Active connections" />
+            <StatCard
+              label="Recent Backups"
+              value={dashboardStats.recentBackups}
+              note="Last 30 days"
+            />
+            <StatCard label="Restore Jobs" value={dashboardStats.restoreJobs} note="Last 30 days" />
+            <StatCard
+              label="Connected Bases"
+              value={dashboardStats.connectedBases}
+              note="Active connections"
+            />
           </div>
         </section>
 
