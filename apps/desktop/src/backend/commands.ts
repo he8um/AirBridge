@@ -1,6 +1,8 @@
 import type {
   AccessibleBaseSummary,
   AppHealthResponse,
+  BackupJobCancellationResult,
+  BackupJobProgressSnapshot,
   BackupPlan,
   BackupPlanRequest,
   BaseSchemaSummary,
@@ -112,4 +114,25 @@ export async function runBackupJob(
 ): Promise<RunBackupCommandResponse | null> {
   // Token is forwarded to the Rust command only; not stored or logged here.
   return safeInvoke<RunBackupCommandResponse>("run_backup_job", { request });
+}
+
+/**
+ * Signal cancellation for a running backup job.
+ *
+ * V0.1: always returns `wasRunning: false` — no background registry yet.
+ * Returns null if Tauri IPC is unavailable.
+ */
+export async function cancelBackupJob(jobId: string): Promise<BackupJobCancellationResult | null> {
+  return safeInvoke<BackupJobCancellationResult>("cancel_backup_job", { jobId });
+}
+
+/**
+ * Get a progress snapshot for a running backup job.
+ *
+ * Not wired to a Tauri command in V0.1 — jobs run synchronously and complete
+ * before the frontend could poll. Returns null always.
+ */
+export async function getBackupJobStatus(jobId: string): Promise<BackupJobProgressSnapshot | null> {
+  void jobId;
+  return null;
 }

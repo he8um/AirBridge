@@ -24,6 +24,7 @@ pub fn build_succeeded_result(
         errors: vec![],
         package_summary: Some(package_summary),
         validation_summary: Some(validation_summary),
+        events: vec![],
     }
 }
 
@@ -48,6 +49,7 @@ pub fn build_failed_result(
         errors,
         package_summary: None,
         validation_summary: None,
+        events: vec![],
     }
 }
 
@@ -68,6 +70,7 @@ pub fn build_cancelled_result(
         errors: vec![],
         package_summary: None,
         validation_summary: None,
+        events: vec![],
     }
 }
 

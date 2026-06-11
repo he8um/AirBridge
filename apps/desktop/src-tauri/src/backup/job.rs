@@ -133,6 +133,11 @@ pub struct BackupJobResult {
     pub package_summary: Option<BackupJobPackageSummary>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub validation_summary: Option<BackupJobValidationSummary>,
+    /// Ordered event timeline for the job.
+    ///
+    /// Events contain no token, no absolute paths, and no attachment URLs.
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    pub events: Vec<crate::backup::job_events::BackupJobEvent>,
 }
 
 impl BackupJobResult {
@@ -180,6 +185,7 @@ mod tests {
             errors: vec![],
             package_summary: None,
             validation_summary: None,
+            events: vec![],
         }
     }
 

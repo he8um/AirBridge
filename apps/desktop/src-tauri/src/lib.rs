@@ -39,6 +39,7 @@ pub fn run() {
             commands::backup::create_records_export_plan,
             commands::backup_job::validate_backup_output_path,
             commands::backup_job::run_backup_job,
+            commands::backup_job::cancel_backup_job,
             commands::restore::list_restore_plans,
             commands::reports::list_reports,
             commands::logs::list_logs,

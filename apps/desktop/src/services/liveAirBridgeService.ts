@@ -7,6 +7,8 @@ import type { JobLogEntry } from "../domain/log";
 import type { FieldCompatibilityRule } from "../domain/compatibility";
 import type {
   AccessibleBaseSummary,
+  BackupJobCancellationResult,
+  BackupJobProgressSnapshot,
   BackupPlan,
   BackupPlanRequest,
   BaseSchemaSummary,
@@ -170,6 +172,18 @@ async function runBackupJob(request: RunBackupCommandRequest): Promise<RunBackup
   return result;
 }
 
+async function cancelBackupJob(jobId: string): Promise<BackupJobCancellationResult> {
+  const result = await commands.cancelBackupJob(jobId);
+  if (result === null) {
+    return { jobId, wasRunning: false, statusAtCancellation: "not_running" };
+  }
+  return result;
+}
+
+async function getBackupJobStatus(jobId: string): Promise<BackupJobProgressSnapshot | null> {
+  return commands.getBackupJobStatus(jobId);
+}
+
 export const liveAirBridgeService: AirBridgeService = {
   listConnections,
   listWorkspaces,
@@ -186,4 +200,6 @@ export const liveAirBridgeService: AirBridgeService = {
   createRecordsExportPlan,
   validateBackupOutputPath,
   runBackupJob,
+  cancelBackupJob,
+  getBackupJobStatus,
 };

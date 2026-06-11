@@ -1,4 +1,33 @@
-import type { RunBackupCommandResponse } from "../../backend/types";
+import type { BackupJobEvent, RunBackupCommandResponse } from "../../backend/types";
+
+function formatEventLabel(ev: BackupJobEvent): string {
+  switch (ev.kind) {
+    case "jobStarted":
+      return `Job started — ${ev.baseName ?? ""} (${ev.tableCount ?? 0} tables)`;
+    case "phaseStarted":
+      return `Phase: ${ev.phase ?? ""}`;
+    case "tableExportStarted":
+      return `Exporting table: ${ev.tableName ?? ev.tableId ?? ""}`;
+    case "tableExportCompleted":
+      return `Table completed: ${ev.tableName ?? ev.tableId ?? ""} — ${ev.recordCount ?? 0} records`;
+    case "packageWriteStarted":
+      return "Writing package…";
+    case "packageWriteCompleted":
+      return `Package written — ${ev.entryCount ?? 0} entries`;
+    case "validationStarted":
+      return "Validating package…";
+    case "validationCompleted":
+      return `Validation: ${ev.status ?? ""}${ev.errorCount ? ` · ${ev.errorCount} errors` : ""}`;
+    case "jobSucceeded":
+      return `Succeeded — ${ev.totalRecords ?? 0} records`;
+    case "jobFailed":
+      return `Failed — ${ev.errorCode ?? "error"}`;
+    case "jobCancelled":
+      return `Cancelled at phase: ${ev.atPhase ?? ""}`;
+    default:
+      return ev.kind;
+  }
+}
 
 interface BackupJobResultCardProps {
   response: RunBackupCommandResponse;
@@ -153,6 +182,46 @@ export function BackupJobResultCard({ response }: BackupJobResultCardProps) {
                 </li>
               ))}
             </ul>
+          )}
+
+          {/* Event timeline */}
+          {jobResult.events && jobResult.events.length > 0 && (
+            <div
+              style={{ display: "flex", flexDirection: "column", gap: "var(--space-1)" }}
+              aria-label="Job event timeline"
+              data-testid="backup-event-timeline"
+            >
+              <p
+                style={{
+                  fontSize: "var(--text-xs)",
+                  color: "var(--color-text-muted)",
+                  fontWeight: 600,
+                  margin: 0,
+                }}
+              >
+                Timeline
+              </p>
+              <ol
+                style={{
+                  listStyle: "none",
+                  margin: 0,
+                  padding: 0,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "var(--space-1)",
+                }}
+              >
+                {jobResult.events.map((ev: BackupJobEvent, i: number) => (
+                  <li
+                    key={i}
+                    style={{ fontSize: "var(--text-xs)", color: "var(--color-text-muted)" }}
+                    data-event-kind={ev.kind}
+                  >
+                    {formatEventLabel(ev)}
+                  </li>
+                ))}
+              </ol>
+            </div>
           )}
         </div>
       )}

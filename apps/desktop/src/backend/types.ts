@@ -297,6 +297,68 @@ export interface BackupJobValidationSummary {
   entryCount: number;
 }
 
+/**
+ * A single event in the backup job timeline.
+ *
+ * The `kind` discriminant is one of: jobStarted, phaseStarted,
+ * tableExportStarted, tableExportCompleted, packageWriteStarted,
+ * packageWriteCompleted, validationStarted, validationCompleted,
+ * jobSucceeded, jobFailed, jobCancelled.
+ *
+ * No token, no absolute paths, no attachment URLs.
+ */
+export interface BackupJobEvent {
+  kind: string;
+  jobId: string;
+  phase?: BackupJobPhase;
+  tableId?: string;
+  tableName?: string;
+  recordCount?: number;
+  pagesFetched?: number;
+  entryCount?: number;
+  status?: string;
+  errorCount?: number;
+  warningCount?: number;
+  totalRecords?: number;
+  tableCount?: number;
+  errorCode?: string;
+  message?: string;
+  atPhase?: BackupJobPhase;
+  baseId?: string;
+  baseName?: string;
+}
+
+/** Read-only snapshot of a backup job's progress at a point in time. */
+export interface BackupJobProgressSnapshot {
+  jobId: string;
+  phase: BackupJobPhase;
+  status: BackupJobStatus;
+  completedTables: number;
+  totalTables?: number;
+  unknownTotal: boolean;
+  currentTableId?: string;
+  currentTableName?: string;
+  warningCount: number;
+  errorCount: number;
+}
+
+/** Request to cancel a running backup job. */
+export interface BackupJobCancellationRequest {
+  jobId: string;
+}
+
+/**
+ * Result of a cancellation attempt.
+ *
+ * In V0.1 `wasRunning` is always false — no background job registry exists yet.
+ * `statusAtCancellation` is `"not_running"` in V0.1.
+ */
+export interface BackupJobCancellationResult {
+  jobId: string;
+  wasRunning: boolean;
+  statusAtCancellation: string;
+}
+
 export interface BackupJobResult {
   jobId: string;
   status: BackupJobStatus;
@@ -307,6 +369,8 @@ export interface BackupJobResult {
   errors: BackupJobError[];
   packageSummary?: BackupJobPackageSummary;
   validationSummary?: BackupJobValidationSummary;
+  /** Ordered event timeline. Empty for jobs that ran before this field was added. */
+  events?: BackupJobEvent[];
 }
 
 // ── Safe Backup Command Contract ───────────────────────────────────────────

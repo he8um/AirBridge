@@ -7,6 +7,8 @@ import type { JobLogEntry } from "../domain/log";
 import type { FieldCompatibilityRule } from "../domain/compatibility";
 import type {
   AccessibleBaseSummary,
+  BackupJobCancellationResult,
+  BackupJobProgressSnapshot,
   BackupPlan,
   BackupPlanRequest,
   BaseSchemaSummary,
@@ -34,4 +36,17 @@ export interface AirBridgeService {
   createRecordsExportPlan(request: RecordsExportPlanRequest): Promise<RecordsExportPlan>;
   validateBackupOutputPath(path: string): Promise<OutputPathValidationResult>;
   runBackupJob(request: RunBackupCommandRequest): Promise<RunBackupCommandResponse>;
+  /**
+   * Signal cancellation for a running backup job.
+   *
+   * V0.1: always returns `wasRunning: false` — no background registry exists yet.
+   */
+  cancelBackupJob(jobId: string): Promise<BackupJobCancellationResult>;
+  /**
+   * Get a progress snapshot for a job by ID.
+   *
+   * V0.1: always returns null — jobs run synchronously and complete before this
+   * can be called. Future: returns a live snapshot from the background registry.
+   */
+  getBackupJobStatus(jobId: string): Promise<BackupJobProgressSnapshot | null>;
 }

@@ -11,6 +11,7 @@ pub mod format;
 pub mod job;
 pub mod job_events;
 pub mod job_orchestrator;
+pub mod job_progress;
 pub mod job_result;
 pub mod linked_records;
 pub mod manifest;

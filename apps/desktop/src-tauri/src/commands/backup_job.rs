@@ -9,6 +9,7 @@ use crate::backup::cancellation::CancellationToken;
 use crate::backup::export_engine::TableExportSpec;
 use crate::backup::job::{BackupJobId, BackupJobRequest};
 use crate::backup::job_orchestrator::BackupJobOrchestrator;
+use crate::backup::job_progress::BackupJobCancellationResult;
 use crate::backup::output_path::{validate_output_path, OutputPathError};
 
 // ── Confirmation contract ──────────────────────────────────────────────────
@@ -275,6 +276,19 @@ pub fn run_backup_job(request: RunBackupCommandRequest) -> RunBackupCommandRespo
     let result = orchestrator.run(&job_request, output_path);
 
     RunBackupCommandResponse::from_job_result(result, package_filename)
+}
+
+/// Cancel a running backup job by ID.
+///
+/// V0.1 placeholder: there is no background job registry yet. The command
+/// always returns `was_running: false` with `status_at_cancellation: "not_running"`.
+///
+/// When a background registry is added in a future version, this command will
+/// locate the running job, signal its `CancellationToken`, and return the actual
+/// status at the moment of cancellation.
+#[tauri::command]
+pub fn cancel_backup_job(job_id: String) -> BackupJobCancellationResult {
+    BackupJobCancellationResult::not_running(BackupJobId(job_id))
 }
 
 /// Deterministic job-ID-like string derived from base ID (not a real UUID).
@@ -621,5 +635,87 @@ mod tests {
         assert!(!json.contains("/Users/"));
         assert!(!json.contains("/home/"));
         assert!(!json.contains("/tmp/"));
+    }
+
+    // ── cancel_backup_job tests ────────────────────────────────────────────
+
+    #[test]
+    fn cancel_returns_not_running_when_no_registry() {
+        let result = cancel_backup_job("job-cancel-test-001".to_string());
+        assert!(!result.was_running);
+        assert_eq!(result.status_at_cancellation, "not_running");
+        assert_eq!(result.job_id.as_str(), "job-cancel-test-001");
+    }
+
+    #[test]
+    fn cancel_result_serializes() {
+        let result = cancel_backup_job("job-cancel-test-002".to_string());
+        let json = serde_json::to_string(&result).expect("serialize");
+        assert!(json.contains("not_running"));
+        assert!(json.contains("false"));
+        assert!(json.contains("job-cancel-test-002"));
+    }
+
+    #[test]
+    fn cancel_result_contains_no_token() {
+        const SENTINEL: &str = "pat_cancel_cmd_test_sentinel_0123456789";
+        let result = cancel_backup_job("job-cancel-test-003".to_string());
+        let json = serde_json::to_string(&result).expect("serialize");
+        assert!(!json.contains(SENTINEL));
+    }
+
+    #[test]
+    fn cancel_result_contains_no_absolute_path() {
+        let result = cancel_backup_job("job-cancel-test-004".to_string());
+        let json = serde_json::to_string(&result).expect("serialize");
+        assert!(!json.contains("/Users/"));
+        assert!(!json.contains("/home/"));
+    }
+
+    #[test]
+    fn result_events_field_is_empty_by_default() {
+        let body = r#"{"records":[]}"#;
+        let dir = tempdir().expect("tempdir");
+        let pkg = dir.path().join("job.airbridge");
+        let result = run_with_mock_transport(MockHttpTransport::ok(body), &pkg);
+        assert!(
+            result.events.is_empty(),
+            "events should be empty in V0.1 synchronous model"
+        );
+    }
+
+    #[test]
+    fn result_with_events_serializes_without_token_or_path() {
+        use crate::backup::job_events::BackupJobEvent;
+        use crate::backup::job::{BackupJobId, BackupJobStatus};
+        const SENTINEL: &str = "pat_events_serial_test_0123456789";
+        let mut r = crate::backup::job::BackupJobResult {
+            job_id: BackupJobId("job-ev-001".to_string()),
+            status: BackupJobStatus::Succeeded,
+            base_id: "appSyn01".to_string(),
+            base_name: "Synthetic".to_string(),
+            tables: vec![],
+            warnings: vec![],
+            errors: vec![],
+            package_summary: None,
+            validation_summary: None,
+            events: vec![],
+        };
+        r.events.push(BackupJobEvent::JobStarted {
+            job_id: BackupJobId("job-ev-001".to_string()),
+            base_id: "appSyn01".to_string(),
+            base_name: "Synthetic".to_string(),
+            table_count: 1,
+        });
+        r.events.push(BackupJobEvent::JobSucceeded {
+            job_id: BackupJobId("job-ev-001".to_string()),
+            total_records: 0,
+            table_count: 1,
+        });
+        let json = serde_json::to_string(&r).expect("serialize");
+        assert!(json.contains("jobStarted"));
+        assert!(json.contains("jobSucceeded"));
+        assert!(!json.contains(SENTINEL));
+        assert!(!json.contains("/Users/"));
     }
 }

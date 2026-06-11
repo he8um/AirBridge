@@ -193,9 +193,16 @@ See `docs/architecture/backup-file-picker-confirmation-flow.md` for the full UI 
 - Generated `.airbridge` files are never committed to the repository.
 - No token persistence anywhere in the UI flow.
 
+## Progress and Cancellation
+
+`BackupJobResult.events` carries an ordered event timeline after job completion.
+A `cancel_backup_job` command is registered as a V0.1 placeholder (always returns `not_running`).
+
+See `docs/architecture/backup-progress-and-cancellation.md` for the full model.
+
 ## Future Path
 
 - Stream `BackupJobEvent` to the frontend via Tauri events for live progress.
 - Add retry logic for `RateLimited` errors inside the orchestrator.
-- Add cancellation token forwarding from the UI to the Rust command.
+- Wire background job registry to enable real-time `cancel_backup_job` behaviour.
 - Add secure credential storage using the OS keychain for repeat runs.

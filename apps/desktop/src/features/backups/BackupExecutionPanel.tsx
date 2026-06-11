@@ -38,6 +38,7 @@ export function BackupExecutionPanel({
   const [runState, setRunState] = useState<RunState>("idle");
   const [runError, setRunError] = useState<string | null>(null);
   const [runResponse, setRunResponse] = useState<RunBackupCommandResponse | null>(null);
+  const [activeJobId, setActiveJobId] = useState<string | null>(null);
   const tokenRef = useRef<HTMLInputElement>(null);
 
   const displayFileName = outputPath ? getDisplayFileName(outputPath) : null;
@@ -83,9 +84,11 @@ export function BackupExecutionPanel({
   async function handleRun() {
     if (!canRun || !outputPath || !backupPlan || !exportPlan) return;
 
+    const pendingJobId = `job-ui-${Date.now()}`;
     setRunState("running");
     setRunError(null);
     setRunResponse(null);
+    setActiveJobId(pendingJobId);
 
     const tableSpecs: RunBackupTableSpec[] = backupPlan.tables.map((t) => ({
       tableId: t.id,
@@ -111,13 +114,26 @@ export function BackupExecutionPanel({
         schemaJson: [],
         tableSpecs,
         pageSize: exportPlan.pageSize,
+        jobId: pendingJobId,
       });
+      setActiveJobId(response.jobResult?.jobId ?? pendingJobId);
       setRunResponse(response);
     } catch {
       setRunError("Backup job failed unexpectedly. Check the output and try again.");
     } finally {
       clearSensitiveState();
       setRunState("done");
+    }
+  }
+
+  async function handleCancel() {
+    if (runState !== "running") return;
+    const jobId = activeJobId;
+    clearSensitiveState();
+    setActiveJobId(null);
+    setRunState("done");
+    if (jobId !== null) {
+      await service.cancelBackupJob(jobId);
     }
   }
 
@@ -130,6 +146,7 @@ export function BackupExecutionPanel({
     setRunState("idle");
     setRunError(null);
     setRunResponse(null);
+    setActiveJobId(null);
   }
 
   return (
@@ -260,7 +277,7 @@ export function BackupExecutionPanel({
         disabled={!hasPlans || runState !== "idle"}
       />
 
-      {/* Run button */}
+      {/* Run / Cancel / Reset buttons */}
       <div style={{ display: "flex", gap: "var(--space-3)", flexWrap: "wrap" }}>
         <button
           type="button"
@@ -272,6 +289,17 @@ export function BackupExecutionPanel({
         >
           {runState === "running" ? "Running backup…" : "Run Backup"}
         </button>
+        {runState === "running" && (
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={handleCancel}
+            aria-label="Cancel backup job"
+            data-testid="cancel-backup-button"
+          >
+            Cancel
+          </button>
+        )}
         {runState === "done" && (
           <button
             type="button"

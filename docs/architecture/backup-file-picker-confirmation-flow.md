@@ -130,10 +130,25 @@ The Rust contract (`commands/backup_job.rs`) rejects any request where `confirma
 - Generated `.airbridge` packages are never committed to the repository.
 - No restore, scheduling, or automatic execution.
 
+## Cancel Button
+
+`BackupExecutionPanel` shows a Cancel button while the job is running (`runState === "running"`):
+- Calls `service.cancelBackupJob(activeJobId)`.
+- Clears the token immediately before the service call.
+- Transitions `runState` to `"done"`.
+
+In V0.1 cancellation always returns `not_running` — the job runs synchronously and completes before the cancel call can reach it. See `docs/architecture/backup-progress-and-cancellation.md`.
+
+## Event Timeline
+
+`BackupJobResultCard` renders an event timeline when `jobResult.events` is non-empty.
+Each event is displayed as a labelled list item with a `data-event-kind` attribute.
+In V0.1 the orchestrator does not yet populate events — the timeline is hidden.
+
 ## Future Path
 
 - Stream `BackupJobEvent` progress to the frontend via Tauri events.
 - Add retry logic for recoverable errors (`RATE_LIMITED`).
 - Add job history and per-job status tracking.
 - Add secure credential storage using the OS keychain via a Tauri plugin.
-- Propagate cancellation token from the UI.
+- Wire real cancellation via background job registry and `CancellationToken`.

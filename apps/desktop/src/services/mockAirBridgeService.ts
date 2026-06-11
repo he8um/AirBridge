@@ -7,6 +7,8 @@ import type { JobLogEntry } from "../domain/log";
 import type { FieldCompatibilityRule } from "../domain/compatibility";
 import type {
   AccessibleBaseSummary,
+  BackupJobCancellationResult,
+  BackupJobProgressSnapshot,
   BackupPlan,
   BackupPlanRequest,
   BaseSchemaSummary,
@@ -502,6 +504,21 @@ function runBackupJobImpl(request: RunBackupCommandRequest): Promise<RunBackupCo
   });
 }
 
+function cancelBackupJobImpl(jobId: string): Promise<BackupJobCancellationResult> {
+  // Mock: no background registry — always returns not_running.
+  return Promise.resolve({
+    jobId,
+    wasRunning: false,
+    statusAtCancellation: "not_running",
+  });
+}
+
+function getBackupJobStatusImpl(jobId: string): Promise<BackupJobProgressSnapshot | null> {
+  // Mock: synchronous execution — no live snapshot available.
+  void jobId;
+  return Promise.resolve(null);
+}
+
 export const mockCheckConnection = checkConnectionImpl;
 
 export const mockAirBridgeService: AirBridgeService = {
@@ -520,4 +537,6 @@ export const mockAirBridgeService: AirBridgeService = {
   createRecordsExportPlan: createRecordsExportPlanImpl,
   validateBackupOutputPath: validateBackupOutputPathImpl,
   runBackupJob: runBackupJobImpl,
+  cancelBackupJob: cancelBackupJobImpl,
+  getBackupJobStatus: getBackupJobStatusImpl,
 };
