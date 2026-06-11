@@ -85,3 +85,24 @@ Record any failures here with a brief description and steps to reproduce.
 | Item | Status | Notes |
 |------|--------|-------|
 | | | |
+
+---
+
+## Backup Planning (Dry-Run)
+
+These items cover the backup planning flow added in v0.1. A "plan" is a dry-run summary — no backup file is written.
+
+- [ ] **Base selector shows accessible bases.** On the Backups page, the "Backup Planning" card lists the same bases as the Connection page reported.
+- [ ] **"Load Schema" button requires a base selection.** The button is disabled when no base is selected.
+- [ ] **Schema loads and is summarised correctly.** After clicking "Load Schema", the card shows table count, restorable field count, metadata-only count, and unknown count. Values match what the Connection page schema view reports.
+- [ ] **"Generate Backup Plan" button is disabled until schema is loaded.** Clicking before a schema is available does not trigger a plan call.
+- [ ] **Plan result shows correct table count and field count.** After generating a plan, the displayed counts match the schema summary.
+- [ ] **Attachment fields produce a warning.** If any table contains a `multipleAttachments` field, a warning with code `ATTACHMENT_METADATA_ONLY` appears in the plan.
+- [ ] **Linked record fields produce a warning.** If any table contains a `multipleRecordLinks` field, a warning with code `LINKED_RECORD_REMAPPING` appears.
+- [ ] **Formula/rollup/count fields produce an info notice.** Tables with computed fields show a `COMPUTED_FIELD` info entry.
+- [ ] **"No backup file has been created yet" copy is visible.** The dry-run notice is present and clearly labelled.
+- [ ] **`dryRun` is true in the Tauri command response.** Inspect the JSON returned by `create_backup_plan` and confirm `dryRun: true`.
+- [ ] **`outputPackagePath` is absent in the response.** The plan JSON does not contain an `outputPackagePath` key.
+- [ ] **No token appears in plan output.** Inspect the plan JSON and confirm no token string is present.
+- [ ] **Plan estimate shows "unknown" when record counts are unavailable.** The record read pages field reads "unknown (no record counts available)".
+- [ ] **Plan scope matches the request scope.** If "Full backup" is the scope, the plan `scope` field is `full`.

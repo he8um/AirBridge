@@ -7,6 +7,8 @@ import type { JobLogEntry } from "../domain/log";
 import type { FieldCompatibilityRule } from "../domain/compatibility";
 import type {
   AccessibleBaseSummary,
+  BackupPlan,
+  BackupPlanRequest,
   BaseSchemaSummary,
   ConnectionCheckResult,
 } from "../backend/types";
@@ -100,6 +102,30 @@ async function getBaseSchema(input: { token: string; baseId: string }): Promise<
   return result;
 }
 
+async function createBackupPlan(request: BackupPlanRequest): Promise<BackupPlan> {
+  const result = await commands.createBackupPlan(request);
+  if (result === null) {
+    // Tauri IPC unavailable — return a safe empty plan.
+    return {
+      baseId: request.baseId,
+      baseName: request.baseName,
+      scope: request.scope,
+      tableCount: 0,
+      totalFieldCount: 0,
+      tables: [],
+      compatibility: { restorableCount: 0, metadataOnlyCount: 0, unknownCount: 0, totalCount: 0 },
+      warnings: [],
+      estimate: {
+        schemaRequests: 1,
+        recordReadPages: { type: "unknown" },
+        note: "Plan unavailable — Tauri runtime not detected.",
+      },
+      dryRun: true,
+    };
+  }
+  return result;
+}
+
 export const liveAirBridgeService: AirBridgeService = {
   listConnections,
   listWorkspaces,
@@ -112,4 +138,5 @@ export const liveAirBridgeService: AirBridgeService = {
   checkConnection,
   listAccessibleBases,
   getBaseSchema,
+  createBackupPlan,
 };

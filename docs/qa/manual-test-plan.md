@@ -241,3 +241,64 @@ Before executing this plan:
   2. Search for the token string used during the test.
   3. Search for a known field value from the backed-up records.
 - Expected result: Neither the token nor any record field value appears in the log file. Table and field names may appear, but record data must not.
+
+---
+
+## Backup Planning (Dry-Run)
+
+**TC-PLAN-01: Base selector is populated**
+
+- Preconditions: A connection has been verified and accessible bases were returned.
+- Steps:
+  1. Navigate to the Backups page.
+  2. Observe the "Backup Planning" card.
+- Expected result: The base selector lists the same bases visible on the Connection page. If no bases were found, the selector shows "No accessible bases".
+
+**TC-PLAN-02: Schema loads for a selected base**
+
+- Preconditions: At least one base is available. An active session token is in memory.
+- Steps:
+  1. Select a base in the Backup Planning card.
+  2. Click "Load Schema".
+- Expected result: A schema summary appears showing table count and field compatibility counts. No error is shown.
+
+**TC-PLAN-03: Generate Backup Plan produces a dry-run result**
+
+- Preconditions: TC-PLAN-02 passed (schema is loaded).
+- Steps:
+  1. Click "Generate Backup Plan".
+- Expected result:
+  - The plan result area appears.
+  - "No backup file has been created yet." is visible.
+  - Table count and field count are shown.
+  - Compatibility counts (restorable / metadata-only / unknown) are shown.
+  - Estimated API read pages is shown (may read "unknown").
+
+**TC-PLAN-04: Attachment warnings appear for bases with attachment fields**
+
+- Preconditions: The selected base contains at least one `multipleAttachments` field.
+- Steps:
+  1. Load schema and generate a plan as in TC-PLAN-02 and TC-PLAN-03.
+- Expected result: A warning notice with code `ATTACHMENT_METADATA_ONLY` is listed under "Notices". Severity label indicates a warning (not info).
+
+**TC-PLAN-05: Linked record warnings appear for bases with linked record fields**
+
+- Preconditions: The selected base contains at least one `multipleRecordLinks` field.
+- Steps:
+  1. Load schema and generate a plan as in TC-PLAN-02 and TC-PLAN-03.
+- Expected result: A warning notice with code `LINKED_RECORD_REMAPPING` is listed. The table name is shown next to the code.
+
+**TC-PLAN-06: No backup file is created**
+
+- Preconditions: TC-PLAN-03 passed.
+- Steps:
+  1. After generating a plan, check the filesystem for any new `.airbridge` or backup-related files.
+- Expected result: No new files have been written. The app directory and Documents folder are unchanged.
+
+**TC-PLAN-07: Token does not appear in plan output**
+
+- Preconditions: A plan has been generated.
+- Steps:
+  1. Open DevTools (if available) and inspect the IPC response from `create_backup_plan`.
+  2. Search the response JSON for the token string.
+- Expected result: The token string does not appear anywhere in the plan JSON.

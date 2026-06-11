@@ -1,4 +1,5 @@
 pub mod backup;
+pub mod backup_plan;
 pub mod catalog;
 pub mod common;
 pub mod compatibility;

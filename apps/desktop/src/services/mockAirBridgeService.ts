@@ -7,6 +7,8 @@ import type { JobLogEntry } from "../domain/log";
 import type { FieldCompatibilityRule } from "../domain/compatibility";
 import type {
   AccessibleBaseSummary,
+  BackupPlan,
+  BackupPlanRequest,
   BaseSchemaSummary,
   ConnectionCheckResult,
 } from "../backend/types";
@@ -197,6 +199,113 @@ function getBaseSchemaImpl(input: { token: string; baseId: string }): Promise<Ba
   });
 }
 
+function createBackupPlanImpl(request: BackupPlanRequest): Promise<BackupPlan> {
+  // Build a deterministic mock plan from the supplied request.
+  // Token is never present in BackupPlanRequest — no token handling needed here.
+  const tablePlans = request.tables.map((t) => ({
+    id: t.id,
+    name: t.name,
+    fieldCount: t.fields.length,
+    recordCount: t.recordCount,
+    fields: t.fields.map((f) => ({
+      id: f.id,
+      name: f.name,
+      fieldType: f.fieldType,
+      compatibility:
+        f.fieldType === "formula" || f.fieldType === "rollup" || f.fieldType === "count"
+          ? ("metadataOnly" as const)
+          : f.fieldType === "multipleRecordLinks" || f.fieldType === "multipleAttachments"
+            ? ("unknown" as const)
+            : ("restorable" as const),
+      attachmentPolicy:
+        f.fieldType === "multipleAttachments" ? ("metadataOnly" as const) : undefined,
+      linkedRecordPolicy:
+        f.fieldType === "multipleRecordLinks"
+          ? ("remappingRequiredForRestore" as const)
+          : undefined,
+    })),
+    warnings: [
+      ...(t.fields.some((f) => f.fieldType === "multipleAttachments")
+        ? [
+            {
+              severity: "warning" as const,
+              code: "ATTACHMENT_METADATA_ONLY",
+              message:
+                "Attachment field detected — attachment metadata only; file content is not exported.",
+              tableName: t.name,
+            },
+          ]
+        : []),
+      ...(t.fields.some((f) => f.fieldType === "multipleRecordLinks")
+        ? [
+            {
+              severity: "warning" as const,
+              code: "LINKED_RECORD_REMAPPING",
+              message:
+                "Linked record field detected — record ID references captured; restore will require remapping.",
+              tableName: t.name,
+            },
+          ]
+        : []),
+      ...(t.fields.some((f) => ["formula", "rollup", "count", "lookup"].includes(f.fieldType))
+        ? [
+            {
+              severity: "info" as const,
+              code: "COMPUTED_FIELD",
+              message: "Computed field detected — schema captured, value cannot be restored.",
+              tableName: t.name,
+            },
+          ]
+        : []),
+    ],
+    compatibility: {
+      restorableCount: t.fields.filter(
+        (f) =>
+          ![
+            "formula",
+            "rollup",
+            "count",
+            "lookup",
+            "multipleRecordLinks",
+            "multipleAttachments",
+          ].includes(f.fieldType),
+      ).length,
+      metadataOnlyCount: t.fields.filter((f) =>
+        ["formula", "rollup", "count", "lookup"].includes(f.fieldType),
+      ).length,
+      unknownCount: t.fields.filter((f) =>
+        ["multipleRecordLinks", "multipleAttachments"].includes(f.fieldType),
+      ).length,
+      totalCount: t.fields.length,
+    },
+  }));
+
+  const totalFields = tablePlans.reduce((s, t) => s + t.fieldCount, 0);
+  const allWarnings = tablePlans.flatMap((t) => t.warnings);
+
+  return Promise.resolve({
+    baseId: request.baseId,
+    baseName: request.baseName,
+    scope: request.scope,
+    tableCount: tablePlans.length,
+    totalFieldCount: totalFields,
+    tables: tablePlans,
+    compatibility: {
+      restorableCount: tablePlans.reduce((s, t) => s + t.compatibility.restorableCount, 0),
+      metadataOnlyCount: tablePlans.reduce((s, t) => s + t.compatibility.metadataOnlyCount, 0),
+      unknownCount: tablePlans.reduce((s, t) => s + t.compatibility.unknownCount, 0),
+      totalCount: totalFields,
+    },
+    warnings: allWarnings,
+    estimate: {
+      schemaRequests: 1,
+      recordReadPages: { type: "unknown" },
+      note: "Record counts are unknown until records are fetched. Page estimates are approximate.",
+    },
+    dryRun: true,
+  });
+}
+
 export const mockCheckConnection = checkConnectionImpl;
 
 export const mockAirBridgeService: AirBridgeService = {
@@ -211,4 +320,5 @@ export const mockAirBridgeService: AirBridgeService = {
   checkConnection: checkConnectionImpl,
   listAccessibleBases: listAccessibleBasesImpl,
   getBaseSchema: getBaseSchemaImpl,
+  createBackupPlan: createBackupPlanImpl,
 };

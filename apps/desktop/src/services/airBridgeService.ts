@@ -7,6 +7,8 @@ import type { JobLogEntry } from "../domain/log";
 import type { FieldCompatibilityRule } from "../domain/compatibility";
 import type {
   AccessibleBaseSummary,
+  BackupPlan,
+  BackupPlanRequest,
   BaseSchemaSummary,
   ConnectionCheckResult,
 } from "../backend/types";
@@ -23,4 +25,5 @@ export interface AirBridgeService {
   checkConnection(input: { token: string }): Promise<ConnectionCheckResult>;
   listAccessibleBases(input: { token: string }): Promise<AccessibleBaseSummary[]>;
   getBaseSchema(input: { token: string; baseId: string }): Promise<BaseSchemaSummary>;
+  createBackupPlan(request: BackupPlanRequest): Promise<BackupPlan>;
 }

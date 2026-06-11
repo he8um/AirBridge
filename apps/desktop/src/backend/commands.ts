@@ -1,6 +1,8 @@
 import type {
   AccessibleBaseSummary,
   AppHealthResponse,
+  BackupPlan,
+  BackupPlanRequest,
   BaseSchemaSummary,
   ConnectionCheckResult,
 } from "./types";
@@ -70,4 +72,8 @@ export async function getBaseSchema(
 ): Promise<BaseSchemaSummary | null> {
   // Token is forwarded to the Rust command only. It is not stored or logged here.
   return safeInvoke<BaseSchemaSummary>("get_base_schema", { token, baseId });
+}
+
+export async function createBackupPlan(request: BackupPlanRequest): Promise<BackupPlan | null> {
+  return safeInvoke<BackupPlan>("create_backup_plan", { request });
 }

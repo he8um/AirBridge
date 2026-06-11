@@ -1,4 +1,5 @@
 pub mod airtable;
+pub mod backup;
 mod commands;
 mod errors;
 mod models;
@@ -33,6 +34,7 @@ pub fn run() {
             commands::catalog::list_accessible_bases,
             commands::catalog::get_base_schema,
             commands::backup::list_backup_packages,
+            commands::backup::create_backup_plan,
             commands::restore::list_restore_plans,
             commands::reports::list_reports,
             commands::logs::list_logs,
