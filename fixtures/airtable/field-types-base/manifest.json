@@ -1,0 +1,11 @@
+{
+  "backupId": "fixture-field-types-001",
+  "baseId": "appExampleFieldTypes01",
+  "baseName": "Field Types Example",
+  "createdAt": "2025-01-15T12:00:00Z",
+  "airBridgeVersion": "0.1.0",
+  "backupType": "full",
+  "tableCount": 1,
+  "recordCount": 2,
+  "schemaOnly": false
+}

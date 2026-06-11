@@ -1,0 +1,74 @@
+{
+  "baseId": "appExampleSimpleBase01",
+  "tables": [
+    {
+      "id": "tblProjects01",
+      "name": "Projects",
+      "fields": [
+        {
+          "id": "fldProjId01",
+          "name": "id",
+          "type": "singleLineText"
+        },
+        {
+          "id": "fldProjName01",
+          "name": "name",
+          "type": "singleLineText"
+        },
+        {
+          "id": "fldProjStatus01",
+          "name": "status",
+          "type": "singleSelect",
+          "options": {
+            "choices": [
+              { "id": "selActive01", "name": "Active", "color": "greenLight2" },
+              { "id": "selCompleted01", "name": "Completed", "color": "blueLight2" },
+              { "id": "selArchived01", "name": "Archived", "color": "grayLight2" }
+            ]
+          }
+        },
+        {
+          "id": "fldProjCreated01",
+          "name": "created",
+          "type": "date",
+          "options": {
+            "dateFormat": {
+              "name": "iso",
+              "format": "YYYY-MM-DD"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "tblTasks01",
+      "name": "Tasks",
+      "fields": [
+        {
+          "id": "fldTaskId01",
+          "name": "id",
+          "type": "singleLineText"
+        },
+        {
+          "id": "fldTaskTitle01",
+          "name": "title",
+          "type": "singleLineText"
+        },
+        {
+          "id": "fldTaskDone01",
+          "name": "done",
+          "type": "checkbox",
+          "options": {
+            "icon": "check",
+            "color": "greenBright"
+          }
+        },
+        {
+          "id": "fldTaskProject01",
+          "name": "project",
+          "type": "singleLineText"
+        }
+      ]
+    }
+  ]
+}

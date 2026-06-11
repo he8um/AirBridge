@@ -1,0 +1,5 @@
+{"tableId": "tblProjects01", "recordId": "rec001", "fields": {"id": "rec001", "name": "Website Redesign", "status": "Active", "created": "2025-01-10"}}
+{"tableId": "tblProjects01", "recordId": "rec002", "fields": {"id": "rec002", "name": "Data Migration", "status": "Completed", "created": "2025-01-05"}}
+{"tableId": "tblProjects01", "recordId": "rec003", "fields": {"id": "rec003", "name": "Internal Tooling", "status": "Active", "created": "2025-01-12"}}
+{"tableId": "tblTasks01", "recordId": "rec004", "fields": {"id": "rec004", "title": "Design mockups", "done": false, "project": "Website Redesign"}}
+{"tableId": "tblTasks01", "recordId": "rec005", "fields": {"id": "rec005", "title": "Export legacy data", "done": true, "project": "Data Migration"}}

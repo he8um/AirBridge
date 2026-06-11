@@ -1,0 +1,140 @@
+{
+  "baseId": "appExampleFieldTypes01",
+  "tables": [
+    {
+      "id": "tblFieldTypes01",
+      "name": "Example Table",
+      "fields": [
+        {
+          "id": "fldSingleLine01",
+          "name": "short_text",
+          "type": "singleLineText"
+        },
+        {
+          "id": "fldMultiLine01",
+          "name": "long_text",
+          "type": "multilineText"
+        },
+        {
+          "id": "fldNumber01",
+          "name": "quantity",
+          "type": "number",
+          "options": {
+            "precision": 0
+          }
+        },
+        {
+          "id": "fldCurrency01",
+          "name": "price",
+          "type": "currency",
+          "options": {
+            "precision": 2,
+            "symbol": "$"
+          }
+        },
+        {
+          "id": "fldPercent01",
+          "name": "completion_pct",
+          "type": "percent",
+          "options": {
+            "precision": 0
+          }
+        },
+        {
+          "id": "fldCheckbox01",
+          "name": "is_active",
+          "type": "checkbox",
+          "options": {
+            "icon": "check",
+            "color": "greenBright"
+          }
+        },
+        {
+          "id": "fldSingleSelect01",
+          "name": "priority",
+          "type": "singleSelect",
+          "options": {
+            "choices": [
+              { "id": "selLow01", "name": "Low", "color": "grayLight2" },
+              { "id": "selMedium01", "name": "Medium", "color": "yellowLight2" },
+              { "id": "selHigh01", "name": "High", "color": "redLight2" }
+            ]
+          }
+        },
+        {
+          "id": "fldMultiSelect01",
+          "name": "tags",
+          "type": "multipleSelects",
+          "options": {
+            "choices": [
+              { "id": "tagFrontend01", "name": "frontend", "color": "blueLight2" },
+              { "id": "tagBackend01", "name": "backend", "color": "greenLight2" },
+              { "id": "tagDesign01", "name": "design", "color": "purpleLight2" },
+              { "id": "tagDocs01", "name": "docs", "color": "orangeLight2" }
+            ]
+          }
+        },
+        {
+          "id": "fldDate01",
+          "name": "due_date",
+          "type": "date",
+          "options": {
+            "dateFormat": {
+              "name": "iso",
+              "format": "YYYY-MM-DD"
+            }
+          }
+        },
+        {
+          "id": "fldDateTime01",
+          "name": "scheduled_at",
+          "type": "dateTime",
+          "options": {
+            "dateFormat": {
+              "name": "iso",
+              "format": "YYYY-MM-DD"
+            },
+            "timeFormat": {
+              "name": "24hour",
+              "format": "HH:mm"
+            },
+            "timeZone": "UTC"
+          }
+        },
+        {
+          "id": "fldEmail01",
+          "name": "contact_email",
+          "type": "email"
+        },
+        {
+          "id": "fldUrl01",
+          "name": "website",
+          "type": "url"
+        },
+        {
+          "id": "fldPhone01",
+          "name": "phone_number",
+          "type": "phoneNumber"
+        },
+        {
+          "id": "fldRating01",
+          "name": "rating",
+          "type": "rating",
+          "options": {
+            "icon": "star",
+            "max": 5,
+            "color": "yellowBright"
+          }
+        },
+        {
+          "id": "fldDuration01",
+          "name": "duration_seconds",
+          "type": "duration",
+          "options": {
+            "durationFormat": "h:mm:ss"
+          }
+        }
+      ]
+    }
+  ]
+}

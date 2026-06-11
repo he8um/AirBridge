@@ -1,0 +1,11 @@
+{
+  "backupId": "fixture-linked-records-001",
+  "baseId": "appExampleLinkedBase01",
+  "baseName": "Linked Records Example",
+  "createdAt": "2025-01-15T11:00:00Z",
+  "airBridgeVersion": "0.1.0",
+  "backupType": "full",
+  "tableCount": 3,
+  "recordCount": 8,
+  "schemaOnly": false
+}

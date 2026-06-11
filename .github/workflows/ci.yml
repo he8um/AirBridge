@@ -38,5 +38,5 @@ jobs:
       - name: Install frontend dependencies
         run: npm --prefix apps/desktop ci
 
-      - name: Run checks
+      - name: Run all checks
         run: npm --prefix apps/desktop run check

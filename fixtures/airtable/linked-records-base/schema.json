@@ -1,0 +1,78 @@
+{
+  "baseId": "appExampleLinkedBase01",
+  "tables": [
+    {
+      "id": "tblClients01",
+      "name": "Clients",
+      "fields": [
+        {
+          "id": "fldClientId01",
+          "name": "id",
+          "type": "singleLineText"
+        },
+        {
+          "id": "fldClientName01",
+          "name": "name",
+          "type": "singleLineText"
+        },
+        {
+          "id": "fldClientEmail01",
+          "name": "email",
+          "type": "email"
+        }
+      ]
+    },
+    {
+      "id": "tblProjects02",
+      "name": "Projects",
+      "fields": [
+        {
+          "id": "fldProjId02",
+          "name": "id",
+          "type": "singleLineText"
+        },
+        {
+          "id": "fldProjName02",
+          "name": "name",
+          "type": "singleLineText"
+        },
+        {
+          "id": "fldProjClientId01",
+          "name": "clientId",
+          "type": "multipleRecordLinks",
+          "options": {
+            "linkedTableId": "tblClients01",
+            "isReversed": false,
+            "prefersSingleRecordLink": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "tblTasks02",
+      "name": "Tasks",
+      "fields": [
+        {
+          "id": "fldTaskId02",
+          "name": "id",
+          "type": "singleLineText"
+        },
+        {
+          "id": "fldTaskTitle02",
+          "name": "title",
+          "type": "singleLineText"
+        },
+        {
+          "id": "fldTaskProjectId01",
+          "name": "projectId",
+          "type": "multipleRecordLinks",
+          "options": {
+            "linkedTableId": "tblProjects02",
+            "isReversed": false,
+            "prefersSingleRecordLink": true
+          }
+        }
+      ]
+    }
+  ]
+}

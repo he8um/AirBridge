@@ -1,0 +1,11 @@
+{
+  "backupId": "fixture-simple-base-001",
+  "baseId": "appExampleSimpleBase01",
+  "baseName": "Example Base",
+  "createdAt": "2025-01-15T10:00:00Z",
+  "airBridgeVersion": "0.1.0",
+  "backupType": "full",
+  "tableCount": 2,
+  "recordCount": 5,
+  "schemaOnly": false
+}

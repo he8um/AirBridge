@@ -1,0 +1,8 @@
+{"tableId": "tblClients01", "recordId": "recClient001", "fields": {"id": "recClient001", "name": "Example Corp", "email": "contact@example.com"}}
+{"tableId": "tblClients01", "recordId": "recClient002", "fields": {"id": "recClient002", "name": "Sample Industries", "email": "hello@sample-example.com"}}
+{"tableId": "tblClients01", "recordId": "recClient003", "fields": {"id": "recClient003", "name": "Test Partners LLC", "email": "info@testpartners-example.com"}}
+{"tableId": "tblProjects02", "recordId": "recProj001", "fields": {"id": "recProj001", "name": "Brand Refresh", "clientId": ["recClient001"]}}
+{"tableId": "tblProjects02", "recordId": "recProj002", "fields": {"id": "recProj002", "name": "Platform Integration", "clientId": ["recClient002"]}}
+{"tableId": "tblProjects02", "recordId": "recProj003", "fields": {"id": "recProj003", "name": "Annual Report", "clientId": ["recClient003"]}}
+{"tableId": "tblTasks02", "recordId": "recTask001", "fields": {"id": "recTask001", "title": "Create style guide", "projectId": ["recProj001"]}}
+{"tableId": "tblTasks02", "recordId": "recTask002", "fields": {"id": "recTask002", "title": "Map API endpoints", "projectId": ["recProj002"]}}
