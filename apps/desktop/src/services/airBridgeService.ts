@@ -11,8 +11,11 @@ import type {
   BackupPlanRequest,
   BaseSchemaSummary,
   ConnectionCheckResult,
+  OutputPathValidationResult,
   RecordsExportPlan,
   RecordsExportPlanRequest,
+  RunBackupCommandRequest,
+  RunBackupCommandResponse,
 } from "../backend/types";
 
 export interface AirBridgeService {
@@ -29,4 +32,6 @@ export interface AirBridgeService {
   getBaseSchema(input: { token: string; baseId: string }): Promise<BaseSchemaSummary>;
   createBackupPlan(request: BackupPlanRequest): Promise<BackupPlan>;
   createRecordsExportPlan(request: RecordsExportPlanRequest): Promise<RecordsExportPlan>;
+  validateBackupOutputPath(path: string): Promise<OutputPathValidationResult>;
+  runBackupJob(request: RunBackupCommandRequest): Promise<RunBackupCommandResponse>;
 }

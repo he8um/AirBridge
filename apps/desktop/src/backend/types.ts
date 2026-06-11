@@ -308,3 +308,65 @@ export interface BackupJobResult {
   packageSummary?: BackupJobPackageSummary;
   validationSummary?: BackupJobValidationSummary;
 }
+
+// ── Safe Backup Command Contract ───────────────────────────────────────────
+
+/** Table spec sent to the run_backup_job command. */
+export interface RunBackupTableSpec {
+  tableId: string;
+  tableName: string;
+  linkedFieldNames?: string[];
+  attachmentFieldNames?: string[];
+}
+
+/**
+ * Request to run a backup job via the Tauri command bridge.
+ *
+ * - `token` is forwarded to the Rust command only; never stored.
+ * - `confirmation` must equal "CREATE BACKUP" exactly.
+ * - `outputPath` must pass output path validation (`.airbridge` extension,
+ *   parent directory exists, no traversal, no null bytes).
+ * - No token appears in the response.
+ * - No absolute output path appears in the response.
+ */
+export interface RunBackupCommandRequest {
+  token: string;
+  outputPath: string;
+  /** Must equal "CREATE BACKUP". */
+  confirmation: string;
+  baseId: string;
+  baseName: string;
+  baseJson: number[];
+  schemaJson: number[];
+  tableSpecs: RunBackupTableSpec[];
+  pageSize?: number;
+  jobId?: string;
+}
+
+/** Result of validating a proposed backup output path. */
+export interface OutputPathValidationResult {
+  valid: boolean;
+  errorCode?: string;
+  errorMessage?: string;
+}
+
+/** A pre-run safety error (confirmation missing, path invalid, etc.). */
+export interface BackupCommandSafetyError {
+  code: string;
+  message: string;
+}
+
+/**
+ * Response returned by the run_backup_job command.
+ *
+ * - No token.
+ * - No absolute output path — only the package filename is returned.
+ */
+export interface RunBackupCommandResponse {
+  success: boolean;
+  /** Filename-only portion of the output path (no directory). */
+  packageFilename?: string;
+  safetyErrors?: BackupCommandSafetyError[];
+  jobResult?: BackupJobResult;
+  pathValidation: OutputPathValidationResult;
+}

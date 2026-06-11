@@ -741,14 +741,16 @@ export function BackupsPage({ service = liveAirBridgeService }: BackupsPageProps
           >
             <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-3)" }}>
               <p style={{ fontSize: "var(--text-sm)", margin: 0, fontWeight: 500 }}>
-                Pipeline foundation ready — live backup creation not enabled yet
+                Safe command contract ready — live backup creation not enabled yet
               </p>
               <p
                 style={{ fontSize: "var(--text-sm)", color: "var(--color-text-muted)", margin: 0 }}
               >
-                The backup job orchestrator can coordinate planning, paginated record export,
-                package writing, and validation. No file is created from this screen yet. Live
-                backup creation will be enabled in a future release.
+                The backup job orchestrator and safe command contract are implemented. The command
+                requires explicit confirmation and validates the output path before any file is
+                written. No file is created from this screen yet. Backup execution is still disabled
+                in the UI — a file picker and explicit confirmation will be added in a future
+                release.
               </p>
               <ul
                 style={{
@@ -761,11 +763,15 @@ export function BackupsPage({ service = liveAirBridgeService }: BackupsPageProps
                   gap: "var(--space-1)",
                 }}
               >
+                <li>Safe command contract: explicit confirmation required ("CREATE BACKUP")</li>
+                <li>
+                  Output path validated before any write (extension, parent dir, no traversal)
+                </li>
                 <li>Job lifecycle: queued → running → succeeded / failed / cancelled</li>
                 <li>Progress events emitted at each pipeline phase</li>
                 <li>Cancellation supported at phase boundaries</li>
                 <li>No file picker — no user-selected output path in V0.1</li>
-                <li>No token stored by the job orchestrator</li>
+                <li>No token stored by the job orchestrator or command</li>
               </ul>
             </div>
           </div>

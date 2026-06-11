@@ -203,3 +203,30 @@ These items cover the job orchestration layer. All are verified by automated tes
 - [ ] **UI states live backup creation is not enabled.** The section contains copy matching "live backup creation … not enabled yet".
 - [ ] **UI states no file is created from the screen.** The section contains copy matching "no file is created from this screen".
 - [ ] **No enabled production backup-trigger button.** There is no enabled button matching "start backup", "run backup", or "create backup" on the Backups page.
+
+---
+
+## Safe Backup Command Contract (Internal)
+
+These items cover the command contract layer. All are verified by automated tests — no live API calls should be made during testing.
+
+- [ ] **Unit tests: all pass.** Run `cargo test --lib`. All unit tests pass with no failures.
+- [ ] **Frontend tests: all pass.** Run `npm --prefix apps/desktop run test`. All tests pass including `safeBackupCommandContract.test.tsx`.
+- [ ] **Missing confirmation rejected.** `run_backup_job` with empty or wrong confirmation returns `CONFIRMATION_REQUIRED`.
+- [ ] **Case-sensitive confirmation.** `"create backup"` is rejected; only `"CREATE BACKUP"` is accepted.
+- [ ] **Invalid extension rejected.** A path ending in `.zip` is rejected with `WRONG_EXTENSION`.
+- [ ] **Missing parent directory rejected.** A path whose parent does not exist is rejected with `PARENT_NOT_FOUND`.
+- [ ] **Traversal rejected.** A path containing `..` is rejected with `TRAVERSAL_DETECTED`.
+- [ ] **Directory path rejected.** A path that is an existing directory is rejected with `IS_DIRECTORY`.
+- [ ] **Valid tempdir path accepted.** A `.airbridge` path inside a tempdir is accepted.
+- [ ] **Package written to tempdir.** With mock transport and a valid tempdir path, the package file exists after a successful run.
+- [ ] **No token in response.** The command response JSON does not contain the token sentinel.
+- [ ] **No absolute path in response.** The `packageFilename` field is filename-only (no `/Users/`, no `/home/`).
+- [ ] **Generated package validates.** The package written by a mock-transport run passes `validate_package()` with `status: Valid`.
+- [ ] **No attachment URLs in result.** The result does not contain `https://` or `dl.airtable.com`.
+- [ ] **Auth error sanitized.** A 401 response maps to `AUTH_FAILED` without exposing the token.
+- [ ] **Permission error sanitized.** A 403 response maps to `PERMISSION_DENIED`.
+- [ ] **Path validation has no file side effects.** Calling `validate_backup_output_path` creates no files.
+- [ ] **UI section mentions safe command contract.** The Backup Job Pipeline section states the contract is ready.
+- [ ] **UI section mentions explicit confirmation.** The section references the confirmation requirement.
+- [ ] **No enabled production backup-trigger button.** No enabled button matching backup-trigger labels exists on the Backups page.

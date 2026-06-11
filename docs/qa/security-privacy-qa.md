@@ -123,3 +123,43 @@ If AirBridge supports user-configured field redaction:
 | Record values not in log | grep known field value in log file | Zero matches |
 | Backup files have restricted permissions | `ls -l` on output files | `0644` or more restrictive |
 | Malformed input does not crash | Open crafted malformed package | Error message shown, no crash |
+
+
+---
+
+## Safe Backup Command Contract (V0.1)
+
+**Goal:** Confirm that the `run_backup_job` command enforces safety requirements before writing any file.
+
+### Confirmation Requirement
+
+- [ ] The command refuses to run without the exact confirmation phrase `"CREATE BACKUP"`.
+- [ ] Passing an empty confirmation returns a `CONFIRMATION_REQUIRED` safety error.
+- [ ] Passing a partial or mis-cased phrase (e.g., `"create backup"`, `"yes"`) is rejected.
+- [ ] No file is written when confirmation is rejected.
+
+### Output Path Validation
+
+- [ ] A path with the wrong extension (e.g., `.zip`) is rejected with `WRONG_EXTENSION`.
+- [ ] An empty path is rejected with `EMPTY_PATH`.
+- [ ] A path whose parent directory does not exist is rejected with `PARENT_NOT_FOUND`.
+- [ ] A path containing `..` components is rejected with `TRAVERSAL_DETECTED`.
+- [ ] A path that is an existing directory is rejected with `IS_DIRECTORY`.
+- [ ] Validation itself creates no files (no side effects from calling `validate_backup_output_path`).
+
+### Token Safety in Command Response
+
+- [ ] The `run_backup_job` response does not contain the token string passed in the request.
+- [ ] No event emitted by the orchestrator contains the token.
+- [ ] The error message on a 401 response does not expose the token value.
+
+### Output Path Safety in Response
+
+- [ ] The command response does not include the full absolute output path.
+- [ ] Only the filename portion (`packageFilename`) is returned.
+- [ ] No absolute path components (`/Users/`, `/home/`) appear in the serialised response.
+
+### No Attachment URLs in Package or Response
+
+- [ ] The command result does not contain attachment URLs (`https://`, `dl.airtable.com`).
+- [ ] Package entries contain no attachment URLs.

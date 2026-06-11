@@ -14,6 +14,7 @@ pub mod job_orchestrator;
 pub mod job_result;
 pub mod linked_records;
 pub mod manifest;
+pub mod output_path;
 pub mod package;
 pub mod planner;
 pub mod progress;

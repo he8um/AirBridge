@@ -5,8 +5,11 @@ import type {
   BackupPlanRequest,
   BaseSchemaSummary,
   ConnectionCheckResult,
+  OutputPathValidationResult,
   RecordsExportPlan,
   RecordsExportPlanRequest,
+  RunBackupCommandRequest,
+  RunBackupCommandResponse,
 } from "./types";
 import type { AirtableWorkspace, AirtableBaseSummary } from "../domain/airtable";
 import type { BackupPackageSummary } from "../domain/backup";
@@ -84,4 +87,29 @@ export async function createRecordsExportPlan(
   request: RecordsExportPlanRequest,
 ): Promise<RecordsExportPlan | null> {
   return safeInvoke<RecordsExportPlan>("create_records_export_plan", { request });
+}
+
+/**
+ * Validate a proposed backup output path without writing any file.
+ * Safe to call from the UI at any time.
+ * Returns null if Tauri IPC is unavailable (jsdom / browser without Tauri).
+ */
+export async function validateBackupOutputPath(
+  path: string,
+): Promise<OutputPathValidationResult | null> {
+  return safeInvoke<OutputPathValidationResult>("validate_backup_output_path", { path });
+}
+
+/**
+ * Run a backup job.
+ *
+ * - Token is forwarded to Rust only; never stored here.
+ * - Confirmation must be "CREATE BACKUP".
+ * - Returns null if Tauri IPC is unavailable.
+ */
+export async function runBackupJob(
+  request: RunBackupCommandRequest,
+): Promise<RunBackupCommandResponse | null> {
+  // Token is forwarded to the Rust command only; not stored or logged here.
+  return safeInvoke<RunBackupCommandResponse>("run_backup_job", { request });
 }

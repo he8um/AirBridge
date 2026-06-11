@@ -171,9 +171,12 @@ BackupJobResult
 - Generated `.airbridge` files are never committed to the repository.
 - No UI production export flow in V0.1.
 
+## Tauri Command Integration
+
+`BackupJobOrchestrator` is called by `run_backup_job` in `commands/backup_job.rs`. The command wraps it with an explicit confirmation check and output path validation. See `docs/architecture/safe-backup-command-contract.md` for the full command contract design.
+
 ## Future Path
 
-- Wire `BackupJobOrchestrator` into a `#[tauri::command]` in a future session.
 - Stream `BackupJobEvent` to the frontend via Tauri events.
 - Add retry logic for `RateLimited` inside the orchestrator.
 - Propagate cancellation into `run_export()` at the page loop level.

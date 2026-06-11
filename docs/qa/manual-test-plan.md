@@ -394,3 +394,83 @@ Before executing this plan:
   1. Inspect all buttons on the Backups page.
   2. Look for any button labelled "Start Backup", "Run Backup", or "Create Backup".
 - Expected result: No such button is enabled. Any backup-trigger button present must be disabled.
+
+---
+
+## Safe Backup Command Contract
+
+These test cases cover the command contract layer: confirmation enforcement, output path validation, and response safety. All automated — manual verification is for regression confidence only.
+
+**TC-CONTRACT-01: Confirmation phrase is required**
+
+- Preconditions: The `run_backup_job` command is callable (tests only).
+- Steps:
+  1. Call `run_backup_job` with `confirmation` set to an empty string.
+  2. Call `run_backup_job` with `confirmation` set to `"create backup"` (lowercase).
+  3. Call `run_backup_job` with `confirmation` omitted entirely.
+- Expected result: All three calls return a response with `success: false` and a safety error with code `CONFIRMATION_REQUIRED`. No file is written.
+
+**TC-CONTRACT-02: Correct confirmation phrase is accepted**
+
+- Preconditions: The `run_backup_job` command is callable (tests only). A valid `.airbridge` output path in a temp directory is available.
+- Steps:
+  1. Call `run_backup_job` with `confirmation` set to `"CREATE BACKUP"` (exact).
+- Expected result: The command proceeds past the confirmation gate. Any failure at this point is from path validation or the orchestrator, not the confirmation check.
+
+**TC-CONTRACT-03: Wrong extension rejected before any write**
+
+- Preconditions: Correct confirmation phrase is supplied.
+- Steps:
+  1. Call `run_backup_job` with `outputPath` set to `/tmp/backup.zip`.
+- Expected result: Response has `success: false`, `pathValidation.valid: false`, `pathValidation.errorCode: "WRONG_EXTENSION"`. No file is created at `/tmp/backup.zip`.
+
+**TC-CONTRACT-04: Missing parent directory rejected**
+
+- Preconditions: Correct confirmation phrase is supplied.
+- Steps:
+  1. Call `run_backup_job` with `outputPath` set to `/tmp/nonexistent-dir/backup.airbridge`.
+- Expected result: `pathValidation.errorCode: "PARENT_NOT_FOUND"`. No file is created.
+
+**TC-CONTRACT-05: Traversal in path rejected**
+
+- Preconditions: Correct confirmation phrase is supplied.
+- Steps:
+  1. Call `run_backup_job` with `outputPath` set to `/tmp/../etc/backup.airbridge`.
+- Expected result: `pathValidation.errorCode: "TRAVERSAL_DETECTED"`. No file is created.
+
+**TC-CONTRACT-06: No token in command response**
+
+- Preconditions: A mock-transport run completes successfully.
+- Steps:
+  1. Serialise `RunBackupCommandResponse` to JSON.
+  2. Search the JSON string for the token sentinel value.
+- Expected result: The token value does not appear anywhere in the serialised response.
+
+**TC-CONTRACT-07: No absolute path in command response**
+
+- Preconditions: A mock-transport run completes with a valid output path in a temp directory.
+- Steps:
+  1. Inspect `response.packageFilename`.
+- Expected result: `packageFilename` contains only the filename component (e.g., `backup.airbridge`). It does not contain the parent directory path.
+
+**TC-CONTRACT-08: `validate_backup_output_path` has no file side effects**
+
+- Preconditions: None.
+- Steps:
+  1. Call `validate_backup_output_path` with a path to a non-existent file.
+  2. Check whether that file now exists.
+- Expected result: The file does not exist. The command creates no files.
+
+**TC-CONTRACT-09: Mock service confirmation enforcement**
+
+- Preconditions: Mock `AirBridgeService` is instantiated.
+- Steps:
+  1. Call `mockService.runBackupJob` with wrong `confirmation`.
+- Expected result: `success: false`, `safetyErrors[0].code: "CONFIRMATION_REQUIRED"`.
+
+**TC-CONTRACT-10: UI section visible on Backups page**
+
+- Preconditions: Backups page is rendered.
+- Steps:
+  1. Read the "Backup Job Pipeline" section.
+- Expected result: The section states the safe command contract is ready and that live backup execution is not enabled yet. The text references the explicit confirmation requirement and output path validation.

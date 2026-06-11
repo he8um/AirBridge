@@ -11,8 +11,11 @@ import type {
   BackupPlanRequest,
   BaseSchemaSummary,
   ConnectionCheckResult,
+  OutputPathValidationResult,
   RecordsExportPlan,
   RecordsExportPlanRequest,
+  RunBackupCommandRequest,
+  RunBackupCommandResponse,
   TableExportPlan,
 } from "../backend/types";
 import type { AirBridgeService } from "./airBridgeService";
@@ -434,6 +437,71 @@ function createRecordsExportPlanImpl(
   });
 }
 
+function validateBackupOutputPathImpl(path: string): Promise<OutputPathValidationResult> {
+  if (!path || path.length === 0) {
+    return Promise.resolve({
+      valid: false,
+      errorCode: "EMPTY_PATH",
+      errorMessage: "output path must not be empty",
+    });
+  }
+  if (!path.endsWith(".airbridge")) {
+    return Promise.resolve({
+      valid: false,
+      errorCode: "WRONG_EXTENSION",
+      errorMessage: "output path must have a .airbridge extension",
+    });
+  }
+  return Promise.resolve({ valid: true });
+}
+
+function runBackupJobImpl(request: RunBackupCommandRequest): Promise<RunBackupCommandResponse> {
+  // Mock service: validates confirmation and path, but does NOT write any file.
+  void request.token; // token is not stored
+
+  if (request.confirmation !== "CREATE BACKUP") {
+    return Promise.resolve({
+      success: false,
+      safetyErrors: [
+        {
+          code: "CONFIRMATION_REQUIRED",
+          message: 'confirmation must be the exact phrase "CREATE BACKUP"',
+        },
+      ],
+      pathValidation: { valid: true },
+    });
+  }
+
+  if (!request.outputPath.endsWith(".airbridge")) {
+    return Promise.resolve({
+      success: false,
+      safetyErrors: [{ code: "INVALID_OUTPUT_PATH", message: "output path validation failed" }],
+      pathValidation: {
+        valid: false,
+        errorCode: "WRONG_EXTENSION",
+        errorMessage: "output path must have a .airbridge extension",
+      },
+    });
+  }
+
+  // Return a safe mock succeeded response — no file is written.
+  return Promise.resolve({
+    success: true,
+    packageFilename: request.outputPath.split("/").pop() ?? "mock-backup.airbridge",
+    safetyErrors: [],
+    jobResult: {
+      jobId: request.jobId ?? "mock-job-001",
+      status: "succeeded",
+      baseId: request.baseId,
+      baseName: request.baseName,
+      tables: [],
+      warnings: [],
+      errors: [],
+    },
+    pathValidation: { valid: true },
+  });
+}
+
 export const mockCheckConnection = checkConnectionImpl;
 
 export const mockAirBridgeService: AirBridgeService = {
@@ -450,4 +518,6 @@ export const mockAirBridgeService: AirBridgeService = {
   getBaseSchema: getBaseSchemaImpl,
   createBackupPlan: createBackupPlanImpl,
   createRecordsExportPlan: createRecordsExportPlanImpl,
+  validateBackupOutputPath: validateBackupOutputPathImpl,
+  runBackupJob: runBackupJobImpl,
 };

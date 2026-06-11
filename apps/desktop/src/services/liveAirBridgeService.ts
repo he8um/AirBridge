@@ -11,8 +11,11 @@ import type {
   BackupPlanRequest,
   BaseSchemaSummary,
   ConnectionCheckResult,
+  OutputPathValidationResult,
   RecordsExportPlan,
   RecordsExportPlanRequest,
+  RunBackupCommandRequest,
+  RunBackupCommandResponse,
 } from "../backend/types";
 import type { AirBridgeService } from "./airBridgeService";
 import * as commands from "../backend/commands";
@@ -146,6 +149,27 @@ async function createBackupPlan(request: BackupPlanRequest): Promise<BackupPlan>
   return result;
 }
 
+async function validateBackupOutputPath(path: string): Promise<OutputPathValidationResult> {
+  const result = await commands.validateBackupOutputPath(path);
+  if (result === null) {
+    return { valid: false, errorCode: "IPC_UNAVAILABLE", errorMessage: "Tauri IPC unavailable" };
+  }
+  return result;
+}
+
+async function runBackupJob(request: RunBackupCommandRequest): Promise<RunBackupCommandResponse> {
+  // Token is forwarded to the Rust command only; not stored or logged here.
+  const result = await commands.runBackupJob(request);
+  if (result === null) {
+    return {
+      success: false,
+      safetyErrors: [{ code: "IPC_UNAVAILABLE", message: "Tauri IPC unavailable" }],
+      pathValidation: { valid: false, errorCode: "IPC_UNAVAILABLE" },
+    };
+  }
+  return result;
+}
+
 export const liveAirBridgeService: AirBridgeService = {
   listConnections,
   listWorkspaces,
@@ -160,4 +184,6 @@ export const liveAirBridgeService: AirBridgeService = {
   getBaseSchema,
   createBackupPlan,
   createRecordsExportPlan,
+  validateBackupOutputPath,
+  runBackupJob,
 };
