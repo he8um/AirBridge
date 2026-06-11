@@ -474,3 +474,105 @@ These test cases cover the command contract layer: confirmation enforcement, out
 - Steps:
   1. Read the "Backup Job Pipeline" section.
 - Expected result: The section states the safe command contract is ready and that live backup execution is not enabled yet. The text references the explicit confirmation requirement and output path validation.
+
+---
+
+## Backup File Picker and Confirmation Flow
+
+**TC-PICKER-01: File picker opens native save dialog**
+
+- Preconditions: Backup plan and records export plan are generated. Backups page is open.
+- Steps:
+  1. Click the "Choose File…" button in the Run Backup section.
+- Expected result: The OS native save dialog opens. The suggested filename ends in `.airbridge`. The dialog filters to `*.airbridge` files.
+
+**TC-PICKER-02: Cancel leaves state unchanged**
+
+- Preconditions: Same as TC-PICKER-01.
+- Steps:
+  1. Click "Choose File…".
+  2. Cancel the dialog without selecting a file.
+- Expected result: No filename is displayed. The Run Backup button remains disabled.
+
+**TC-PICKER-03: Filename-only display**
+
+- Preconditions: Valid `.airbridge` path selected.
+- Steps:
+  1. Select a `.airbridge` file in a nested directory.
+  2. Check the displayed text next to the "Choose File…" button.
+- Expected result: Only the filename is shown (e.g. `my-base.airbridge`). The directory path is not shown.
+
+**TC-PICKER-04: Absolute path never visible on screen**
+
+- Preconditions: Valid path selected.
+- Steps:
+  1. Inspect all visible text on the Backups page.
+- Expected result: No absolute filesystem path (no `/Users/`, no `/home/`, no `C:\`) appears anywhere in the UI.
+
+**TC-PICKER-05: Invalid extension shows error**
+
+- Preconditions: Backup plan and export plan exist.
+- Steps:
+  1. If the OS allows it, select a `.zip` file.
+- Expected result: An extension error is shown. The Run Backup button stays disabled.
+
+**TC-PICKER-06: Token field is masked**
+
+- Preconditions: Backups page is open.
+- Steps:
+  1. Click inside the token field and type a value.
+- Expected result: Characters are masked (password input). The typed value is not visible as plain text.
+
+**TC-PICKER-07: Token does not appear outside token field**
+
+- Preconditions: Token entered.
+- Steps:
+  1. Type a recognizable token value.
+  2. Inspect all other elements on the page.
+- Expected result: The token value is not rendered anywhere outside the masked input field.
+
+**TC-PICKER-08: Run button gating**
+
+- Preconditions: Backups page is open.
+- Steps:
+  1. Verify button is disabled with no plans.
+  2. Generate backup plan and export plan.
+  3. Verify button is still disabled.
+  4. Select a valid `.airbridge` path.
+  5. Verify button is still disabled.
+  6. Enter a token.
+  7. Verify button is still disabled.
+  8. Type "CREATE BACKUP" in the confirmation field.
+  9. Verify button is now enabled.
+- Expected result: Button becomes enabled only after all prerequisites are satisfied.
+
+**TC-PICKER-09: Token and confirmation cleared after run**
+
+- Preconditions: All prerequisites satisfied. Run executed.
+- Steps:
+  1. Click "Run Backup".
+  2. Wait for result.
+  3. Check the token field and confirmation field.
+- Expected result: Both fields are empty.
+
+**TC-PICKER-10: Result shows filename only**
+
+- Preconditions: Successful backup run.
+- Steps:
+  1. Inspect the result card after a successful run.
+- Expected result: The package filename is shown (e.g. `my-base.airbridge`). The directory path is not shown.
+
+**TC-PICKER-11: Token not in result**
+
+- Preconditions: Backup run completed (success or failure).
+- Steps:
+  1. Inspect the result card.
+  2. Search for the token value on the page.
+- Expected result: The token value does not appear in the result or anywhere else on the page.
+
+**TC-PICKER-12: Safety copy visible**
+
+- Preconditions: Backups page is open.
+- Steps:
+  1. Read the Run Backup panel.
+- Expected result: All three safety statements are visible: "The full output path is not displayed", "The token is not stored", "Backup creation runs only after confirmation".

@@ -230,3 +230,26 @@ These items cover the command contract layer. All are verified by automated test
 - [ ] **UI section mentions safe command contract.** The Backup Job Pipeline section states the contract is ready.
 - [ ] **UI section mentions explicit confirmation.** The section references the confirmation requirement.
 - [ ] **No enabled production backup-trigger button.** No enabled button matching backup-trigger labels exists on the Backups page.
+
+---
+
+## Backup File Picker and Confirmation Flow (V1)
+
+These items cover the end-to-end file picker and confirmation execution path.
+
+- [ ] **File picker opens on "Choose File…".** Clicking the button opens the native OS save dialog. The dialog suggests a `.airbridge` filename based on the base name.
+- [ ] **Cancel closes dialog without state change.** If the user cancels the dialog, no path is set and the Run Backup button remains disabled.
+- [ ] **Filename-only display.** After selecting a file, only the filename is shown — not the full directory path.
+- [ ] **Absolute path never rendered.** No part of the directory path appears anywhere on the screen.
+- [ ] **Wrong extension shows error.** If the OS dialog allows selecting a non-.airbridge file, the extension error is shown and the run button stays disabled.
+- [ ] **Valid path shows validation status.** A valid `.airbridge` path shows a "Path valid" indicator.
+- [ ] **Token field is a password input.** The token field renders as `type="password"` — characters are masked.
+- [ ] **Token is not rendered elsewhere.** Typing in the token field does not cause the token value to appear outside the masked input.
+- [ ] **Run button disabled without all prerequisites.** The button is disabled unless all of the following are satisfied: backup plan, export plan, valid path, non-empty token, correct confirmation text.
+- [ ] **Confirmation text mismatch shown.** Typing an incorrect confirmation text shows a mismatch indicator. The run button stays disabled.
+- [ ] **Confirmation text correct unlocks run.** Typing "CREATE BACKUP" exactly enables the run button (assuming all other prerequisites are met).
+- [ ] **Run clears token and confirmation.** After the run completes (success or failure), the token field and confirmation field are cleared.
+- [ ] **Result shows success or failure.** The result card appears after the run and shows the correct status.
+- [ ] **Result shows filename only.** The result card shows only the package filename, not the full path.
+- [ ] **Result does not contain token.** The token value does not appear in the result card or anywhere else on the page.
+- [ ] **Safety copy present.** The panel shows all three safety statements: "The full output path is not displayed", "The token is not stored", "Backup creation runs only after confirmation".

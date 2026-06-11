@@ -170,6 +170,17 @@ Frontend tests (`safeBackupCommandContract.test.tsx`):
 - Mock service: deterministic path validation, confirmation rejection, no file write
 - UI: section present, live execution disabled, confirmation required, path validation mentioned, no enabled trigger button
 
+## UI Integration
+
+`runBackupJob` is wired to the production UI in `BackupExecutionPanel`. The panel:
+- Opens a native save dialog via `pickBackupOutputPath()` (Tauri dialog plugin).
+- Validates the output path before enabling the run button.
+- Requires the user to type the confirmation text into a dedicated input field.
+- Accepts a one-time token in a local `type="password"` field.
+- Clears the token and confirmation after each run.
+
+See `docs/architecture/backup-file-picker-confirmation-flow.md` for the full UI flow design.
+
 ## Safety Constraints
 
 - No live network calls in any test.
@@ -180,14 +191,11 @@ Frontend tests (`safeBackupCommandContract.test.tsx`):
 - Only filename is returned in `packageFilename`.
 - Packages written only to temp directories in tests.
 - Generated `.airbridge` files are never committed to the repository.
-- No UI production export flow in V0.1.
-- No file picker in V0.1.
-- No user-selected output path in V0.1.
+- No token persistence anywhere in the UI flow.
 
 ## Future Path
 
-- Add file picker (Tauri dialog plugin) to select the output path.
-- Wire `runBackupJob` to a UI trigger after the file picker is in place.
-- Add explicit confirmation dialog in the UI before calling the command.
 - Stream `BackupJobEvent` to the frontend via Tauri events for live progress.
 - Add retry logic for `RateLimited` errors inside the orchestrator.
+- Add cancellation token forwarding from the UI to the Rust command.
+- Add secure credential storage using the OS keychain for repeat runs.

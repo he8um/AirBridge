@@ -163,3 +163,37 @@ If AirBridge supports user-configured field redaction:
 
 - [ ] The command result does not contain attachment URLs (`https://`, `dl.airtable.com`).
 - [ ] Package entries contain no attachment URLs.
+
+---
+
+## Backup File Picker and Confirmation Flow (V1)
+
+**FP-01: Token field is a password input.**
+- The token field in `BackupExecutionPanel` renders with `type="password"`.
+- Characters are masked. The token value is not exposed as plain text in the DOM.
+
+**FP-02: Token cleared after run.**
+- After `runBackupJob` resolves (success or failure), `clearSensitiveState()` sets the token state to an empty string.
+- The token does not persist in component state after the run.
+
+**FP-03: Token not in run response or result card.**
+- `RunBackupCommandResponse` contains no token field.
+- `BackupJobResultCard` renders only job status, filename, summary data, and errors — never the token.
+
+**FP-04: Full output path not rendered.**
+- `BackupExecutionPanel` displays only the filename component (via `getDisplayFileName`).
+- The path validation status uses `redactOutputPath` which renders `…/filename.airbridge`.
+- The result card renders only `packageFilename` (filename-only, from the Rust response).
+
+**FP-05: No token persistence.**
+- Token is held only in `useState`. It is never written to `localStorage`, `sessionStorage`, or any persistent store.
+
+**FP-06: File picker returns path only — no file write.**
+- `pickBackupOutputPath()` calls the Tauri dialog `save()` function.
+- The `save()` function returns a path string; it does not write any file.
+- No file is written until `runBackupJob` executes with valid confirmation.
+
+**FP-07: jsdom test isolation.**
+- All tests that involve `BackupExecutionPanel` mock `pickBackupOutputPath` via `vi.mock`.
+- The Tauri dialog plugin is never invoked in tests.
+- No file is written during tests.

@@ -222,49 +222,39 @@ async function navigateToBackups(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole("button", { name: "Backups" }));
 }
 
-describe("Backups page — safe command contract UI section", () => {
-  it("states backup execution is still disabled in UI", async () => {
+describe("Backups page — backup execution panel (safe command contract)", () => {
+  it("shows the backup execution panel", async () => {
     const user = userEvent.setup();
     render(<App />);
     await navigateToBackups(user);
-    const section = screen.getByTestId("backup-job-pipeline-section");
-    // Heading states "not enabled yet"; body confirms disabled.
-    expect(section.textContent).toMatch(/not enabled yet/i);
+    expect(screen.getByTestId("backup-execution-panel")).toBeTruthy();
   });
 
-  it("states explicit confirmation will be required", async () => {
+  it("shows safety copy: full output path is not displayed", async () => {
     const user = userEvent.setup();
     render(<App />);
     await navigateToBackups(user);
-    const section = screen.getByTestId("backup-job-pipeline-section");
-    expect(section.textContent).toMatch(/explicit confirmation/i);
+    const panel = screen.getByTestId("backup-execution-panel");
+    expect(panel.textContent).toMatch(/full output path is not displayed/i);
   });
 
-  it("mentions the confirmation phrase CREATE BACKUP", async () => {
+  it("shows safety copy: token is not stored", async () => {
     const user = userEvent.setup();
     render(<App />);
     await navigateToBackups(user);
-    const section = screen.getByTestId("backup-job-pipeline-section");
-    expect(section.textContent).toContain("CREATE BACKUP");
+    const panel = screen.getByTestId("backup-execution-panel");
+    expect(panel.textContent).toMatch(/token is not stored/i);
   });
 
-  it("states output path is validated before write", async () => {
+  it("mentions CREATE BACKUP as required confirmation text", async () => {
     const user = userEvent.setup();
     render(<App />);
     await navigateToBackups(user);
-    const section = screen.getByTestId("backup-job-pipeline-section");
-    expect(section.textContent).toMatch(/output path validated before any write/i);
+    const panel = screen.getByTestId("backup-execution-panel");
+    expect(panel.textContent).toContain("CREATE BACKUP");
   });
 
-  it("states no file picker in V0.1", async () => {
-    const user = userEvent.setup();
-    render(<App />);
-    await navigateToBackups(user);
-    const section = screen.getByTestId("backup-job-pipeline-section");
-    expect(section.textContent).toMatch(/no file picker/i);
-  });
-
-  it("has no enabled production backup-trigger button", async () => {
+  it("has no enabled production backup-trigger button at initial render", async () => {
     const user = userEvent.setup();
     render(<App />);
     await navigateToBackups(user);

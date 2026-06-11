@@ -19,6 +19,7 @@ import type {
   RecordsExportPlanRequest,
   RequestEstimate,
 } from "../backend/types";
+import { BackupExecutionPanel } from "../features/backups";
 
 const SCOPE_OPTIONS = [
   { value: "full", label: "Full backup", description: "Schema and all records" },
@@ -224,9 +225,14 @@ function RecordsExportPlanResult({ plan }: { plan: RecordsExportPlan }) {
 interface RecordsExportPlanCardProps {
   backupPlan: BackupPlan | null;
   service: AirBridgeService;
+  onPlanGenerated?: (plan: RecordsExportPlan | null) => void;
 }
 
-function RecordsExportPlanCard({ backupPlan, service }: RecordsExportPlanCardProps) {
+function RecordsExportPlanCard({
+  backupPlan,
+  service,
+  onPlanGenerated,
+}: RecordsExportPlanCardProps) {
   const [exportPlan, setExportPlan] = useState<RecordsExportPlan | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -245,6 +251,7 @@ function RecordsExportPlanCard({ backupPlan, service }: RecordsExportPlanCardPro
       };
       const result = await service.createRecordsExportPlan(request);
       setExportPlan(result);
+      onPlanGenerated?.(result);
     } catch {
       setError("Failed to generate records export plan.");
     } finally {
@@ -708,6 +715,7 @@ interface BackupsPageProps {
 export function BackupsPage({ service = liveAirBridgeService }: BackupsPageProps) {
   const { recentBackups, state } = useAppState();
   const [generatedBackupPlan, setGeneratedBackupPlan] = useState<BackupPlan | null>(null);
+  const [generatedExportPlan, setGeneratedExportPlan] = useState<RecordsExportPlan | null>(null);
 
   const bases = state.bases;
   const accessibleBases: AccessibleBaseSummary[] = bases.map((b) => ({ id: b.id, name: b.name }));
@@ -721,60 +729,31 @@ export function BackupsPage({ service = liveAirBridgeService }: BackupsPageProps
           <BackupPlanningCard
             accessibleBases={accessibleBases}
             service={service}
-            onPlanGenerated={setGeneratedBackupPlan}
+            onPlanGenerated={(plan) => {
+              setGeneratedBackupPlan(plan);
+              setGeneratedExportPlan(null);
+            }}
           />
         </section>
 
         {/* Records Export Plan section */}
         <section aria-labelledby="records-export-plan-heading">
           <SectionHeader title="Records Export Plan" />
-          <RecordsExportPlanCard backupPlan={generatedBackupPlan} service={service} />
+          <RecordsExportPlanCard
+            backupPlan={generatedBackupPlan}
+            service={service}
+            onPlanGenerated={setGeneratedExportPlan}
+          />
         </section>
 
-        {/* Backup Job Pipeline section */}
-        <section aria-labelledby="backup-job-pipeline-heading">
-          <SectionHeader title="Backup Job Pipeline" />
-          <div
-            className="card notice-neutral"
-            style={{ maxWidth: 560 }}
-            data-testid="backup-job-pipeline-section"
-          >
-            <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-3)" }}>
-              <p style={{ fontSize: "var(--text-sm)", margin: 0, fontWeight: 500 }}>
-                Safe command contract ready — live backup creation not enabled yet
-              </p>
-              <p
-                style={{ fontSize: "var(--text-sm)", color: "var(--color-text-muted)", margin: 0 }}
-              >
-                The backup job orchestrator and safe command contract are implemented. The command
-                requires explicit confirmation and validates the output path before any file is
-                written. No file is created from this screen yet. Backup execution is still disabled
-                in the UI — a file picker and explicit confirmation will be added in a future
-                release.
-              </p>
-              <ul
-                style={{
-                  fontSize: "var(--text-xs)",
-                  color: "var(--color-text-muted)",
-                  margin: 0,
-                  paddingLeft: "var(--space-4)",
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "var(--space-1)",
-                }}
-              >
-                <li>Safe command contract: explicit confirmation required ("CREATE BACKUP")</li>
-                <li>
-                  Output path validated before any write (extension, parent dir, no traversal)
-                </li>
-                <li>Job lifecycle: queued → running → succeeded / failed / cancelled</li>
-                <li>Progress events emitted at each pipeline phase</li>
-                <li>Cancellation supported at phase boundaries</li>
-                <li>No file picker — no user-selected output path in V0.1</li>
-                <li>No token stored by the job orchestrator or command</li>
-              </ul>
-            </div>
-          </div>
+        {/* Backup Execution section */}
+        <section aria-labelledby="backup-execution-heading">
+          <SectionHeader title="Run Backup" />
+          <BackupExecutionPanel
+            backupPlan={generatedBackupPlan}
+            exportPlan={generatedExportPlan}
+            service={service}
+          />
         </section>
 
         {/* Package Format section */}

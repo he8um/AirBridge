@@ -29,3 +29,23 @@ When contributing to AirBridge, follow these rules regarding token values:
 4. **Never include tokens in test fixtures, snapshots, or mock data.** Use synthetic placeholder values in tests that clearly do not resemble real credentials.
 5. **Use `hasSecretLeak` in tests** to verify that rendered output and serialized results are free of token values.
 6. **Drop tokens in Rust commands immediately.** The `check_connection` Tauri command must use `let _ = token;` or equivalent to discard the token before any further processing.
+
+## Backup Execution Token Flow
+
+When the user executes a backup from the Run Backup panel, a separate one-time token entry is used:
+
+1. The user types a personal access token into a `type="password"` field inside `BackupExecutionPanel`.
+2. The token is held only in `useState` within that component — never in global state.
+3. On run, the token is included in the `RunBackupCommandRequest` object and forwarded to `service.runBackupJob()`.
+4. The live service passes the request directly to the Tauri IPC (`run_backup_job` command).
+5. On the Rust side, the token is moved into `AirtableToken::new(token)` and then into the HTTP client. The original string is consumed and not stored.
+6. After the run completes or fails, `clearSensitiveState()` is called, setting the token state back to `""`.
+
+The token does not appear in:
+- `RunBackupCommandResponse`
+- `BackupJobResult`
+- Any backup job event
+- Any rendered UI element outside the masked password input
+- Any test fixture or snapshot
+
+The existing connection-page token is not reused for backup execution. The user supplies a fresh token for each backup run.
