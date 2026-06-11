@@ -3,8 +3,8 @@ use super::endpoints;
 use super::errors::{map_http_error, AirtableClientError};
 use super::http::{HttpRequest, HttpTransport};
 use super::models::{
-    AccessibleBase, AirtableListRecordsResponse, AirtableRecordFields, AirtableRecordUpdate,
-    AirtableTable, ConnectionCheckOutcome, ListBasesResponse,
+    AccessibleBase, AccessibleBaseSummary, AirtableListRecordsResponse, AirtableRecordFields,
+    AirtableRecordUpdate, AirtableTable, ConnectionCheckOutcome, ListBasesResponse,
 };
 use super::pagination::ListRecordsOptions;
 
@@ -132,6 +132,26 @@ impl<T: HttpTransport> AirtableClient<T> {
 
         serde_json::from_str::<AirtableListRecordsResponse>(&body)
             .map_err(|e| AirtableClientError::MalformedResponse(e.to_string()))
+    }
+
+    /// List all bases accessible to the token as lightweight summaries.
+    ///
+    /// Returns only id and name — no token, no record data.
+    pub fn list_accessible_bases(&self) -> ClientResult<Vec<AccessibleBaseSummary>> {
+        let url = endpoints::list_bases_path();
+        let body = self.send_get(url, vec![])?;
+
+        let response = serde_json::from_str::<ListBasesResponse>(&body)
+            .map_err(|e| AirtableClientError::MalformedResponse(e.to_string()))?;
+
+        Ok(response
+            .bases
+            .into_iter()
+            .map(|b| AccessibleBaseSummary {
+                id: b.id,
+                name: b.name,
+            })
+            .collect())
     }
 
     /// Performs a read-only connection check by calling the list-bases endpoint.
@@ -264,6 +284,48 @@ mod tests {
             )
             .expect("should succeed");
         let serialized = serde_json::to_string(&resp).expect("serialize");
+        assert!(!serialized.contains(SENTINEL));
+    }
+
+    // ── list_accessible_bases tests ───────────────────────────────────────
+
+    #[test]
+    fn list_accessible_bases_parses_empty_list() {
+        let transport = MockHttpTransport::ok(r#"{"bases":[]}"#);
+        let client = client_with(transport);
+        let bases = client.list_accessible_bases().expect("should succeed");
+        assert_eq!(bases.len(), 0);
+    }
+
+    #[test]
+    fn list_accessible_bases_returns_id_and_name() {
+        let body = r#"{"bases":[
+            {"id":"appExampleBase01","name":"Example Base One","permissionLevel":"create"},
+            {"id":"appExampleBase02","name":"Example Base Two","permissionLevel":"read"}
+        ]}"#;
+        let transport = MockHttpTransport::ok(body);
+        let client = client_with(transport);
+        let bases = client.list_accessible_bases().expect("should succeed");
+        assert_eq!(bases.len(), 2);
+        assert_eq!(bases[0].id, "appExampleBase01");
+        assert_eq!(bases[0].name, "Example Base One");
+    }
+
+    #[test]
+    fn list_accessible_bases_401_maps_to_invalid_token() {
+        let transport = MockHttpTransport::with_status(401, r#"{"error":"UNAUTHORIZED"}"#);
+        let client = client_with(transport);
+        let err = client.list_accessible_bases().unwrap_err();
+        assert_eq!(err, AirtableClientError::InvalidToken);
+    }
+
+    #[test]
+    fn list_accessible_bases_result_does_not_contain_token() {
+        let body = r#"{"bases":[{"id":"appExampleBase01","name":"Example Base One","permissionLevel":"create"}]}"#;
+        let transport = MockHttpTransport::ok(body);
+        let client = client_with(transport);
+        let bases = client.list_accessible_bases().expect("should succeed");
+        let serialized = serde_json::to_string(&bases).expect("serialize");
         assert!(!serialized.contains(SENTINEL));
     }
 

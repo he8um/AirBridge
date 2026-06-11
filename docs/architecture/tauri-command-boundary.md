@@ -25,28 +25,34 @@ Separating frontend and backend through a named command layer provides several g
 
 ## Current Commands
 
-| Command name               | TypeScript function        | Description                                   |
-| -------------------------- | -------------------------- | --------------------------------------------- |
-| `get_app_health`           | `getAppHealth`             | Returns application name, version, and status |
-| `check_connection`         | `checkConnection`          | Validates a token and checks API permissions  |
-| `list_workspaces`          | `listWorkspaces`           | Returns available workspaces                  |
-| `list_bases`               | `listBases`                | Returns base summaries for connected workspaces |
-| `list_backup_packages`     | `listBackupPackages`       | Returns known backup packages                 |
-| `list_restore_plans`       | `listRestorePlans`         | Returns restore plans derived from packages   |
-| `list_reports`             | `listReports`              | Returns backup and restore reports            |
-| `list_logs`                | `listLogs`                 | Returns job log entries                       |
-| `list_compatibility_rules` | `listCompatibilityRules`   | Returns field-level compatibility rules       |
+| Command name               | TypeScript function        | Description                                            |
+| -------------------------- | -------------------------- | ------------------------------------------------------ |
+| `get_app_health`           | `getAppHealth`             | Returns application name, version, and status          |
+| `check_connection`         | `checkConnection`          | Validates a token and checks API permissions           |
+| `list_accessible_bases`    | `listAccessibleBases`      | Returns bases accessible to the token (read-only)      |
+| `get_base_schema`          | `getBaseSchema`            | Returns schema summary for a base (read-only)          |
+| `list_workspaces`          | `listWorkspaces`           | Returns available workspaces (stub)                    |
+| `list_bases`               | `listBases`                | Returns base summaries for connected workspaces (stub) |
+| `list_backup_packages`     | `listBackupPackages`       | Returns known backup packages                          |
+| `list_restore_plans`       | `listRestorePlans`         | Returns restore plans derived from packages            |
+| `list_reports`             | `listReports`              | Returns backup and restore reports                     |
+| `list_logs`                | `listLogs`                 | Returns job log entries                                |
+| `list_compatibility_rules` | `listCompatibilityRules`   | Returns field-level compatibility rules                |
 
 ## Current Implementation Status
 
-`check_connection` is live — the Rust handler calls the Airtable list-bases endpoint
-via `ReqwestHttpTransport` and returns a typed `ConnectionCheckResult`. Write permissions
-are marked `Unknown` (not verified destructively). All other command handlers remain stubs
-backed by mock state.
+`check_connection`, `list_accessible_bases`, and `get_base_schema` are live — the Rust
+handlers call the Airtable API via `ReqwestHttpTransport` and return typed results. Write
+permissions are marked `Unknown` (not verified destructively). All other command handlers
+remain stubs backed by mock state.
 
 The `liveAirBridgeService` wires the frontend to real Tauri commands. `ConnectionForm`
 accepts a `service` prop (defaults to `liveAirBridgeService`) so tests inject
 `mockAirBridgeService` without touching the Tauri IPC.
+
+Both `list_accessible_bases` and `get_base_schema` follow the same token-flow pattern as
+`check_connection`: the token is passed as a command parameter, wrapped in `AirtableToken`,
+the raw string is dropped immediately, and the token never appears in the response or error.
 
 ## Future Path
 

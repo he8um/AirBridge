@@ -152,3 +152,54 @@ pub struct ListBasesEntry {
     pub id: String,
     pub name: String,
 }
+
+// ── Catalog summary models (Session 11) ────────────────────────────────────
+
+/// Summary of a single accessible base, safe to return to the frontend.
+/// Never contains the token or any secret.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AccessibleBaseSummary {
+    pub id: String,
+    pub name: String,
+}
+
+/// Counts of fields grouped by compatibility classification.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FieldTypeCount {
+    pub field_type: String,
+    pub count: usize,
+}
+
+/// Compatibility summary counts across all fields in a table.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SchemaCompatibilitySummary {
+    pub restorable_count: usize,
+    pub metadata_only_count: usize,
+    pub unknown_count: usize,
+    pub total_count: usize,
+}
+
+/// Summary of a single table within a base schema.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TableSchemaSummary {
+    pub id: String,
+    pub name: String,
+    pub field_count: usize,
+    pub field_type_counts: Vec<FieldTypeCount>,
+    pub compatibility: SchemaCompatibilitySummary,
+}
+
+/// Full schema summary for a base, safe to return to the frontend.
+/// Contains structural metadata only — no record values, no token.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BaseSchemaSummary {
+    pub base_id: String,
+    pub table_count: usize,
+    pub tables: Vec<TableSchemaSummary>,
+    pub compatibility: SchemaCompatibilitySummary,
+}

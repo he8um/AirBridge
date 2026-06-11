@@ -30,6 +30,8 @@ pub fn run() {
             commands::connection::check_connection,
             commands::catalog::list_workspaces,
             commands::catalog::list_bases,
+            commands::catalog::list_accessible_bases,
+            commands::catalog::get_base_schema,
             commands::backup::list_backup_packages,
             commands::restore::list_restore_plans,
             commands::reports::list_reports,

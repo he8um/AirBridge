@@ -5,7 +5,11 @@ import type { RestorePlanSummary } from "../domain/restore";
 import type { ReportSummary } from "../domain/report";
 import type { JobLogEntry } from "../domain/log";
 import type { FieldCompatibilityRule } from "../domain/compatibility";
-import type { ConnectionCheckResult } from "../backend/types";
+import type {
+  AccessibleBaseSummary,
+  BaseSchemaSummary,
+  ConnectionCheckResult,
+} from "../backend/types";
 import type { AirBridgeService } from "./airBridgeService";
 import * as commands from "../backend/commands";
 
@@ -72,6 +76,30 @@ async function checkConnection(input: { token: string }): Promise<ConnectionChec
   return result;
 }
 
+async function listAccessibleBases(input: { token: string }): Promise<AccessibleBaseSummary[]> {
+  // Token is forwarded to the Rust command only. It is never stored here.
+  return (await commands.listAccessibleBases(input.token)) ?? [];
+}
+
+async function getBaseSchema(input: { token: string; baseId: string }): Promise<BaseSchemaSummary> {
+  // Token is forwarded to the Rust command only. It is never stored here.
+  const result = await commands.getBaseSchema(input.token, input.baseId);
+  if (result === null) {
+    return {
+      baseId: input.baseId,
+      tableCount: 0,
+      tables: [],
+      compatibility: {
+        restorableCount: 0,
+        metadataOnlyCount: 0,
+        unknownCount: 0,
+        totalCount: 0,
+      },
+    };
+  }
+  return result;
+}
+
 export const liveAirBridgeService: AirBridgeService = {
   listConnections,
   listWorkspaces,
@@ -82,4 +110,6 @@ export const liveAirBridgeService: AirBridgeService = {
   listLogs,
   listCompatibilityRules,
   checkConnection,
+  listAccessibleBases,
+  getBaseSchema,
 };

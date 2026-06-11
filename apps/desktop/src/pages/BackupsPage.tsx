@@ -3,6 +3,7 @@ import { EmptyState } from "../components/EmptyState";
 import { StatusBadge } from "../components/StatusBadge";
 import { useAppState } from "../state/useAppState";
 import type { BackupStatus } from "../domain/backup";
+import type { AirtableBaseSummary } from "../domain/airtable";
 
 const SCOPE_OPTIONS = [
   { value: "full", label: "Full backup", description: "Schema and all records" },
@@ -34,6 +35,55 @@ function formatBytes(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+function BaseCatalogCard({ bases }: { bases: AirtableBaseSummary[] }) {
+  if (bases.length === 0) {
+    return (
+      <div className="card notice-neutral" style={{ maxWidth: 560 }}>
+        <p style={{ fontSize: "var(--text-sm)", color: "var(--color-text-muted)" }}>
+          No bases loaded. Connect an Airtable account to see available bases.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="card" style={{ maxWidth: 560, padding: 0, overflow: "hidden" }}>
+      <ul style={{ listStyle: "none", margin: 0, padding: 0 }} aria-label="Available bases catalog">
+        {bases.map((base, idx) => {
+          const totalFields = base.tables?.reduce((sum, t) => sum + t.fieldCount, 0) ?? 0;
+          return (
+            <li
+              key={base.id}
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "var(--space-1)",
+                padding: "var(--space-4) var(--space-5)",
+                borderBottom: idx < bases.length - 1 ? "1px solid var(--color-border)" : "none",
+              }}
+            >
+              <span style={{ fontSize: "var(--text-sm)", fontWeight: 500 }}>{base.name}</span>
+              <span style={{ fontSize: "var(--text-xs)", color: "var(--color-text-muted)" }}>
+                {base.tableCount} {base.tableCount === 1 ? "table" : "tables"}
+                {totalFields > 0 && ` · ${totalFields} fields`}
+              </span>
+              <span
+                style={{
+                  fontSize: "var(--text-xs)",
+                  color: "var(--color-text-muted)",
+                  fontFamily: "var(--font-mono)",
+                }}
+              >
+                {base.id}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
 export function BackupsPage() {
   const { recentBackups, state } = useAppState();
 
@@ -56,17 +106,23 @@ export function BackupsPage() {
                 <select
                   id="base-select"
                   className="form-input"
-                  disabled
+                  disabled={bases.length === 0}
                   aria-label="Select Airtable base to back up"
                 >
                   {bases.length === 0 ? (
                     <option value="">No bases connected</option>
                   ) : (
-                    bases.map((base) => (
-                      <option key={base.id} value={base.id}>
-                        {base.name}
-                      </option>
-                    ))
+                    <>
+                      <option value="">Choose a base…</option>
+                      {bases.map((base) => (
+                        <option key={base.id} value={base.id}>
+                          {base.name}
+                          {base.tableCount > 0
+                            ? ` (${base.tableCount} ${base.tableCount === 1 ? "table" : "tables"})`
+                            : ""}
+                        </option>
+                      ))}
+                    </>
                   )}
                 </select>
               </div>
@@ -167,6 +223,12 @@ export function BackupsPage() {
               </div>
             </div>
           </div>
+        </section>
+
+        {/* Base Catalog section */}
+        <section aria-labelledby="base-catalog-heading">
+          <SectionHeader title="Available Bases" />
+          <BaseCatalogCard bases={bases} />
         </section>
 
         {/* Recent Backups section */}

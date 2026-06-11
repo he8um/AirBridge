@@ -4,7 +4,8 @@ use crate::airtable::errors::AirtableClientError;
 use crate::airtable::http::ReqwestHttpTransport;
 use crate::errors::{AirBridgeError, AirBridgeResult, ErrorCode};
 use crate::models::connection::{
-    ConnectionCheckResult, ConnectionStatus, PermissionCheck, PermissionCheckStatus,
+    AccessibleBaseSummaryInResult, ConnectionCheckResult, ConnectionStatus, PermissionCheck,
+    PermissionCheckStatus,
 };
 
 /// Validates that a raw token string meets minimum structural requirements.
@@ -55,12 +56,24 @@ fn map_client_error(err: AirtableClientError) -> AirBridgeError {
 ///
 /// Read permissions are marked `Passed` because list-bases succeeded.
 /// Write permissions are marked `Unknown` — they are not verified destructively.
-fn build_success_result(base_count: usize) -> ConnectionCheckResult {
+/// Accessible base names are included in the result; the token is never included.
+fn build_success_result(
+    accessible_bases: &[crate::airtable::models::AccessibleBase],
+) -> ConnectionCheckResult {
+    let base_count = accessible_bases.len();
     let detail = if base_count == 1 {
         Some("1 base accessible".to_string())
     } else {
         Some(format!("{base_count} bases accessible"))
     };
+
+    let bases_in_result: Vec<AccessibleBaseSummaryInResult> = accessible_bases
+        .iter()
+        .map(|b| AccessibleBaseSummaryInResult {
+            id: b.id.as_str().to_string(),
+            name: b.name.clone(),
+        })
+        .collect();
 
     ConnectionCheckResult {
         connection_id: "conn-live".to_string(),
@@ -91,6 +104,11 @@ fn build_success_result(base_count: usize) -> ConnectionCheckResult {
                 detail: Some("Write access not verified".to_string()),
             },
         ],
+        accessible_bases: if bases_in_result.is_empty() {
+            None
+        } else {
+            Some(bases_in_result)
+        },
     }
 }
 
@@ -134,6 +152,7 @@ fn build_failure_result(err: AirtableClientError) -> (AirBridgeError, Connection
                 detail: Some("Write access not verified".to_string()),
             },
         ],
+        accessible_bases: None,
     };
 
     (bridge_err, result)
@@ -157,7 +176,7 @@ pub fn check_connection(token: String) -> AirBridgeResult<ConnectionCheckResult>
     let client = AirtableClient::new(airtable_token, transport);
 
     match client.check_connection_for_token() {
-        Ok(outcome) => Ok(build_success_result(outcome.accessible_bases.len())),
+        Ok(outcome) => Ok(build_success_result(&outcome.accessible_bases)),
         Err(err) => {
             let (bridge_err, _result) = build_failure_result(err);
             Err(bridge_err)
@@ -175,7 +194,7 @@ pub fn check_connection_with_outcome(
 ) -> AirBridgeResult<ConnectionCheckResult> {
     validate_token_input(raw_token)?;
     match outcome {
-        Ok(o) => Ok(build_success_result(o.accessible_bases.len())),
+        Ok(o) => Ok(build_success_result(&o.accessible_bases)),
         Err(err) => {
             let (bridge_err, _) = build_failure_result(err);
             Err(bridge_err)

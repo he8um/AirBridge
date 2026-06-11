@@ -115,14 +115,31 @@ HTTP status codes are mapped to `AirtableClientError` variants:
 - Client tests verify JSON parsing and error propagation end-to-end using
   the mock transport.
 
+## Schema Summary
+
+`airtable/schema.rs` exposes `summarize_schema(base_id, tables)` which converts a
+`Vec<AirtableTable>` into a `BaseSchemaSummary`. The summary contains:
+
+- `base_id` — the base identifier
+- `table_count` — number of tables
+- `tables` — per-table summaries with field counts, sorted field type histograms,
+  and per-table compatibility counts
+- `compatibility` — aggregate counts: `restorableCount`, `metadataOnlyCount`,
+  `unknownCount`, `totalCount`
+
+Field compatibility classification uses `classify_field` from the same module.
+The summary never contains field values or token material.
+
 ## Future Work
 
 - **Live connection check**: Done — wired to `check_connection` Tauri command
   via `check_connection_for_token()` and `ReqwestHttpTransport`.
-- **Schema read**: full schema fetch feeding the compatibility engine.
+- **Base catalog**: Done — `list_accessible_bases()` on `AirtableClient` and
+  `list_accessible_bases` Tauri command.
+- **Schema read**: Done — `get_base_schema()` on `AirtableClient` + `summarize_schema()`
+  produce a `BaseSchemaSummary` wired to the `get_base_schema` Tauri command.
 - **Record export**: paginated record listing with continuation logic.
 - **Write batching**: automatic splitting of large create/update payloads
   using `records::split_create_batches`.
 - **Retry queue**: async retry loop respecting `AirtableRateLimitPolicy`.
 - **Backoff/cooldown**: actual `tokio::time::sleep` enforcement after 429.
-- **reqwest transport**: real `HttpTransport` implementation using `reqwest`.

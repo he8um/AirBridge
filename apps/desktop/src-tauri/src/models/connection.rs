@@ -50,4 +50,17 @@ pub struct ConnectionCheckResult {
     pub connection_id: String,
     pub status: ConnectionStatus,
     pub permissions: Vec<PermissionCheck>,
+    /// Bases visible to the token. Populated on successful check. Never contains the token.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub accessible_bases: Option<Vec<AccessibleBaseSummaryInResult>>,
+}
+
+/// Minimal base entry returned inside a `ConnectionCheckResult`.
+/// Intentionally separate from `AccessibleBaseSummary` to keep the connection
+/// result shape stable even if the catalog model evolves.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AccessibleBaseSummaryInResult {
+    pub id: String,
+    pub name: String,
 }

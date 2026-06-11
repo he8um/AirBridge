@@ -132,6 +132,44 @@ export function ConnectionForm({ onSuccess, onError, service }: ConnectionFormPr
         <PermissionCheckList checks={result.permissions} title="Permission Check Results" />
       )}
 
+      {result?.status === "connected" &&
+        result.accessibleBases &&
+        result.accessibleBases.length > 0 && (
+          <div
+            className="form-result"
+            aria-label="Accessible bases summary"
+            style={{ marginTop: "var(--space-4)" }}
+          >
+            <p
+              style={{
+                fontSize: "var(--text-xs)",
+                color: "var(--color-text-muted)",
+                marginBottom: "var(--space-2)",
+              }}
+            >
+              {result.accessibleBases.length}{" "}
+              {result.accessibleBases.length === 1 ? "base" : "bases"} accessible
+            </p>
+            <ul
+              style={{ listStyle: "none", margin: 0, padding: 0 }}
+              aria-label="Accessible bases list"
+            >
+              {result.accessibleBases.map((base) => (
+                <li
+                  key={base.id}
+                  style={{
+                    fontSize: "var(--text-xs)",
+                    padding: "var(--space-1) 0",
+                    color: "var(--color-text)",
+                  }}
+                >
+                  {base.name}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
       <div style={{ display: "flex", gap: "var(--space-3)" }}>
         <button
           type="submit"

@@ -5,7 +5,11 @@ import type { RestorePlanSummary } from "../domain/restore";
 import type { ReportSummary } from "../domain/report";
 import type { JobLogEntry } from "../domain/log";
 import type { FieldCompatibilityRule } from "../domain/compatibility";
-import type { ConnectionCheckResult } from "../backend/types";
+import type {
+  AccessibleBaseSummary,
+  BaseSchemaSummary,
+  ConnectionCheckResult,
+} from "../backend/types";
 
 export interface AirBridgeService {
   listConnections(): Promise<AirtableConnectionProfile[]>;
@@ -17,4 +21,6 @@ export interface AirBridgeService {
   listLogs(): Promise<JobLogEntry[]>;
   listCompatibilityRules(): Promise<FieldCompatibilityRule[]>;
   checkConnection(input: { token: string }): Promise<ConnectionCheckResult>;
+  listAccessibleBases(input: { token: string }): Promise<AccessibleBaseSummary[]>;
+  getBaseSchema(input: { token: string; baseId: string }): Promise<BaseSchemaSummary>;
 }

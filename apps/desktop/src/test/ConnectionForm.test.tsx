@@ -179,4 +179,46 @@ describe("ConnectionForm", () => {
       expect(screen.getByText("Connected")).toBeInTheDocument();
     });
   });
+
+  it("shows accessible bases summary after successful connection", async () => {
+    const { user } = setup();
+    await user.type(screen.getByLabelText("Connection name"), VALID_NAME);
+    await user.type(screen.getByLabelText("Personal access token"), VALID_TOKEN);
+    await user.click(screen.getByRole("button", { name: "Test connection" }));
+    await waitFor(() => {
+      expect(screen.getByLabelText("Accessible bases summary")).toBeInTheDocument();
+    });
+  });
+
+  it("shows base names from accessible bases after successful connection", async () => {
+    const { user } = setup();
+    await user.type(screen.getByLabelText("Connection name"), VALID_NAME);
+    await user.type(screen.getByLabelText("Personal access token"), VALID_TOKEN);
+    await user.click(screen.getByRole("button", { name: "Test connection" }));
+    await waitFor(() => {
+      expect(screen.getByText("Example Projects & Tasks")).toBeInTheDocument();
+    });
+  });
+
+  it("accessible bases list does not contain token", async () => {
+    const { user } = setup();
+    await user.type(screen.getByLabelText("Connection name"), VALID_NAME);
+    await user.type(screen.getByLabelText("Personal access token"), VALID_TOKEN);
+    await user.click(screen.getByRole("button", { name: "Test connection" }));
+    await waitFor(() => {
+      expect(screen.getByLabelText("Accessible bases summary")).toBeInTheDocument();
+    });
+    expect(document.body.textContent).not.toContain(VALID_TOKEN);
+  });
+
+  it("does not show accessible bases summary on failed connection", async () => {
+    const { user } = setup();
+    await user.type(screen.getByLabelText("Connection name"), VALID_NAME);
+    await user.type(screen.getByLabelText("Personal access token"), FAIL_TOKEN);
+    await user.click(screen.getByRole("button", { name: "Test connection" }));
+    await waitFor(() => {
+      expect(screen.getAllByText(/failed/i).length).toBeGreaterThanOrEqual(1);
+    });
+    expect(screen.queryByLabelText("Accessible bases summary")).not.toBeInTheDocument();
+  });
 });

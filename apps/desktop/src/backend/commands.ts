@@ -1,4 +1,9 @@
-import type { AppHealthResponse, ConnectionCheckResult } from "./types";
+import type {
+  AccessibleBaseSummary,
+  AppHealthResponse,
+  BaseSchemaSummary,
+  ConnectionCheckResult,
+} from "./types";
 import type { AirtableWorkspace, AirtableBaseSummary } from "../domain/airtable";
 import type { BackupPackageSummary } from "../domain/backup";
 import type { RestorePlanSummary } from "../domain/restore";
@@ -52,4 +57,17 @@ export async function listLogs(): Promise<JobLogEntry[] | null> {
 
 export async function listCompatibilityRules(): Promise<FieldCompatibilityRule[] | null> {
   return safeInvoke<FieldCompatibilityRule[]>("list_compatibility_rules");
+}
+
+export async function listAccessibleBases(token: string): Promise<AccessibleBaseSummary[] | null> {
+  // Token is forwarded to the Rust command only. It is not stored or logged here.
+  return safeInvoke<AccessibleBaseSummary[]>("list_accessible_bases", { token });
+}
+
+export async function getBaseSchema(
+  token: string,
+  baseId: string,
+): Promise<BaseSchemaSummary | null> {
+  // Token is forwarded to the Rust command only. It is not stored or logged here.
+  return safeInvoke<BaseSchemaSummary>("get_base_schema", { token, baseId });
 }

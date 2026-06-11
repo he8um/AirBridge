@@ -28,3 +28,37 @@ export interface AirBridgeCommandError {
   code: string;
   message: string;
 }
+
+// Catalog and schema summary types from list_accessible_bases / get_base_schema commands
+
+export interface AccessibleBaseSummary {
+  id: string;
+  name: string;
+}
+
+export interface FieldTypeCount {
+  fieldType: string;
+  count: number;
+}
+
+export interface SchemaCompatibilitySummary {
+  restorableCount: number;
+  metadataOnlyCount: number;
+  unknownCount: number;
+  totalCount: number;
+}
+
+export interface TableSchemaSummary {
+  id: string;
+  name: string;
+  fieldCount: number;
+  fieldTypeCounts: FieldTypeCount[];
+  compatibility: SchemaCompatibilitySummary;
+}
+
+export interface BaseSchemaSummary {
+  baseId: string;
+  tableCount: number;
+  tables: TableSchemaSummary[];
+  compatibility: SchemaCompatibilitySummary;
+}
