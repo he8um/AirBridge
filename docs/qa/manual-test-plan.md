@@ -360,3 +360,37 @@ Before executing this plan:
 - Steps:
   1. Read the notice text at the top of the plan result.
 - Expected result: The notice states that no records have been fetched and no backup file has been written.
+
+---
+
+## Backup Job Pipeline (UI — V0.1 Status Section)
+
+**TC-JOB-01: Backup Job Pipeline section is visible on the Backups page**
+
+- Preconditions: Application open, Backups page navigated to.
+- Steps:
+  1. Click "Backups" in the navigation.
+  2. Scroll to the "Backup Job Pipeline" section.
+- Expected result: The section is present and rendered without errors.
+
+**TC-JOB-02: Section states live backup creation is not enabled**
+
+- Preconditions: Backups page open.
+- Steps:
+  1. Read the text in the "Backup Job Pipeline" section.
+- Expected result: The text states that live backup creation is not enabled yet.
+
+**TC-JOB-03: Section states no file is created from the screen**
+
+- Preconditions: Backups page open.
+- Steps:
+  1. Read the text in the "Backup Job Pipeline" section.
+- Expected result: The text contains "no file is created from this screen" (or equivalent).
+
+**TC-JOB-04: No enabled production backup-trigger button exists**
+
+- Preconditions: Backups page open.
+- Steps:
+  1. Inspect all buttons on the Backups page.
+  2. Look for any button labelled "Start Backup", "Run Backup", or "Create Backup".
+- Expected result: No such button is enabled. Any backup-trigger button present must be disabled.

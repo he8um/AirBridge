@@ -246,3 +246,65 @@ export interface PackageValidationReport {
   entryCount: number;
   manifestSummary?: PackageManifestSummary;
 }
+
+// ── Backup Job Orchestration ───────────────────────────────────────────────
+
+export type BackupJobStatus = "queued" | "running" | "succeeded" | "failed" | "cancelled";
+
+export type BackupJobPhase =
+  | "planning"
+  | "schema"
+  | "recordsExport"
+  | "packageBuild"
+  | "validation"
+  | "completed";
+
+export interface BackupJobWarning {
+  code: string;
+  message: string;
+  tableId?: string;
+}
+
+export interface BackupJobError {
+  code: string;
+  message: string;
+  recoverable: boolean;
+}
+
+export interface BackupJobTableResult {
+  tableId: string;
+  tableName: string;
+  recordCount: number;
+  pagesFetched: number;
+}
+
+export interface BackupJobPackageSummary {
+  packageId: string;
+  formatVersion: string;
+  tableCount: number;
+  recordCount: number;
+  entryCount: number;
+  checksumCount: number;
+  /** Always false in V0.1. */
+  encrypted: boolean;
+  attachmentPolicy: string;
+}
+
+export interface BackupJobValidationSummary {
+  status: PackageValidationStatus;
+  errorCount: number;
+  warningCount: number;
+  entryCount: number;
+}
+
+export interface BackupJobResult {
+  jobId: string;
+  status: BackupJobStatus;
+  baseId: string;
+  baseName: string;
+  tables: BackupJobTableResult[];
+  warnings: BackupJobWarning[];
+  errors: BackupJobError[];
+  packageSummary?: BackupJobPackageSummary;
+  validationSummary?: BackupJobValidationSummary;
+}

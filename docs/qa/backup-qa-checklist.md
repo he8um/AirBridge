@@ -176,3 +176,30 @@ These items cover the engine layer. All are verified by automated tests — no l
 - [ ] **429 maps to `RateLimited` error.** A mock 429 response causes `ExportEngineError::RateLimited`.
 - [ ] **No live export button in the UI.** The Backups page has no button that triggers a live Airtable export in V0.1.
 - [ ] **UI notice describes engine status.** The Package Format section states that the paginated record export engine is available but live backup creation is not enabled in the UI.
+
+---
+
+## Backup Job Orchestration (Internal)
+
+These items cover the job orchestration layer. All are verified by automated tests — no live API calls should be made during testing.
+
+- [ ] **Unit tests: all pass.** Run `cargo test --lib`. All unit tests pass with no failures.
+- [ ] **Integration tests: all pass.** Run `cargo test --test export_engine_integration`. All 3 integration tests pass.
+- [ ] **Frontend tests: all pass.** Run `npm --prefix apps/desktop run test`. All tests pass including `backupJobOrchestration.test.tsx`.
+- [ ] **Successful orchestration returns `succeeded` status.** A single-table mock run produces `BackupJobResult.status == "succeeded"`.
+- [ ] **Event order is correct.** Events emitted in order: `jobStarted` → `phaseStarted(planning)` → `phaseStarted(recordsExport)` → `tableExportStarted` → `tableExportCompleted` → `phaseStarted(packageBuild)` → `packageWriteStarted` → `packageWriteCompleted` → `phaseStarted(validation)` → `validationStarted` → `validationCompleted` → `phaseStarted(completed)` → `jobSucceeded`.
+- [ ] **All events carry `jobId`.** No event is missing the `jobId` field.
+- [ ] **No token in any event or result.** Search all serialised events and the result for any token sentinel string — none should appear.
+- [ ] **No absolute path in any event or result.** No event or result field contains `/Users/`, `/home/`, or any absolute path component.
+- [ ] **No attachment URL in any event or result.** No `https://` URL appears in any event or result.
+- [ ] **401 maps to `AUTH_FAILED`.** A mock 401 response produces `BackupJobResult` with `errors[0].code == "AUTH_FAILED"` and `recoverable == false`.
+- [ ] **403 maps to `PERMISSION_DENIED`.** A mock 403 response produces `errors[0].code == "PERMISSION_DENIED"`.
+- [ ] **429 maps to `RATE_LIMITED`.** A mock 429 response produces `errors[0].code == "RATE_LIMITED"` and `recoverable == true`.
+- [ ] **Cancellation before export emits `jobCancelled`.** Setting the cancellation token before `run()` produces a `JobCancelled` event with `atPhase: "planning"` and `BackupJobResult.status == "cancelled"`.
+- [ ] **Cancelled result has no `packageSummary`.** `packageSummary` and `validationSummary` are absent on a cancelled result.
+- [ ] **Package summary has `encrypted: false` for V0.1.** `BackupJobPackageSummary.encrypted` is always `false`.
+- [ ] **Package summary has `attachmentPolicy: "metadataOnly"`.** `BackupJobPackageSummary.attachmentPolicy` is `"metadataOnly"`.
+- [ ] **UI section "Backup Job Pipeline" is visible.** The Backups page shows the pipeline readiness notice.
+- [ ] **UI states live backup creation is not enabled.** The section contains copy matching "live backup creation … not enabled yet".
+- [ ] **UI states no file is created from the screen.** The section contains copy matching "no file is created from this screen".
+- [ ] **No enabled production backup-trigger button.** There is no enabled button matching "start backup", "run backup", or "create backup" on the Backups page.

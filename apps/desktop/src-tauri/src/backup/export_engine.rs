@@ -65,6 +65,7 @@ impl From<AirtableClientError> for ExportEngineError {
 }
 
 /// Describes a single table to be exported.
+#[derive(Debug, Clone)]
 pub struct TableExportSpec {
     pub table_id: String,
     pub table_name: String,

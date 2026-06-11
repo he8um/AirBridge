@@ -112,9 +112,13 @@ Packages are **only written to `tempfile::tempdir()`** — never to user-selecte
 - Generated `.airbridge` files are never committed to the repository.
 - No UI production export flow in V0.1.
 
+## Orchestrator Integration
+
+`run_export()` is called by `BackupJobOrchestrator` in `backup/job_orchestrator.rs`. The orchestrator wraps it in the full pipeline (planning → export → package write → validation) and maps `ExportEngineError` variants to job error codes. See `docs/architecture/backup-job-orchestration.md` for the full pipeline design.
+
 ## Future Path
 
-- Wire `run_export()` into a Tauri command (behind a flag) in a future session.
-- Add retry logic for `RateLimited` responses.
+- Wire `BackupJobOrchestrator` into a Tauri command in a future session.
+- Add retry logic for `RateLimited` responses inside the orchestrator.
 - Implement `AttachmentPolicy::Download` for full attachment download in a later phase.
-- Add progress event emission via Tauri events for UI progress tracking.
+- Propagate cancellation into the export page loop level.

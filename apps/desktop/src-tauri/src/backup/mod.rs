@@ -1,4 +1,5 @@
 pub mod attachments;
+pub mod cancellation;
 pub mod checkpoints;
 pub mod checksums;
 pub mod estimates;
@@ -7,6 +8,10 @@ pub mod export_paths;
 pub mod export_plan;
 pub mod export_result;
 pub mod format;
+pub mod job;
+pub mod job_events;
+pub mod job_orchestrator;
+pub mod job_result;
 pub mod linked_records;
 pub mod manifest;
 pub mod package;
