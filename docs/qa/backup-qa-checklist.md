@@ -155,3 +155,24 @@ These items cover the records export planning layer. No live records are fetched
 - [ ] **`plannedOnly` is true in the Tauri command response.** Inspect the JSON returned by `create_records_export_plan` and confirm `plannedOnly: true`.
 - [ ] **`outputPackagePath` is absent in the response.** The plan JSON does not contain an `outputPackagePath` key.
 - [ ] **No token appears in export plan output.** Inspect the plan JSON and confirm no token string is present.
+
+---
+
+## Paginated Record Export Engine (Internal)
+
+These items cover the engine layer. All are verified by automated tests — no live API calls should be made during testing.
+
+- [ ] **Unit tests: all pass.** Run `cargo test --lib`. All 317+ unit tests pass with no failures.
+- [ ] **Integration tests: all pass.** Run `cargo test --test export_engine_integration`. All 3 integration tests pass.
+- [ ] **Two-page pagination accumulates all records.** The engine correctly follows the `offset` cursor across pages and accumulates all records from both pages.
+- [ ] **Linked record references are extracted.** For a table with a `multipleRecordLinks` field, linked record IDs appear in the `linked-records.jsonl` bytes.
+- [ ] **Attachment metadata is extracted without URLs.** For a table with a `multipleAttachments` field, `filename` and `urlPresent` appear in the metadata, but no `https://` URL is stored.
+- [ ] **`urlPresent: true` recorded when API returned a URL.** Even though the URL is discarded, the flag is set so future phases know which records had downloadable files.
+- [ ] **Integration test package validates as `Valid`.** The package written by the integration test passes `validate_package()` with `status: Valid`.
+- [ ] **Package is written to tempdir only.** No `.airbridge` file is written outside `tempfile::tempdir()` in tests.
+- [ ] **No token sentinel in any output.** JSONL lines, linked-records bytes, and attachment-metadata bytes do not contain the test token sentinel.
+- [ ] **No absolute filesystem paths in JSONL.** Record JSONL lines do not contain `/Users/` or any absolute path component.
+- [ ] **401 maps to `InvalidToken` error.** A mock 401 response causes `ExportEngineError::InvalidToken`.
+- [ ] **429 maps to `RateLimited` error.** A mock 429 response causes `ExportEngineError::RateLimited`.
+- [ ] **No live export button in the UI.** The Backups page has no button that triggers a live Airtable export in V0.1.
+- [ ] **UI notice describes engine status.** The Package Format section states that the paginated record export engine is available but live backup creation is not enabled in the UI.

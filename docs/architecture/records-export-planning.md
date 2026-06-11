@@ -2,7 +2,7 @@
 
 ## Status
 
-Planning layer implemented. No live record fetching. No package writing.
+Planning layer implemented. No live record fetching. No package writing. See [paginated-record-export-engine.md](paginated-record-export-engine.md) for the engine that executes the plan.
 
 ## Overview
 
@@ -119,8 +119,8 @@ Defined in `src/backend/types.ts`:
 
 ## Future path
 
-1. Add live record pagination via Airtable API (uses existing `pagination.rs` and `records.rs`)
-2. Write JSONL lines per page into `PackageInput.tables`
-3. Wire `PackageInput` into `write_package` to produce a real `.airbridge` file
+1. ~~Add live record pagination via Airtable API~~ — done in `backup/export_engine.rs`
+2. ~~Write JSONL lines per page into `PackageInput.tables`~~ — done via `backup/record_jsonl.rs` and `backup/export_result.rs`
+3. Wire `PackageInput` into `write_package` to produce a real `.airbridge` file — engine integration test covers this in tempdir
 4. Resume from checkpoint if export is interrupted
-5. Validate the written package using the existing `validate_package` function
+5. Wire the engine into a Tauri command for UI-driven export

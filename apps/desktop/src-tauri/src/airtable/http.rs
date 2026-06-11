@@ -122,6 +122,40 @@ impl HttpTransport for MockHttpTransport {
     }
 }
 
+/// Sequential mock that returns a different response for each successive call.
+///
+/// Useful for testing pagination loops where each page returns a distinct body.
+/// Once all pre-loaded responses are consumed, subsequent calls return the last
+/// configured response.
+pub struct SequentialMockTransport {
+    responses: std::sync::Mutex<std::collections::VecDeque<HttpResponse>>,
+}
+
+impl SequentialMockTransport {
+    /// Build from a vec of `(status, body)` tuples.
+    pub fn new(responses: Vec<(u16, &str)>) -> Self {
+        let deque = responses
+            .into_iter()
+            .map(|(s, b)| HttpResponse::with_status(s, b))
+            .collect();
+        SequentialMockTransport {
+            responses: std::sync::Mutex::new(deque),
+        }
+    }
+}
+
+impl HttpTransport for SequentialMockTransport {
+    fn send(&self, _request: HttpRequest) -> Result<HttpResponse, String> {
+        let mut q = self.responses.lock().unwrap();
+        let resp = if q.len() == 1 {
+            q.front().cloned().unwrap()
+        } else {
+            q.pop_front().unwrap_or_else(|| HttpResponse::ok("{}"))
+        };
+        Ok(resp)
+    }
+}
+
 // ── Reqwest (live) transport ───────────────────────────────────────────────
 
 /// HTTP transport backed by a blocking reqwest client.

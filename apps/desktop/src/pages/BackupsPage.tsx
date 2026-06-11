@@ -737,14 +737,15 @@ export function BackupsPage({ service = liveAirBridgeService }: BackupsPageProps
           <div className="card notice-neutral" style={{ maxWidth: 560 }}>
             <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-3)" }}>
               <p style={{ fontSize: "var(--text-sm)", margin: 0, fontWeight: 500 }}>
-                .airbridge package format — foundation ready
+                .airbridge package format — record export engine foundation available
               </p>
               <p
                 style={{ fontSize: "var(--text-sm)", color: "var(--color-text-muted)", margin: 0 }}
               >
-                The package writer, reader, and validator are implemented and tested. Backup files
-                are not yet created from the UI. Live export will be enabled in a future release
-                once the record export engine is connected to this package format.
+                The paginated record export engine is implemented and tested with mocked HTTP
+                transport. The package writer, reader, and validator are also implemented. Live
+                backup creation is not enabled in the UI yet — it will be wired up in a future
+                release.
               </p>
               <ul
                 style={{
