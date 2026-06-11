@@ -127,3 +127,31 @@ These items cover the package format foundation added in V0.1. The writer and va
 - [ ] **Validator returns `invalid` for an unsupported format version.** Change `formatVersion` in manifest to `"99.0.0"` and confirm the validator reports `UNSUPPORTED_FORMAT_VERSION`.
 - [ ] **JSONL records are preserved line-by-line.** Open `tables/<id>/records.jsonl` and confirm each line is a valid JSON object with an `id` field.
 - [ ] **Attachment metadata-only policy is documented.** `security.containsAttachmentUrls` is `false` in a V0.1 package; attachment file content is not present.
+
+
+---
+
+## Records Export Planning (Dry-Run)
+
+These items cover the records export planning layer. No live records are fetched and no package files are written.
+
+- [ ] **"Records Export Plan" section is visible on the Backups page.** The section appears below the Backup Planning section.
+- [ ] **"Generate Records Export Plan" button appears.** The button is present and disabled until a backup plan has been generated.
+- [ ] **Button becomes enabled after a backup plan is generated.** Once the Backup Planning section produces a plan, the export plan button is enabled.
+- [ ] **Generated plan shows table count.** The plan result shows the number of tables included.
+- [ ] **Known record count is displayed.** If a table has a known record count, it is shown in the table export plan row.
+- [ ] **Unknown record count is shown as "unknown".** Tables without a known record count display "unknown" for the record count.
+- [ ] **Estimated page count is shown for known counts.** For a table with 250 records and page size 100, the estimate shows "~3 pages".
+- [ ] **Unknown page estimate shown for unknown counts.** Tables without record counts show "unknown" for estimated pages.
+- [ ] **JSONL output entry path is shown.** Each table shows the target archive path (e.g. `tables/tblAbc01/records.jsonl`).
+- [ ] **JSONL entry path contains no absolute filesystem path.** The path does not start with `/` or contain `Users/` or `home/`.
+- [ ] **Linked record extraction policy is shown.** Tables with linked record fields show the `remappingRequiredForRestore` policy.
+- [ ] **Attachment metadata policy is shown.** Tables with attachment fields show the `metadataOnly` policy.
+- [ ] **UNKNOWN_RECORD_COUNT warning appears.** Tables without known record counts show a warning with code `UNKNOWN_RECORD_COUNT`.
+- [ ] **ATTACHMENT_METADATA_ONLY warning appears.** Tables with attachment fields show a warning with code `ATTACHMENT_METADATA_ONLY`.
+- [ ] **LINKED_RECORD_REMAPPING warning appears.** Tables with linked record fields show a warning with code `LINKED_RECORD_REMAPPING`.
+- [ ] **"No records have been fetched" notice is visible.** The notice is clearly displayed in the plan result.
+- [ ] **"No backup file has been written" notice is visible.** The planning-only status is explicitly communicated.
+- [ ] **`plannedOnly` is true in the Tauri command response.** Inspect the JSON returned by `create_records_export_plan` and confirm `plannedOnly: true`.
+- [ ] **`outputPackagePath` is absent in the response.** The plan JSON does not contain an `outputPackagePath` key.
+- [ ] **No token appears in export plan output.** Inspect the plan JSON and confirm no token string is present.

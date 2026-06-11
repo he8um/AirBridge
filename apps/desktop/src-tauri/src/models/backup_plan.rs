@@ -19,14 +19,14 @@ pub enum WarningSeverity {
 }
 
 /// Policy for attachment fields in V0.1.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum AttachmentPolicy {
     MetadataOnly,
 }
 
 /// Policy for linked record fields.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum LinkedRecordPolicy {
     ReferencesCaptured,

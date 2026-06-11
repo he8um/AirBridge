@@ -1,4 +1,6 @@
 use crate::airtable::models::{AirtableField, AirtableFieldId, AirtableTable, AirtableTableId};
+use crate::backup::estimates::DEFAULT_PAGE_SIZE;
+use crate::backup::export_plan::{create_export_plan, RecordsExportPlan, RecordsExportPlanRequest};
 use crate::backup::planner::create_plan;
 use crate::errors::AirBridgeResult;
 use crate::models::backup::{BackupPackageSummary, BackupScope, BackupStatus};
@@ -97,12 +99,46 @@ pub fn create_backup_plan(request: BackupPlanRequest) -> AirBridgeResult<BackupP
     Ok(plan)
 }
 
+/// Generates a records export plan from a backup plan.
+///
+/// No token required. No live Airtable calls. No file writes.
+/// The plan describes how records would be exported — it does not export them.
+#[tauri::command]
+pub fn create_records_export_plan(
+    request: RecordsExportPlanRequest,
+) -> AirBridgeResult<RecordsExportPlan> {
+    let record_counts: Vec<Option<usize>> = request
+        .backup_plan
+        .tables
+        .iter()
+        .map(|t| t.record_count)
+        .collect();
+
+    let plan = create_export_plan(
+        &request.base_id,
+        &request.base_name,
+        &request.backup_plan,
+        &record_counts,
+        DEFAULT_PAGE_SIZE,
+    );
+
+    Ok(plan)
+}
+
 // ── Unit-testable helpers ──────────────────────────────────────────────────
 
-/// For testing: build a plan directly without Tauri IPC overhead.
+/// For testing: build a backup plan directly without Tauri IPC overhead.
 #[cfg(test)]
 pub fn create_backup_plan_direct(request: BackupPlanRequest) -> AirBridgeResult<BackupPlan> {
     create_backup_plan(request)
+}
+
+/// For testing: build a records export plan directly without Tauri IPC overhead.
+#[cfg(test)]
+pub fn create_records_export_plan_direct(
+    request: RecordsExportPlanRequest,
+) -> AirBridgeResult<RecordsExportPlan> {
+    create_records_export_plan(request)
 }
 
 #[cfg(test)]
@@ -254,5 +290,81 @@ mod tests {
             plan.estimate.record_read_pages,
             RecordReadEstimate::Known(3)
         );
+    }
+
+    // ── Records export plan command tests ──────────────────────────────────
+
+    fn make_export_request(tables: Vec<BackupPlanTableInput>) -> RecordsExportPlanRequest {
+        let backup_plan = create_backup_plan_direct(make_request(tables)).expect("backup plan");
+        RecordsExportPlanRequest {
+            base_id: "appExampleBase01".to_string(),
+            base_name: "Example Base".to_string(),
+            backup_plan,
+        }
+    }
+
+    #[test]
+    fn export_plan_command_returns_planned_only() {
+        let req = make_export_request(vec![simple_table(
+            "tbl01",
+            "T",
+            vec![field_input("f01", "Name", "singleLineText")],
+        )]);
+        let ep = create_records_export_plan_direct(req).expect("should succeed");
+        assert!(ep.planned_only);
+    }
+
+    #[test]
+    fn export_plan_command_returns_no_output_path() {
+        let req = make_export_request(vec![simple_table(
+            "tbl01",
+            "T",
+            vec![field_input("f01", "Name", "singleLineText")],
+        )]);
+        let ep = create_records_export_plan_direct(req).expect("should succeed");
+        assert!(ep.output_package_path.is_none());
+    }
+
+    #[test]
+    fn export_plan_command_does_not_contain_token_sentinel() {
+        const SENTINEL: &str = "pat_export_cmd_test_sentinel_0123456789";
+        let req = make_export_request(vec![simple_table(
+            "tbl01",
+            "T",
+            vec![field_input("f01", "Name", "singleLineText")],
+        )]);
+        let ep = create_records_export_plan_direct(req).expect("should succeed");
+        let json = serde_json::to_string(&ep).expect("serialize");
+        assert!(!json.contains(SENTINEL));
+    }
+
+    #[test]
+    fn export_plan_command_includes_all_tables() {
+        let req = make_export_request(vec![
+            simple_table(
+                "tbl01",
+                "Projects",
+                vec![field_input("f01", "Name", "singleLineText")],
+            ),
+            simple_table(
+                "tbl02",
+                "Tasks",
+                vec![field_input("f02", "Title", "singleLineText")],
+            ),
+        ]);
+        let ep = create_records_export_plan_direct(req).expect("should succeed");
+        assert_eq!(ep.table_count, 2);
+    }
+
+    #[test]
+    fn export_plan_command_unknown_count_when_not_provided() {
+        use crate::backup::export_plan::RequestEstimate;
+        let req = make_export_request(vec![simple_table(
+            "tbl01",
+            "T",
+            vec![field_input("f01", "Name", "singleLineText")],
+        )]);
+        let ep = create_records_export_plan_direct(req).expect("should succeed");
+        assert_eq!(ep.tables[0].request_estimate, RequestEstimate::Unknown);
     }
 }

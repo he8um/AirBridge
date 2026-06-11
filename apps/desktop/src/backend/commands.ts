@@ -5,6 +5,8 @@ import type {
   BackupPlanRequest,
   BaseSchemaSummary,
   ConnectionCheckResult,
+  RecordsExportPlan,
+  RecordsExportPlanRequest,
 } from "./types";
 import type { AirtableWorkspace, AirtableBaseSummary } from "../domain/airtable";
 import type { BackupPackageSummary } from "../domain/backup";
@@ -76,4 +78,10 @@ export async function getBaseSchema(
 
 export async function createBackupPlan(request: BackupPlanRequest): Promise<BackupPlan | null> {
   return safeInvoke<BackupPlan>("create_backup_plan", { request });
+}
+
+export async function createRecordsExportPlan(
+  request: RecordsExportPlanRequest,
+): Promise<RecordsExportPlan | null> {
+  return safeInvoke<RecordsExportPlan>("create_records_export_plan", { request });
 }

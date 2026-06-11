@@ -151,6 +151,74 @@ export interface BackupPlan {
   outputPackagePath?: string;
 }
 
+// Records export planning types (mirrors Rust backup::export_plan)
+
+export type RecordCountState = { type: "known"; count: number } | { type: "unknown" };
+
+export type RequestEstimate = { type: "known"; pages: number } | { type: "unknown" };
+
+export interface JsonlOutputPlan {
+  entryPath: string;
+  plannedOnly: boolean;
+}
+
+export interface LinkedRecordExtractionPlan {
+  fieldId: string;
+  fieldName: string;
+  policy: LinkedRecordPolicy;
+  restoreNote: string;
+}
+
+export interface AttachmentMetadataExtractionPlan {
+  fieldId: string;
+  fieldName: string;
+  policy: AttachmentPolicy;
+  contentNote: string;
+}
+
+export interface FieldExtractionPlan {
+  fieldId: string;
+  fieldName: string;
+  fieldType: string;
+  compatibility: "restorable" | "metadataOnly" | "unknown";
+  linkedRecordPlan?: LinkedRecordExtractionPlan;
+  attachmentPlan?: AttachmentMetadataExtractionPlan;
+}
+
+export interface TableExportPlan {
+  tableId: string;
+  tableName: string;
+  recordCount: RecordCountState;
+  requestEstimate: RequestEstimate;
+  pageSize: number;
+  jsonlOutput: JsonlOutputPlan;
+  tableMetadataPath: string;
+  fieldsMetadataPath: string;
+  fields: FieldExtractionPlan[];
+  linkedRecordPlans: LinkedRecordExtractionPlan[];
+  attachmentPlans: AttachmentMetadataExtractionPlan[];
+  warnings: BackupPlanWarning[];
+}
+
+export interface RecordsExportPlan {
+  baseId: string;
+  baseName: string;
+  tableCount: number;
+  pageSize: number;
+  tables: TableExportPlan[];
+  warnings: BackupPlanWarning[];
+  /** Always true — no records have been fetched and no file has been written. */
+  plannedOnly: boolean;
+  /** Always absent — no output file is written at planning time. */
+  outputPackagePath?: string;
+}
+
+export interface RecordsExportPlanRequest {
+  baseId: string;
+  baseName: string;
+  backupPlan: BackupPlan;
+}
+
 // Package format validation types (mirrors Rust backup::validation)
 
 export type PackageValidationStatus = "valid" | "invalid" | "warning";

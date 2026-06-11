@@ -13,7 +13,11 @@ import type {
   BackupPlanRequest,
   BackupPlanWarning,
   BaseSchemaSummary,
+  RecordCountState,
   RecordReadEstimate,
+  RecordsExportPlan,
+  RecordsExportPlanRequest,
+  RequestEstimate,
 } from "../backend/types";
 
 const SCOPE_OPTIONS = [
@@ -60,6 +64,228 @@ function warningSeverityStyle(sev: BackupPlanWarning["severity"]): React.CSSProp
     default:
       return { color: "var(--color-text-muted)" };
   }
+}
+
+function formatRecordCount(state: RecordCountState): string {
+  if (state.type === "known") return state.count.toLocaleString();
+  return "unknown";
+}
+
+function formatRequestEstimate(est: RequestEstimate): string {
+  if (est.type === "known") return `~${est.pages} page${est.pages === 1 ? "" : "s"}`;
+  return "unknown";
+}
+
+function RecordsExportPlanResult({ plan }: { plan: RecordsExportPlan }) {
+  return (
+    <div
+      style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}
+      aria-label="Records export plan result"
+    >
+      {/* Planning-only notice */}
+      <div
+        className="card notice-neutral"
+        style={{ padding: "var(--space-3) var(--space-4)" }}
+        role="status"
+        aria-live="polite"
+      >
+        <p style={{ fontSize: "var(--text-sm)", color: "var(--color-text-muted)", margin: 0 }}>
+          No records have been fetched and no backup file has been written. This is a planning
+          summary only.
+        </p>
+      </div>
+
+      {/* Summary row */}
+      <div
+        style={{
+          display: "flex",
+          flexWrap: "wrap",
+          gap: "var(--space-4)",
+          fontSize: "var(--text-sm)",
+        }}
+      >
+        <span>
+          <strong>{plan.tableCount}</strong> {plan.tableCount === 1 ? "table" : "tables"}
+        </span>
+        <span>Page size: {plan.pageSize}</span>
+      </div>
+
+      {/* Warnings */}
+      {plan.warnings.length > 0 && (
+        <div>
+          <p
+            style={{
+              fontSize: "var(--text-xs)",
+              fontWeight: 600,
+              textTransform: "uppercase",
+              letterSpacing: "0.05em",
+              color: "var(--color-text-muted)",
+              margin: "0 0 var(--space-2) 0",
+            }}
+          >
+            Notices
+          </p>
+          <ul
+            style={{
+              listStyle: "none",
+              margin: 0,
+              padding: 0,
+              display: "flex",
+              flexDirection: "column",
+              gap: "var(--space-2)",
+            }}
+            aria-label="Export plan notices"
+          >
+            {plan.warnings.map((w, i) => (
+              <li
+                key={i}
+                style={{ fontSize: "var(--text-sm)", ...warningSeverityStyle(w.severity) }}
+              >
+                <span style={{ fontWeight: 500 }}>{w.code}</span>
+                {w.tableName && (
+                  <span style={{ color: "var(--color-text-muted)" }}> · {w.tableName}</span>
+                )}
+                {": "}
+                {w.message}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* Per-table breakdown */}
+      {plan.tables.length > 0 && (
+        <div>
+          <p
+            style={{
+              fontSize: "var(--text-xs)",
+              fontWeight: 600,
+              textTransform: "uppercase",
+              letterSpacing: "0.05em",
+              color: "var(--color-text-muted)",
+              margin: "0 0 var(--space-2) 0",
+            }}
+          >
+            Table export plans
+          </p>
+          <div
+            className="card"
+            style={{ padding: 0, overflow: "hidden" }}
+            aria-label="Table export plans"
+          >
+            <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>
+              {plan.tables.map((t, idx) => (
+                <li
+                  key={t.tableId}
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "var(--space-1)",
+                    padding: "var(--space-3) var(--space-4)",
+                    borderBottom:
+                      idx < plan.tables.length - 1 ? "1px solid var(--color-border)" : "none",
+                  }}
+                >
+                  <span style={{ fontSize: "var(--text-sm)", fontWeight: 500 }}>{t.tableName}</span>
+                  <span style={{ fontSize: "var(--text-xs)", color: "var(--color-text-muted)" }}>
+                    Records: {formatRecordCount(t.recordCount)}
+                    {" · "}
+                    Estimated pages: {formatRequestEstimate(t.requestEstimate)}
+                  </span>
+                  <span
+                    style={{
+                      fontSize: "var(--text-xs)",
+                      color: "var(--color-text-muted)",
+                      fontFamily: "var(--font-mono)",
+                    }}
+                  >
+                    {t.jsonlOutput.entryPath}
+                  </span>
+                  {t.linkedRecordPlans.length > 0 && (
+                    <span style={{ fontSize: "var(--text-xs)", color: "var(--color-text-muted)" }}>
+                      Linked record extraction: {t.linkedRecordPlans[0].policy}
+                    </span>
+                  )}
+                  {t.attachmentPlans.length > 0 && (
+                    <span style={{ fontSize: "var(--text-xs)", color: "var(--color-text-muted)" }}>
+                      Attachment extraction: {t.attachmentPlans[0].policy}
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+interface RecordsExportPlanCardProps {
+  backupPlan: BackupPlan | null;
+  service: AirBridgeService;
+}
+
+function RecordsExportPlanCard({ backupPlan, service }: RecordsExportPlanCardProps) {
+  const [exportPlan, setExportPlan] = useState<RecordsExportPlan | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const canGenerate = backupPlan !== null && !loading;
+
+  async function handleGenerate() {
+    if (!backupPlan) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const request: RecordsExportPlanRequest = {
+        baseId: backupPlan.baseId,
+        baseName: backupPlan.baseName,
+        backupPlan,
+      };
+      const result = await service.createRecordsExportPlan(request);
+      setExportPlan(result);
+    } catch {
+      setError("Failed to generate records export plan.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="card" style={{ maxWidth: 560 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-5)" }}>
+        {!backupPlan && (
+          <p style={{ fontSize: "var(--text-sm)", color: "var(--color-text-muted)", margin: 0 }}>
+            Generate a backup plan above first, then generate the records export plan here.
+          </p>
+        )}
+
+        {error && (
+          <p
+            style={{ fontSize: "var(--text-sm)", color: "var(--color-error, #c0392b)", margin: 0 }}
+            role="alert"
+          >
+            {error}
+          </p>
+        )}
+
+        <div>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={handleGenerate}
+            disabled={!canGenerate}
+            aria-label="Generate records export plan"
+          >
+            {loading ? "Generating…" : "Generate Records Export Plan"}
+          </button>
+        </div>
+
+        {exportPlan && <RecordsExportPlanResult plan={exportPlan} />}
+      </div>
+    </div>
+  );
 }
 
 function BaseCatalogCard({ bases }: { bases: AirtableBaseSummary[] }) {
@@ -281,9 +507,14 @@ function BackupPlanResult({ plan }: { plan: BackupPlan }) {
 interface BackupPlanningCardProps {
   accessibleBases: AccessibleBaseSummary[];
   service: AirBridgeService;
+  onPlanGenerated?: (plan: BackupPlan | null) => void;
 }
 
-function BackupPlanningCard({ accessibleBases, service }: BackupPlanningCardProps) {
+function BackupPlanningCard({
+  accessibleBases,
+  service,
+  onPlanGenerated,
+}: BackupPlanningCardProps) {
   const [selectedBaseId, setSelectedBaseId] = useState("");
   const [schema, setSchema] = useState<BaseSchemaSummary | null>(null);
   const [schemaLoading, setSchemaLoading] = useState(false);
@@ -300,6 +531,7 @@ function BackupPlanningCard({ accessibleBases, service }: BackupPlanningCardProp
     setSchemaError(null);
     setPlan(null);
     setPlanError(null);
+    onPlanGenerated?.(null);
   }
 
   async function handleLoadSchema() {
@@ -345,6 +577,7 @@ function BackupPlanningCard({ accessibleBases, service }: BackupPlanningCardProp
       };
       const result = await service.createBackupPlan(request);
       setPlan(result);
+      onPlanGenerated?.(result);
     } catch {
       setPlanError("Failed to generate backup plan.");
     } finally {
@@ -474,6 +707,7 @@ interface BackupsPageProps {
 
 export function BackupsPage({ service = liveAirBridgeService }: BackupsPageProps) {
   const { recentBackups, state } = useAppState();
+  const [generatedBackupPlan, setGeneratedBackupPlan] = useState<BackupPlan | null>(null);
 
   const bases = state.bases;
   const accessibleBases: AccessibleBaseSummary[] = bases.map((b) => ({ id: b.id, name: b.name }));
@@ -484,7 +718,17 @@ export function BackupsPage({ service = liveAirBridgeService }: BackupsPageProps
         {/* Backup Planning section */}
         <section aria-labelledby="backup-plan-heading">
           <SectionHeader title="Backup Planning" />
-          <BackupPlanningCard accessibleBases={accessibleBases} service={service} />
+          <BackupPlanningCard
+            accessibleBases={accessibleBases}
+            service={service}
+            onPlanGenerated={setGeneratedBackupPlan}
+          />
+        </section>
+
+        {/* Records Export Plan section */}
+        <section aria-labelledby="records-export-plan-heading">
+          <SectionHeader title="Records Export Plan" />
+          <RecordsExportPlanCard backupPlan={generatedBackupPlan} service={service} />
         </section>
 
         {/* Package Format section */}

@@ -11,6 +11,8 @@ import type {
   BackupPlanRequest,
   BaseSchemaSummary,
   ConnectionCheckResult,
+  RecordsExportPlan,
+  RecordsExportPlanRequest,
 } from "../backend/types";
 import type { AirBridgeService } from "./airBridgeService";
 import * as commands from "../backend/commands";
@@ -102,6 +104,24 @@ async function getBaseSchema(input: { token: string; baseId: string }): Promise<
   return result;
 }
 
+async function createRecordsExportPlan(
+  request: RecordsExportPlanRequest,
+): Promise<RecordsExportPlan> {
+  const result = await commands.createRecordsExportPlan(request);
+  if (result === null) {
+    return {
+      baseId: request.baseId,
+      baseName: request.baseName,
+      tableCount: 0,
+      pageSize: 100,
+      tables: [],
+      warnings: [],
+      plannedOnly: true,
+    };
+  }
+  return result;
+}
+
 async function createBackupPlan(request: BackupPlanRequest): Promise<BackupPlan> {
   const result = await commands.createBackupPlan(request);
   if (result === null) {
@@ -139,4 +159,5 @@ export const liveAirBridgeService: AirBridgeService = {
   listAccessibleBases,
   getBaseSchema,
   createBackupPlan,
+  createRecordsExportPlan,
 };

@@ -11,6 +11,8 @@ import type {
   BackupPlanRequest,
   BaseSchemaSummary,
   ConnectionCheckResult,
+  RecordsExportPlan,
+  RecordsExportPlanRequest,
 } from "../backend/types";
 
 export interface AirBridgeService {
@@ -26,4 +28,5 @@ export interface AirBridgeService {
   listAccessibleBases(input: { token: string }): Promise<AccessibleBaseSummary[]>;
   getBaseSchema(input: { token: string; baseId: string }): Promise<BaseSchemaSummary>;
   createBackupPlan(request: BackupPlanRequest): Promise<BackupPlan>;
+  createRecordsExportPlan(request: RecordsExportPlanRequest): Promise<RecordsExportPlan>;
 }

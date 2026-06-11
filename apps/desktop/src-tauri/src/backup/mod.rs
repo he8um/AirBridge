@@ -1,9 +1,13 @@
+pub mod checkpoints;
 pub mod checksums;
 pub mod estimates;
+pub mod export_paths;
+pub mod export_plan;
 pub mod format;
 pub mod manifest;
 pub mod package;
 pub mod planner;
+pub mod progress;
 pub mod reader;
 pub mod validation;
 pub mod warnings;

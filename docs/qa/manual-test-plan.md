@@ -302,3 +302,61 @@ Before executing this plan:
   1. Open DevTools (if available) and inspect the IPC response from `create_backup_plan`.
   2. Search the response JSON for the token string.
 - Expected result: The token string does not appear anywhere in the plan JSON.
+
+---
+
+## Records Export Planning
+
+**TC-EXPORT-01: Records export plan section is visible**
+
+- Preconditions: The Backups page loads without error.
+- Steps:
+  1. Open the Backups page.
+  2. Locate the "Records Export Plan" section.
+- Expected result: The section and "Generate Records Export Plan" button are visible. The button is disabled before a backup plan is generated.
+
+**TC-EXPORT-02: Button enabled after backup plan generated**
+
+- Preconditions: TC-PLAN-03 passed (backup plan generated).
+- Steps:
+  1. Generate a backup plan in the Backup Planning section.
+  2. Observe the "Generate Records Export Plan" button.
+- Expected result: The button becomes enabled after the backup plan is available.
+
+**TC-EXPORT-03: Export plan shows known and unknown record counts**
+
+- Preconditions: A backup plan exists with at least one table having a known record count and one with an unknown count.
+- Steps:
+  1. Generate a records export plan.
+  2. Inspect the table rows in the result.
+- Expected result: Known counts display the numeric value; unknown counts display "unknown".
+
+**TC-EXPORT-04: Export plan shows estimated page count for known count**
+
+- Preconditions: A backup plan has a table with a known record count (e.g. 250).
+- Steps:
+  1. Generate a records export plan.
+  2. Read the estimated pages for that table.
+- Expected result: The estimate shows 3 pages for 250 records at page size 100.
+
+**TC-EXPORT-05: JSONL output path is shown and is relative**
+
+- Preconditions: A records export plan has been generated.
+- Steps:
+  1. Inspect each table row's output path.
+- Expected result: The path format is `tables/{tableId}/records.jsonl`. No leading `/`. No `Users/` or `home/` components.
+
+**TC-EXPORT-06: Linked record and attachment policies are shown**
+
+- Preconditions: The backup plan includes tables with linked record and attachment fields.
+- Steps:
+  1. Generate a records export plan.
+  2. Inspect the table rows for policy labels.
+- Expected result: Linked record tables show `remappingRequiredForRestore`. Attachment tables show `metadataOnly`.
+
+**TC-EXPORT-07: Planning-only notice is displayed**
+
+- Preconditions: A records export plan has been generated.
+- Steps:
+  1. Read the notice text at the top of the plan result.
+- Expected result: The notice states that no records have been fetched and no backup file has been written.

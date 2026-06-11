@@ -35,6 +35,7 @@ pub fn run() {
             commands::catalog::get_base_schema,
             commands::backup::list_backup_packages,
             commands::backup::create_backup_plan,
+            commands::backup::create_records_export_plan,
             commands::restore::list_restore_plans,
             commands::reports::list_reports,
             commands::logs::list_logs,

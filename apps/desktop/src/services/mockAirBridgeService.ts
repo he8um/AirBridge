@@ -11,6 +11,9 @@ import type {
   BackupPlanRequest,
   BaseSchemaSummary,
   ConnectionCheckResult,
+  RecordsExportPlan,
+  RecordsExportPlanRequest,
+  TableExportPlan,
 } from "../backend/types";
 import type { AirBridgeService } from "./airBridgeService";
 import { MOCK_STATE } from "../state/mockState";
@@ -306,6 +309,131 @@ function createBackupPlanImpl(request: BackupPlanRequest): Promise<BackupPlan> {
   });
 }
 
+function createRecordsExportPlanImpl(
+  request: RecordsExportPlanRequest,
+): Promise<RecordsExportPlan> {
+  const PAGE_SIZE = 100;
+
+  const tablePlans: TableExportPlan[] = request.backupPlan.tables.map((t) => {
+    const recordCount =
+      t.recordCount != null
+        ? { type: "known" as const, count: t.recordCount }
+        : { type: "unknown" as const };
+
+    const requestEstimate =
+      recordCount.type === "known"
+        ? {
+            type: "known" as const,
+            pages: recordCount.count === 0 ? 1 : Math.ceil(recordCount.count / PAGE_SIZE),
+          }
+        : { type: "unknown" as const };
+
+    const linkedRecordPlans = t.fields
+      .filter((f) => f.fieldType === "multipleRecordLinks")
+      .map((f) => ({
+        fieldId: f.id,
+        fieldName: f.name,
+        policy: "remappingRequiredForRestore" as const,
+        restoreNote: "Record ID references are captured. Restore requires ID remapping.",
+      }));
+
+    const attachmentPlans = t.fields
+      .filter((f) => f.fieldType === "multipleAttachments")
+      .map((f) => ({
+        fieldId: f.id,
+        fieldName: f.name,
+        policy: "metadataOnly" as const,
+        contentNote:
+          "Attachment file content is not exported. Only metadata (filename, URL, size) is captured.",
+      }));
+
+    const warnings: RecordsExportPlan["warnings"] = [];
+    if (recordCount.type === "unknown") {
+      warnings.push({
+        severity: "warning",
+        code: "UNKNOWN_RECORD_COUNT",
+        message: "Record count is unknown. Actual pages will be determined at export time.",
+        tableName: t.name,
+      });
+    }
+    if (attachmentPlans.length > 0) {
+      warnings.push({
+        severity: "warning",
+        code: "ATTACHMENT_METADATA_ONLY",
+        message: "Attachment fields detected — only metadata will be exported, not file content.",
+        tableName: t.name,
+      });
+    }
+    if (linkedRecordPlans.length > 0) {
+      warnings.push({
+        severity: "warning",
+        code: "LINKED_RECORD_REMAPPING",
+        message: "Linked record references are captured. Restore will require ID remapping.",
+        tableName: t.name,
+      });
+    }
+
+    return {
+      tableId: t.id,
+      tableName: t.name,
+      recordCount,
+      requestEstimate,
+      pageSize: PAGE_SIZE,
+      jsonlOutput: {
+        entryPath: `tables/${t.id}/records.jsonl`,
+        plannedOnly: true,
+      },
+      tableMetadataPath: `tables/${t.id}/table.json`,
+      fieldsMetadataPath: `tables/${t.id}/fields.json`,
+      fields: t.fields.map((f) => ({
+        fieldId: f.id,
+        fieldName: f.name,
+        fieldType: f.fieldType,
+        compatibility:
+          f.fieldType === "formula" || f.fieldType === "rollup" || f.fieldType === "count"
+            ? ("metadataOnly" as const)
+            : f.fieldType === "multipleRecordLinks" || f.fieldType === "multipleAttachments"
+              ? ("unknown" as const)
+              : ("restorable" as const),
+        linkedRecordPlan:
+          f.fieldType === "multipleRecordLinks"
+            ? {
+                fieldId: f.id,
+                fieldName: f.name,
+                policy: "remappingRequiredForRestore" as const,
+                restoreNote: "Record ID references are captured. Restore requires ID remapping.",
+              }
+            : undefined,
+        attachmentPlan:
+          f.fieldType === "multipleAttachments"
+            ? {
+                fieldId: f.id,
+                fieldName: f.name,
+                policy: "metadataOnly" as const,
+                contentNote:
+                  "Attachment file content is not exported. Only metadata (filename, URL, size) is captured.",
+              }
+            : undefined,
+      })),
+      linkedRecordPlans,
+      attachmentPlans,
+      warnings,
+    };
+  });
+
+  const allWarnings = tablePlans.flatMap((t) => t.warnings);
+
+  return Promise.resolve({
+    baseId: request.baseId,
+    baseName: request.baseName,
+    tableCount: tablePlans.length,
+    pageSize: PAGE_SIZE,
+    tables: tablePlans,
+    warnings: allWarnings,
+    plannedOnly: true,
+  });
+}
+
 export const mockCheckConnection = checkConnectionImpl;
 
 export const mockAirBridgeService: AirBridgeService = {
@@ -321,4 +449,5 @@ export const mockAirBridgeService: AirBridgeService = {
   listAccessibleBases: listAccessibleBasesImpl,
   getBaseSchema: getBaseSchemaImpl,
   createBackupPlan: createBackupPlanImpl,
+  createRecordsExportPlan: createRecordsExportPlanImpl,
 };
