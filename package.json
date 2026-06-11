@@ -1,0 +1,8 @@
+{
+  "name": "airbridge",
+  "private": true,
+  "scripts": {
+    "build": "npm --prefix apps/desktop run build",
+    "check": "npm --prefix apps/desktop run check"
+  }
+}
