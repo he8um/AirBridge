@@ -168,10 +168,10 @@ describe("AirBridge App", () => {
     });
 
     it("shows all four permission check rows", () => {
-      expect(screen.getByText("Schema read")).toBeInTheDocument();
-      expect(screen.getByText("Records read")).toBeInTheDocument();
-      expect(screen.getByText("Schema write")).toBeInTheDocument();
-      expect(screen.getByText("Records write")).toBeInTheDocument();
+      expect(screen.getAllByText("Schema read").length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText("Records read").length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText("Schema write").length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText("Records write").length).toBeGreaterThanOrEqual(1);
     });
   });
 

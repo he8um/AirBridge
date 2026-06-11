@@ -58,8 +58,14 @@ describe("mockAirBridgeService", () => {
     expect(hasRestorable).toBe(true);
   });
 
-  it("checkConnection does not exist on mock service", () => {
-    expect("checkConnection" in mockAirBridgeService).toBe(false);
+  it("checkConnection exists on mock service and returns a result", async () => {
+    const result = await mockAirBridgeService.checkConnection({
+      token: "example_valid_token_abcdefgh12345",
+    });
+    expect(result).toBeDefined();
+    expect(result.connectionId).toBeDefined();
+    expect(result.status).toBeDefined();
+    expect(JSON.stringify(result)).not.toContain("example_valid_token_abcdefgh12345");
   });
 
   it("mock service satisfies AirBridgeService interface", () => {
