@@ -686,8 +686,8 @@ mod tests {
 
     #[test]
     fn result_with_events_serializes_without_token_or_path() {
-        use crate::backup::job_events::BackupJobEvent;
         use crate::backup::job::{BackupJobId, BackupJobStatus};
+        use crate::backup::job_events::BackupJobEvent;
         const SENTINEL: &str = "pat_events_serial_test_0123456789";
         let mut r = crate::backup::job::BackupJobResult {
             job_id: BackupJobId("job-ev-001".to_string()),

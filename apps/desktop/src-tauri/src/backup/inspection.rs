@@ -199,10 +199,7 @@ fn enrich_from_package(
         redactions_applied: manifest.security.redactions_applied.clone(),
     };
 
-    let checksum_count = reader
-        .read_checksums()
-        .map(|c| c.len())
-        .unwrap_or(0);
+    let checksum_count = reader.read_checksums().map(|c| c.len()).unwrap_or(0);
 
     let checksum_valid = validation_report
         .errors
@@ -392,10 +389,7 @@ mod tests {
         let dir = tempdir().expect("tempdir");
         let path = write_valid_package(&dir);
         let result = inspect_backup_package(&path);
-        assert!(!result
-            .errors
-            .iter()
-            .any(|e| e.code == "CHECKSUM_MISMATCH"));
+        assert!(!result.errors.iter().any(|e| e.code == "CHECKSUM_MISMATCH"));
     }
 
     #[test]
