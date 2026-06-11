@@ -11,6 +11,8 @@ import type {
   OutputPathValidationResult,
   RecordsExportPlan,
   RecordsExportPlanRequest,
+  RestoreDryRunPlan,
+  RestoreDryRunRequest,
   RunBackupCommandRequest,
   RunBackupCommandResponse,
 } from "./types";
@@ -150,4 +152,20 @@ export async function inspectBackupPackage(
   path: string,
 ): Promise<BackupPackageInspectionResult | null> {
   return safeInvoke<BackupPackageInspectionResult>("inspect_backup_package", { path });
+}
+
+/**
+ * Creates a restore dry-run plan from an existing `.airbridge` package.
+ *
+ * - No Airtable API calls.
+ * - No token required.
+ * - No files extracted.
+ * - No write operations.
+ * - Returns filename only — the full path is never included in the result.
+ * - Returns null if Tauri IPC is unavailable.
+ */
+export async function createRestoreDryRunPlan(
+  request: RestoreDryRunRequest,
+): Promise<RestoreDryRunPlan | null> {
+  return safeInvoke<RestoreDryRunPlan>("create_restore_dry_run_plan", { request });
 }

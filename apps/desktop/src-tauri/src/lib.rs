@@ -3,6 +3,7 @@ pub mod backup;
 mod commands;
 mod errors;
 mod models;
+pub mod restore;
 
 use models::common::AppHealth;
 
@@ -42,6 +43,7 @@ pub fn run() {
             commands::backup_job::run_backup_job,
             commands::backup_job::cancel_backup_job,
             commands::restore::list_restore_plans,
+            commands::restore::create_restore_dry_run_plan,
             commands::reports::list_reports,
             commands::logs::list_logs,
             commands::compatibility::list_compatibility_rules,

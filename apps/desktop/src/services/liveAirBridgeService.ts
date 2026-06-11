@@ -17,6 +17,8 @@ import type {
   OutputPathValidationResult,
   RecordsExportPlan,
   RecordsExportPlanRequest,
+  RestoreDryRunPlan,
+  RestoreDryRunRequest,
   RunBackupCommandRequest,
   RunBackupCommandResponse,
 } from "../backend/types";
@@ -199,6 +201,22 @@ async function inspectBackupPackage(path: string): Promise<BackupPackageInspecti
   return result;
 }
 
+async function createRestoreDryRunPlan(request: RestoreDryRunRequest): Promise<RestoreDryRunPlan> {
+  const result = await commands.createRestoreDryRunPlan(request);
+  if (result === null) {
+    return {
+      filename: "",
+      status: "blocked",
+      targetMode: request.targetMode,
+      tables: [],
+      warnings: [],
+      errors: [{ code: "IPC_UNAVAILABLE", message: "Tauri IPC unavailable" }],
+      noChangesMade: true,
+    };
+  }
+  return result;
+}
+
 export const liveAirBridgeService: AirBridgeService = {
   listConnections,
   listWorkspaces,
@@ -218,4 +236,5 @@ export const liveAirBridgeService: AirBridgeService = {
   cancelBackupJob,
   getBackupJobStatus,
   inspectBackupPackage,
+  createRestoreDryRunPlan,
 };

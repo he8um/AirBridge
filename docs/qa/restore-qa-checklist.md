@@ -19,7 +19,25 @@ Use this checklist when verifying the restore functionality against a release bu
 
 ---
 
-## Dry-Run Mode
+## Dry-Run Plan Preview (Package-Based, No Airtable Writes)
+
+- [ ] **Select file shows filename only.** After choosing a `.airbridge` file, the UI shows the filename (e.g., `backup.airbridge`) — never the full directory path.
+- [ ] **Generate plan button disabled until file is selected.** Verify the button is disabled on mount and enabled only after a file is picked.
+- [ ] **No token is requested.** The dry-run panel does not contain a token input field.
+- [ ] **No restore execution button.** The panel does not render a "Start Restore" or equivalent button.
+- [ ] **Plan shows status badge.** After generation, a status badge shows "Ready", "Ready with warnings", or "Blocked".
+- [ ] **"No Airtable changes were made" notice is always present.** After generating a plan, the safety notice is visible regardless of plan status.
+- [ ] **Package summary is shown.** Plan result includes source base name, provider, table count, field count, and record count.
+- [ ] **Field compatibility is shown.** Each field in each table has a compatibility badge: Supported / Partial / Metadata only / Unsupported / Manual.
+- [ ] **Linked record remapping warning appears.** For packages containing linked record fields, the warnings list includes a `LINKED_RECORD_REMAPPING_REQUIRED` warning.
+- [ ] **Attachment metadata-only warning appears.** For packages containing attachment fields, the warnings list includes an `ATTACHMENT_METADATA_ONLY` warning.
+- [ ] **Computed field warning appears.** For packages containing formula or rollup fields, the appropriate warning code is shown.
+- [ ] **Record import ordering plan is shown.** The ordering section describes the four steps: create tables, create fields, import records without links, apply links.
+- [ ] **Target mode selector works.** User can switch between "New base" and "Empty existing base".
+- [ ] **Blocked plan for invalid package.** Selecting a corrupted or invalid package results in a blocked-status plan with an error message — the app does not crash.
+- [ ] **No absolute paths in rendered output.** Inspect the DOM with developer tools; no directory separators appear in any visible text.
+
+## Dry-Run Mode (Legacy checklist items — applies to future restore execution)
 
 - [ ] **Dry run produces a correct plan.** For a fixture-loaded backup, the dry-run report lists all tables and fields that would be created, with accurate counts.
 - [ ] **Dry run makes no writes.** After a dry run completes, the target base in Airtable is unmodified. Verify by checking the base's record count before and after.

@@ -484,3 +484,113 @@ export interface RunBackupCommandResponse {
   jobResult?: BackupJobResult;
   pathValidation: OutputPathValidationResult;
 }
+
+// ── Restore dry-run planning types (mirrors Rust restore::plan) ────────────
+
+export type RestoreTargetMode = "newBase" | "emptyExistingBase";
+
+export type RestorePlanStatus = "ready" | "readyWithWarnings" | "blocked";
+
+export type RestoreFieldCompatibility =
+  | "supported"
+  | "partiallySupported"
+  | "metadataOnly"
+  | "unsupported"
+  | "manualActionRequired";
+
+export interface RestorePackageSummary {
+  /** Filename only — never the full path. */
+  filename: string;
+  format: string;
+  formatVersion: string;
+  appVersion: string;
+  createdAt: string;
+  provider: string;
+  baseId: string;
+  baseName: string;
+  tableCount: number;
+  fieldCount: number;
+  recordCount: number;
+  containsRecordData: boolean;
+  containsAttachmentUrls: boolean;
+  encrypted: boolean;
+}
+
+export interface RestoreFieldPlan {
+  fieldId: string;
+  fieldName: string;
+  fieldType: string;
+  compatibility: RestoreFieldCompatibility;
+  note: string;
+}
+
+export interface RestoreLinkedRecordPlan {
+  fieldId: string;
+  fieldName: string;
+  linkedTableId: string;
+  remappingRequired: boolean;
+  note: string;
+}
+
+export interface RestoreAttachmentPlan {
+  fieldId: string;
+  fieldName: string;
+  /** Always true in V0.1 — file content is not re-uploaded. */
+  metadataOnly: boolean;
+  note: string;
+}
+
+export interface RestoreTablePlan {
+  tableId: string;
+  tableName: string;
+  fieldCount: number;
+  recordCount: number;
+  fields: RestoreFieldPlan[];
+  linkedRecordPlans: RestoreLinkedRecordPlan[];
+  attachmentPlans: RestoreAttachmentPlan[];
+  restorableFieldCount: number;
+  partialFieldCount: number;
+  unsupportedFieldCount: number;
+}
+
+export interface RestoreRecordOrderingPlan {
+  createTablesFirst: boolean;
+  createFieldsAfterTables: boolean;
+  importRecordsWithoutLinks: boolean;
+  applyLinksAfterRecords: boolean;
+  note: string;
+}
+
+export interface RestoreDryRunWarning {
+  code: string;
+  message: string;
+  tableName?: string;
+  fieldName?: string;
+}
+
+export interface RestoreDryRunError {
+  code: string;
+  message: string;
+}
+
+export interface RestoreDryRunRequest {
+  /** Absolute path to the package. Never echoed in the result. */
+  path: string;
+  targetMode: RestoreTargetMode;
+  targetBaseName?: string;
+}
+
+export interface RestoreDryRunPlan {
+  /** Filename only — never the full path. */
+  filename: string;
+  status: RestorePlanStatus;
+  targetMode: RestoreTargetMode;
+  targetBaseName?: string;
+  packageSummary?: RestorePackageSummary;
+  tables: RestoreTablePlan[];
+  ordering?: RestoreRecordOrderingPlan;
+  warnings: RestoreDryRunWarning[];
+  errors: RestoreDryRunError[];
+  /** Always true — states that no Airtable changes were made. */
+  noChangesMade: boolean;
+}

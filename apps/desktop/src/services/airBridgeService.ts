@@ -17,6 +17,8 @@ import type {
   OutputPathValidationResult,
   RecordsExportPlan,
   RecordsExportPlanRequest,
+  RestoreDryRunPlan,
+  RestoreDryRunRequest,
   RunBackupCommandRequest,
   RunBackupCommandResponse,
 } from "../backend/types";
@@ -58,4 +60,14 @@ export interface AirBridgeService {
    * - The result contains filename only — the full path is never included.
    */
   inspectBackupPackage(path: string): Promise<BackupPackageInspectionResult>;
+  /**
+   * Creates a restore dry-run plan from an existing `.airbridge` package.
+   *
+   * - No Airtable API calls.
+   * - No token required.
+   * - No files extracted.
+   * - No write operations.
+   * - The result contains filename only — the full path is never included.
+   */
+  createRestoreDryRunPlan(request: RestoreDryRunRequest): Promise<RestoreDryRunPlan>;
 }

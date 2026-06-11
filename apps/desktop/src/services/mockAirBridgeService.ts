@@ -17,6 +17,8 @@ import type {
   OutputPathValidationResult,
   RecordsExportPlan,
   RecordsExportPlanRequest,
+  RestoreDryRunPlan,
+  RestoreDryRunRequest,
   RunBackupCommandRequest,
   RunBackupCommandResponse,
   TableExportPlan,
@@ -570,6 +572,192 @@ function inspectBackupPackageImpl(path: string): Promise<BackupPackageInspection
   });
 }
 
+function createRestoreDryRunPlanImpl(request: RestoreDryRunRequest): Promise<RestoreDryRunPlan> {
+  // Deterministic mock — no absolute paths appear in the result.
+  // Filename is derived from path safely via basename extraction.
+  const filename = request.path.split("/").pop()?.split("\\").pop() ?? "mock-backup.airbridge";
+
+  if (request.path.includes("invalid") || request.path.includes("corrupt")) {
+    return Promise.resolve({
+      filename,
+      status: "blocked",
+      targetMode: request.targetMode,
+      targetBaseName: request.targetBaseName,
+      tables: [],
+      warnings: [],
+      errors: [{ code: "CANNOT_OPEN", message: "Package could not be opened or validated." }],
+      noChangesMade: true,
+    });
+  }
+
+  const plan: RestoreDryRunPlan = {
+    filename,
+    status: "readyWithWarnings",
+    targetMode: request.targetMode,
+    targetBaseName: request.targetBaseName ?? "Example Projects & Tasks (Restored)",
+    packageSummary: {
+      filename,
+      format: "airbridge",
+      formatVersion: "0.1.0",
+      appVersion: "0.1.0",
+      createdAt: "2026-06-11T00:00:00Z",
+      provider: "airtable",
+      baseId: "appExampleBase01",
+      baseName: "Example Projects & Tasks",
+      tableCount: 2,
+      fieldCount: 9,
+      recordCount: 47,
+      containsRecordData: true,
+      containsAttachmentUrls: false,
+      encrypted: false,
+    },
+    tables: [
+      {
+        tableId: "tblProjects01",
+        tableName: "Projects",
+        fieldCount: 5,
+        recordCount: 0,
+        fields: [
+          {
+            fieldId: "fldProjName",
+            fieldName: "Name",
+            fieldType: "singleLineText",
+            compatibility: "supported",
+            note: "Fully restorable.",
+          },
+          {
+            fieldId: "fldProjStatus",
+            fieldName: "Status",
+            fieldType: "singleSelect",
+            compatibility: "supported",
+            note: "Fully restorable.",
+          },
+          {
+            fieldId: "fldProjDue",
+            fieldName: "Due Date",
+            fieldType: "date",
+            compatibility: "supported",
+            note: "Fully restorable.",
+          },
+          {
+            fieldId: "fldProjTasks",
+            fieldName: "Tasks",
+            fieldType: "multipleRecordLinks",
+            compatibility: "partiallySupported",
+            note: "Linked record references require remapping during restore.",
+          },
+          {
+            fieldId: "fldProjCalc",
+            fieldName: "Calculated Progress",
+            fieldType: "formula",
+            compatibility: "unsupported",
+            note: "Formula fields cannot be restored. The formula definition is captured but the field must be manually recreated.",
+          },
+        ],
+        linkedRecordPlans: [
+          {
+            fieldId: "fldProjTasks",
+            fieldName: "Tasks",
+            linkedTableId: "tblTasks01",
+            remappingRequired: true,
+            note: "Links to Tasks table. Record IDs must be remapped after all records are imported.",
+          },
+        ],
+        attachmentPlans: [],
+        restorableFieldCount: 3,
+        partialFieldCount: 1,
+        unsupportedFieldCount: 1,
+      },
+      {
+        tableId: "tblTasks01",
+        tableName: "Tasks",
+        fieldCount: 4,
+        recordCount: 0,
+        fields: [
+          {
+            fieldId: "fldTaskName",
+            fieldName: "Task Name",
+            fieldType: "singleLineText",
+            compatibility: "supported",
+            note: "Fully restorable.",
+          },
+          {
+            fieldId: "fldTaskDone",
+            fieldName: "Done",
+            fieldType: "checkbox",
+            compatibility: "supported",
+            note: "Fully restorable.",
+          },
+          {
+            fieldId: "fldTaskFiles",
+            fieldName: "Attachments",
+            fieldType: "multipleAttachments",
+            compatibility: "metadataOnly",
+            note: "Attachment metadata is captured. File content was not exported and cannot be restored.",
+          },
+          {
+            fieldId: "fldTaskRollup",
+            fieldName: "Completion Rollup",
+            fieldType: "rollup",
+            compatibility: "metadataOnly",
+            note: "Computed field. Schema is captured; values are not restored.",
+          },
+        ],
+        linkedRecordPlans: [],
+        attachmentPlans: [
+          {
+            fieldId: "fldTaskFiles",
+            fieldName: "Attachments",
+            metadataOnly: true,
+            note: "Attachment metadata is captured. File content was not exported and cannot be re-uploaded.",
+          },
+        ],
+        restorableFieldCount: 2,
+        partialFieldCount: 0,
+        unsupportedFieldCount: 2,
+      },
+    ],
+    ordering: {
+      createTablesFirst: true,
+      createFieldsAfterTables: true,
+      importRecordsWithoutLinks: true,
+      applyLinksAfterRecords: true,
+      note: "Tables and fields are created first. Records are imported without linked references. Linked references are applied in a second pass after all record IDs are remapped.",
+    },
+    warnings: [
+      {
+        code: "LINKED_RECORD_REMAPPING_REQUIRED",
+        message: "Linked record field requires ID remapping during restore.",
+        tableName: "Projects",
+        fieldName: "Tasks",
+      },
+      {
+        code: "ATTACHMENT_METADATA_ONLY",
+        message:
+          "Attachment field detected. Only metadata is available — file content was not exported.",
+        tableName: "Tasks",
+        fieldName: "Attachments",
+      },
+      {
+        code: "COMPUTED_FIELD_NOT_RESTORED",
+        message: "Rollup field values cannot be restored. Schema only.",
+        tableName: "Tasks",
+        fieldName: "Completion Rollup",
+      },
+      {
+        code: "UNSUPPORTED_FIELD_MANUAL_RECREATION",
+        message: "Formula field cannot be restored. Recreate manually after import.",
+        tableName: "Projects",
+        fieldName: "Calculated Progress",
+      },
+    ],
+    errors: [],
+    noChangesMade: true,
+  };
+
+  return Promise.resolve(plan);
+}
+
 export const mockCheckConnection = checkConnectionImpl;
 
 export const mockAirBridgeService: AirBridgeService = {
@@ -591,4 +779,5 @@ export const mockAirBridgeService: AirBridgeService = {
   cancelBackupJob: cancelBackupJobImpl,
   getBackupJobStatus: getBackupJobStatusImpl,
   inspectBackupPackage: inspectBackupPackageImpl,
+  createRestoreDryRunPlan: createRestoreDryRunPlanImpl,
 };

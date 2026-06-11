@@ -135,6 +135,30 @@ Before executing this plan:
 
 ## Restore Flow
 
+**TC-REST-00: Restore plan preview — no token, no writes**
+
+- Preconditions: A valid `.airbridge` backup package exists. No Airtable connection required.
+- Steps:
+  1. Navigate to the Restore page.
+  2. In the "Restore Plan Preview" panel, click "Choose File" and select the `.airbridge` file.
+  3. Verify the filename is displayed (not the full directory path).
+  4. Select a target mode ("New base" or "Empty existing base").
+  5. Click "Generate Restore Plan".
+- Expected result:
+  - A plan is shown with status badge, package summary, table plans, and field compatibility badges.
+  - The "No Airtable changes were made." notice is visible.
+  - No token was requested at any point.
+  - No restore execution button is rendered.
+  - The full file path does not appear anywhere in the UI.
+
+**TC-REST-00A: Restore plan preview — blocked for invalid package**
+
+- Preconditions: A corrupted or invalid `.airbridge` file is available (or use a renamed non-package file).
+- Steps:
+  1. In the "Restore Plan Preview" panel, select the invalid file.
+  2. Click "Generate Restore Plan".
+- Expected result: A "Blocked" badge is shown with an error message. The app does not crash. The "No Airtable changes were made." notice is still present.
+
 **TC-REST-01: Dry-run restore**
 
 - Preconditions: A valid `.airbridge` backup package exists (can use fixture data loaded via "Open backup"). A connection with write access to an empty target base is available.

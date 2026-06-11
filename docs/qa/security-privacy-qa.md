@@ -197,3 +197,37 @@ If AirBridge supports user-configured field redaction:
 - All tests that involve `BackupExecutionPanel` mock `pickBackupOutputPath` via `vi.mock`.
 - The Tauri dialog plugin is never invoked in tests.
 - No file is written during tests.
+
+---
+
+## Restore Dry-Run Plan Safety (V0.1)
+
+**Goal:** Confirm that the restore dry-run planning flow makes no Airtable API calls, requires no token, and never exposes the full package path.
+
+**DR-01: No token requested.**
+- The `create_restore_dry_run_plan` Tauri command has no `token` parameter.
+- The `RestoreDryRunPanel` component does not render a token input field.
+- No token flows through the dry-run code path.
+
+**DR-02: No Airtable API calls.**
+- The dry-run planner reads only from the local `.airbridge` package.
+- No HTTP client code is called during plan generation.
+- Network monitoring during a dry-run operation shows zero connections to `api.airtable.com`.
+
+**DR-03: Full path not in result.**
+- The `RestoreDryRunPlan` result contains `filename` (basename only), not `path`.
+- `Path::file_name()` is used in Rust to strip directory components before the result is returned.
+- The serialized JSON result does not contain `/Users/`, `/home/`, or `:\\`.
+
+**DR-04: No files extracted from package.**
+- The planner uses `BackupPackageReader` in-memory only.
+- No package entry is written to the filesystem during plan generation.
+
+**DR-05: `noChangesMade` always true.**
+- Every code path in `create_dry_run_plan` and `blocked_plan` sets `no_changes_made: true`.
+- The unit tests in `commands/restore.rs` assert this property explicitly.
+- The UI always shows "No Airtable changes were made." when a plan result is rendered.
+
+**DR-06: No restore execution button.**
+- `RestoreDryRunPanel` does not render a "Start Restore", "Execute", or "Run Restore" button.
+- The frontend tests assert the absence of any such button by scanning rendered button text.

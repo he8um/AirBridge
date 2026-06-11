@@ -1,6 +1,7 @@
 import { SectionHeader } from "../components/SectionHeader";
 import { useAppState } from "../state/useAppState";
 import { PackageInspectionPanel } from "../features/backups/PackageInspectionPanel";
+import { RestoreDryRunPanel } from "../features/backups/RestoreDryRunPanel";
 import { liveAirBridgeService } from "../services/liveAirBridgeService";
 
 export function RestorePage() {
@@ -66,6 +67,11 @@ export function RestorePage() {
 
             {/* Inspection panel */}
             <PackageInspectionPanel service={liveAirBridgeService} />
+
+            <div className="divider" style={{ margin: 0 }} />
+
+            {/* Restore plan preview */}
+            <RestoreDryRunPanel service={liveAirBridgeService} />
 
             <div className="divider" style={{ margin: 0 }} />
 
