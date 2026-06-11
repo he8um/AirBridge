@@ -13,6 +13,10 @@ AirBridge is split into a React/TypeScript frontend, a Tauri desktop shell, and 
 - Avoid leaking credentials or sensitive record data to logs.
 - Use clear boundaries between platform integration and product logic.
 
+## Component documentation
+
+- [Airtable API client](airtable-api-client.md)
+
 ## Main components
 
 ```text

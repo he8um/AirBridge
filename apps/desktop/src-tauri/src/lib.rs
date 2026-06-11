@@ -1,3 +1,4 @@
+pub mod airtable;
 mod commands;
 mod errors;
 mod models;
