@@ -1,4 +1,5 @@
 pub mod attachments;
+pub mod inspection;
 pub mod cancellation;
 pub mod checkpoints;
 pub mod checksums;

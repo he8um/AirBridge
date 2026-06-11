@@ -247,6 +247,56 @@ export interface PackageValidationReport {
   manifestSummary?: PackageManifestSummary;
 }
 
+// Backup package inspection types (mirrors Rust backup::inspection)
+
+export interface BackupPackageInspectionIssue {
+  code: string;
+  message: string;
+}
+
+export interface BackupPackageInspectionManifestSummary {
+  format: string;
+  formatVersion: string;
+  appVersion: string;
+  createdAt: string;
+  provider: string;
+  baseId: string;
+  baseName: string;
+}
+
+export interface BackupPackageInspectionContentsSummary {
+  tableCount: number;
+  fieldCount: number;
+  recordCount: number;
+  linkedRecordRelationshipCount: number;
+  attachmentCount: number;
+}
+
+export interface BackupPackageInspectionSecuritySummary {
+  encrypted: boolean;
+  containsRecordData: boolean;
+  containsAttachmentUrls: boolean;
+  redactionsApplied: string[];
+}
+
+export interface BackupPackageInspectionChecksumSummary {
+  checksumCount: number;
+  allValid: boolean;
+}
+
+export interface BackupPackageInspectionResult {
+  /** Filename only — never includes directory path. */
+  filename: string;
+  validationStatus: "valid" | "invalid" | "warning";
+  manifest?: BackupPackageInspectionManifestSummary;
+  contents?: BackupPackageInspectionContentsSummary;
+  security?: BackupPackageInspectionSecuritySummary;
+  checksums?: BackupPackageInspectionChecksumSummary;
+  entryCount: number;
+  warnings: BackupPackageInspectionIssue[];
+  errors: BackupPackageInspectionIssue[];
+}
+
 // ── Backup Job Orchestration ───────────────────────────────────────────────
 
 export type BackupJobStatus = "queued" | "running" | "succeeded" | "failed" | "cancelled";

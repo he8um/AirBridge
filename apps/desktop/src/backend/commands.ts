@@ -3,6 +3,7 @@ import type {
   AppHealthResponse,
   BackupJobCancellationResult,
   BackupJobProgressSnapshot,
+  BackupPackageInspectionResult,
   BackupPlan,
   BackupPlanRequest,
   BaseSchemaSummary,
@@ -135,4 +136,18 @@ export async function cancelBackupJob(jobId: string): Promise<BackupJobCancellat
 export async function getBackupJobStatus(jobId: string): Promise<BackupJobProgressSnapshot | null> {
   void jobId;
   return null;
+}
+
+/**
+ * Inspect an existing `.airbridge` package at the given absolute path.
+ *
+ * - No files are extracted.
+ * - No writes of any kind.
+ * - The result contains filename only — the full path is never included.
+ * - Returns null if Tauri IPC is unavailable.
+ */
+export async function inspectBackupPackage(
+  path: string,
+): Promise<BackupPackageInspectionResult | null> {
+  return safeInvoke<BackupPackageInspectionResult>("inspect_backup_package", { path });
 }

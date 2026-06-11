@@ -9,6 +9,7 @@ import type {
   AccessibleBaseSummary,
   BackupJobCancellationResult,
   BackupJobProgressSnapshot,
+  BackupPackageInspectionResult,
   BackupPlan,
   BackupPlanRequest,
   BaseSchemaSummary,
@@ -184,6 +185,20 @@ async function getBackupJobStatus(jobId: string): Promise<BackupJobProgressSnaps
   return commands.getBackupJobStatus(jobId);
 }
 
+async function inspectBackupPackage(path: string): Promise<BackupPackageInspectionResult> {
+  const result = await commands.inspectBackupPackage(path);
+  if (result === null) {
+    return {
+      filename: "",
+      validationStatus: "invalid",
+      entryCount: 0,
+      warnings: [],
+      errors: [{ code: "IPC_UNAVAILABLE", message: "Tauri IPC unavailable" }],
+    };
+  }
+  return result;
+}
+
 export const liveAirBridgeService: AirBridgeService = {
   listConnections,
   listWorkspaces,
@@ -202,4 +217,5 @@ export const liveAirBridgeService: AirBridgeService = {
   runBackupJob,
   cancelBackupJob,
   getBackupJobStatus,
+  inspectBackupPackage,
 };

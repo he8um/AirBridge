@@ -9,6 +9,7 @@ import type {
   AccessibleBaseSummary,
   BackupJobCancellationResult,
   BackupJobProgressSnapshot,
+  BackupPackageInspectionResult,
   BackupPlan,
   BackupPlanRequest,
   BaseSchemaSummary,
@@ -519,6 +520,56 @@ function getBackupJobStatusImpl(jobId: string): Promise<BackupJobProgressSnapsho
   return Promise.resolve(null);
 }
 
+function inspectBackupPackageImpl(path: string): Promise<BackupPackageInspectionResult> {
+  // Deterministic mock variants: "invalid" in path returns an invalid result;
+  // otherwise returns a valid inspection result. No absolute paths appear in output.
+  const filename = path.split("/").pop()?.split("\\").pop() ?? "unknown.airbridge";
+
+  if (path.includes("invalid") || path.includes("corrupt")) {
+    return Promise.resolve({
+      filename,
+      validationStatus: "invalid",
+      entryCount: 0,
+      warnings: [],
+      errors: [{ code: "CANNOT_OPEN", message: "package could not be opened" }],
+    });
+  }
+
+  return Promise.resolve({
+    filename,
+    validationStatus: "valid",
+    manifest: {
+      format: "airbridge",
+      formatVersion: "0.1.0",
+      appVersion: "0.1.0",
+      createdAt: "2026-06-11T00:00:00Z",
+      provider: "airtable",
+      baseId: "appExampleBase01",
+      baseName: "Example Projects & Tasks",
+    },
+    contents: {
+      tableCount: 2,
+      fieldCount: 9,
+      recordCount: 47,
+      linkedRecordRelationshipCount: 1,
+      attachmentCount: 0,
+    },
+    security: {
+      encrypted: false,
+      containsRecordData: true,
+      containsAttachmentUrls: false,
+      redactionsApplied: [],
+    },
+    checksums: {
+      checksumCount: 5,
+      allValid: true,
+    },
+    entryCount: 8,
+    warnings: [],
+    errors: [],
+  });
+}
+
 export const mockCheckConnection = checkConnectionImpl;
 
 export const mockAirBridgeService: AirBridgeService = {
@@ -539,4 +590,5 @@ export const mockAirBridgeService: AirBridgeService = {
   runBackupJob: runBackupJobImpl,
   cancelBackupJob: cancelBackupJobImpl,
   getBackupJobStatus: getBackupJobStatusImpl,
+  inspectBackupPackage: inspectBackupPackageImpl,
 };

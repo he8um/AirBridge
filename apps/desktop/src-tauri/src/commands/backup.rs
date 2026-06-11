@@ -1,6 +1,9 @@
 use crate::airtable::models::{AirtableField, AirtableFieldId, AirtableTable, AirtableTableId};
 use crate::backup::estimates::DEFAULT_PAGE_SIZE;
 use crate::backup::export_plan::{create_export_plan, RecordsExportPlan, RecordsExportPlanRequest};
+use crate::backup::inspection::{
+    inspect_backup_package as run_inspection, BackupPackageInspectionResult,
+};
 use crate::backup::planner::create_plan;
 use crate::errors::AirBridgeResult;
 use crate::models::backup::{BackupPackageSummary, BackupScope, BackupStatus};
@@ -123,6 +126,18 @@ pub fn create_records_export_plan(
     );
 
     Ok(plan)
+}
+
+/// Inspects a `.airbridge` package at the given absolute path.
+///
+/// - No files are extracted to disk.
+/// - No writes of any kind.
+/// - Returns filename only — the full path is never included in the result.
+/// - Errors are sanitized before returning; the raw path never appears in messages.
+#[tauri::command]
+pub fn inspect_backup_package(path: String) -> BackupPackageInspectionResult {
+    let p = std::path::Path::new(&path);
+    run_inspection(p)
 }
 
 // ── Unit-testable helpers ──────────────────────────────────────────────────

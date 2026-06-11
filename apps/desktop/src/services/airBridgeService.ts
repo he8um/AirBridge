@@ -9,6 +9,7 @@ import type {
   AccessibleBaseSummary,
   BackupJobCancellationResult,
   BackupJobProgressSnapshot,
+  BackupPackageInspectionResult,
   BackupPlan,
   BackupPlanRequest,
   BaseSchemaSummary,
@@ -49,4 +50,12 @@ export interface AirBridgeService {
    * can be called. Future: returns a live snapshot from the background registry.
    */
   getBackupJobStatus(jobId: string): Promise<BackupJobProgressSnapshot | null>;
+  /**
+   * Inspect an existing `.airbridge` package.
+   *
+   * - No files are extracted.
+   * - No writes of any kind.
+   * - The result contains filename only — the full path is never included.
+   */
+  inspectBackupPackage(path: string): Promise<BackupPackageInspectionResult>;
 }

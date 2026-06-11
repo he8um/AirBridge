@@ -1,5 +1,7 @@
 import { SectionHeader } from "../components/SectionHeader";
 import { useAppState } from "../state/useAppState";
+import { PackageInspectionPanel } from "../features/backups/PackageInspectionPanel";
+import { liveAirBridgeService } from "../services/liveAirBridgeService";
 
 export function RestorePage() {
   const { state, compatibilitySummary } = useAppState();
@@ -62,29 +64,8 @@ export function RestorePage() {
 
             <div className="divider" style={{ margin: 0 }} />
 
-            {/* Inspection placeholder */}
-            <div>
-              <p
-                style={{
-                  fontSize: "var(--text-xs)",
-                  fontWeight: 600,
-                  color: "var(--color-text-muted)",
-                  textTransform: "uppercase",
-                  letterSpacing: "0.06em",
-                  marginBottom: "var(--space-3)",
-                }}
-              >
-                Inspection
-              </p>
-              <div
-                className="notice notice-neutral"
-                style={{ justifyContent: "center", textAlign: "center" }}
-                role="status"
-                aria-label="Backup inspection placeholder"
-              >
-                <span>Select a backup file to inspect its contents.</span>
-              </div>
-            </div>
+            {/* Inspection panel */}
+            <PackageInspectionPanel service={liveAirBridgeService} />
 
             <div className="divider" style={{ margin: 0 }} />
 
