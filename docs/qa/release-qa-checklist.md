@@ -117,6 +117,43 @@ Perform a quick pass of the core flows on the release build, not the dev build:
 
 ---
 
+## Alpha Release Gate (v0.1.0-alpha specific)
+
+Complete this section for alpha releases only. These items are prerequisites for any alpha distribution.
+
+### Safety Gates
+
+- [ ] `run_restore_execution` returns `readyButDisabled` — confirmed no Airtable writes occur.
+- [ ] `run_restore_execution` response does not contain the token value.
+- [ ] `run_restore_execution` response does not contain the full package path.
+- [ ] `run_backup_job` requires the exact confirmation text `CREATE BACKUP` — partial or mis-cased text is rejected.
+- [ ] `inspect_backup_package` is read-only — no files extracted, no token, no API calls.
+- [ ] `create_restore_dry_run_plan` is read-only — no token, no API calls, no writes.
+
+### Known Limitations Documented
+
+- [ ] Restore write engine disabled — documented in `docs/release/known-limitations.md`.
+- [ ] Token persistence not implemented — documented.
+- [ ] Attachment files not downloaded — documented.
+- [ ] Known limitations document is accurate for the release commit.
+
+### Test Counts Verified
+
+- [ ] Rust unit tests: 500 pass (or more — confirm actual count from `cargo test` output).
+- [ ] Rust integration tests: 3 pass (or more).
+- [ ] Frontend tests: 362 pass (or more — confirm actual count from `vitest run` output).
+
+### Prohibited Terms
+
+- [ ] No references to private development workflow tools in any public file.
+- [ ] No absolute user-local paths embedded in docs, source, or fixtures.
+- [ ] No token-like values in docs or fixtures.
+- [ ] No generated `.airbridge` binary packages committed.
+- [ ] Docs do not imply restore write execution is enabled.
+- [ ] Docs do not imply credential storage is implemented.
+
+---
+
 ## Documentation and Changelog
 
 - [ ] `CHANGELOG.md` has an entry for this release with a meaningful summary of changes.

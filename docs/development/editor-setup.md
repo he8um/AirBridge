@@ -28,7 +28,7 @@ The repository includes `.vscode/settings.json` with:
 - `rust-lang.rust-analyzer` — Rust language support
 - `tauri-apps.tauri-vscode` — Tauri command palette helpers
 
-VS Code will prompt to install these when the workspace is first opened.
+VS Code will ask to install these when the workspace is first opened.
 
 ### Troubleshooting
 

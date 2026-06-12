@@ -27,7 +27,7 @@ type GateOverrides = {
   inspectionStatus?: "valid" | "warning" | "invalid" | null;
   packagePath?: string | null;
   dryRunStatus?: "ready" | "readyWithWarnings" | "blocked" | null;
-  targetMode?: "newBase" | "existingBase";
+  targetMode?: "newBase" | "emptyExistingBase";
   targetBaseName?: string | undefined;
 };
 

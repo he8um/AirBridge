@@ -136,6 +136,30 @@ Start with:
 - [Architecture Overview](docs/architecture/overview.md)
 - [Development Setup](docs/development/development-setup.md)
 
+## Current Status (v0.1.0-alpha)
+
+AirBridge is under active development. The current alpha build supports:
+
+- Personal access token connection checks and permission inspection.
+- Base catalog and schema read.
+- Backup planning and records export planning.
+- Backup package creation (requires explicit file selection and confirmation text).
+- Package inspection and validation.
+- Restore dry-run planning (read-only, no token required).
+- Restore execution safety gate (all preconditions validated; write engine not yet enabled).
+
+**Restore write execution is disabled in this version.** The safety gate validates all preconditions and returns a `readyButDisabled` result. No Airtable base, table, or record is created by restore operations.
+
+**Token persistence is not implemented.** Tokens must be entered for each operation.
+
+See the full details in:
+
+- [Feature Status](docs/product/feature-status.md)
+- [Known Limitations](docs/release/known-limitations.md)
+- [v0.1.0-alpha Readiness](docs/release/v0.1.0-alpha-readiness.md)
+
+---
+
 ## Contributing
 
 Contributions are welcome through issues and pull requests. Please read:
