@@ -15,6 +15,8 @@ import type {
   RestoreDryRunRequest,
   RestoreExecutionRequest,
   RestoreExecutionResult,
+  RestoreSchemaPlan,
+  RestoreSchemaPlanRequest,
   RunBackupCommandRequest,
   RunBackupCommandResponse,
 } from "./types";
@@ -187,4 +189,20 @@ export async function runRestoreExecution(
 ): Promise<RestoreExecutionResult | null> {
   // Token is forwarded to the Rust command only; not stored or logged here.
   return safeInvoke<RestoreExecutionResult>("run_restore_execution", { request });
+}
+
+/**
+ * Creates a schema creation plan from a dry-run result.
+ *
+ * - No Airtable API calls.
+ * - No token required.
+ * - No files extracted.
+ * - No write operations.
+ * - Returns filename only — the full path is never included in the result.
+ * - Returns null if Tauri IPC is unavailable.
+ */
+export async function createRestoreSchemaPlan(
+  request: RestoreSchemaPlanRequest,
+): Promise<RestoreSchemaPlan | null> {
+  return safeInvoke<RestoreSchemaPlan>("create_restore_schema_plan", { request });
 }

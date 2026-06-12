@@ -7,11 +7,11 @@ This document lists known limitations of the current AirBridge release. Each lim
 ## Restore Write Engine Not Yet Enabled
 
 **Scope:** Restore functionality  
-**Status:** Safety gate complete; write engine disabled
+**Status:** Safety gate and schema creation planning complete; write engine disabled
 
-The restore execution safety gate validates all preconditions (package inspection, dry-run plan, target mode, token, confirmation text) and returns `readyButDisabled`. No Airtable base, table, or record is created.
+The restore execution safety gate validates all preconditions (package inspection, dry-run plan, target mode, token, confirmation text) and returns `readyButDisabled`. The schema creation planner produces a full ordered plan (table steps, field steps, deferred linked fields, dependency graph) without making any Airtable API calls. No Airtable base, table, field, or record is created.
 
-Restore write execution will be enabled in a future release once the write engine, linked record remapping, field creation ordering, and post-restore verification flows are complete and tested.
+Restore write execution will be enabled in a future release once the write engine, linked record remapping, post-restore verification, and schema creation execution flows are complete and tested.
 
 ---
 

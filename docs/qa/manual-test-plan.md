@@ -159,6 +159,23 @@ Before executing this plan:
   2. Click "Generate Restore Plan".
 - Expected result: A "Blocked" badge is shown with an error message. The app does not crash. The "No Airtable changes were made." notice is still present.
 
+**TC-REST-00A2: Schema creation plan — no token, no writes**
+
+- Preconditions: A valid `.airbridge` package has been inspected and a dry-run plan has been generated (status: ready or ready with warnings).
+- Steps:
+  1. In the "Schema Creation Plan" section, observe the panel.
+  2. Confirm there is no token input field and no "Start Restore" button.
+  3. Click "Preview Schema Creation Plan".
+  4. Observe the result.
+- Expected result: Table creation steps are shown in order. Field steps are listed. Deferred linked fields appear separately. Manual-action fields are listed. Warnings appear for attachments or unsupported fields where applicable. "No Airtable changes were made. This is a plan only." is visible. No restore execution button is shown. Status badge reads "Ready" or "Ready with Warnings".
+
+**TC-REST-00A3: Schema creation plan — blocked when dry-run is blocked**
+
+- Preconditions: Application open on Restore page. No dry-run plan has been generated.
+- Steps:
+  1. In the "Schema Creation Plan" section, observe the button state.
+- Expected result: The generate button is disabled. A "Generate a restore plan preview first." message is shown.
+
 **TC-REST-00B: Restore execution gate — prerequisites checklist**
 
 - Preconditions: Application open on Restore page. No file has been inspected yet.

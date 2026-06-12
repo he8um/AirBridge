@@ -21,6 +21,8 @@ import type {
   RestoreDryRunRequest,
   RestoreExecutionRequest,
   RestoreExecutionResult,
+  RestoreSchemaPlan,
+  RestoreSchemaPlanRequest,
   RunBackupCommandRequest,
   RunBackupCommandResponse,
 } from "../backend/types";
@@ -238,6 +240,28 @@ async function runRestoreExecution(
   return result;
 }
 
+async function createRestoreSchemaPlan(
+  request: RestoreSchemaPlanRequest,
+): Promise<RestoreSchemaPlan> {
+  const result = await commands.createRestoreSchemaPlan(request);
+  if (result === null) {
+    return {
+      filename: request.packageFilename,
+      status: "blocked",
+      targetMode: request.targetMode,
+      tableSteps: [],
+      fieldSteps: [],
+      deferredSteps: [],
+      manualActionFields: [],
+      dependencyGraph: { edges: [], hasCircularDependency: false, resolutionNote: "" },
+      warnings: [],
+      errors: [{ code: "IPC_UNAVAILABLE", message: "Tauri IPC unavailable" }],
+      noChangesMade: true,
+    };
+  }
+  return result;
+}
+
 export const liveAirBridgeService: AirBridgeService = {
   listConnections,
   listWorkspaces,
@@ -259,4 +283,5 @@ export const liveAirBridgeService: AirBridgeService = {
   inspectBackupPackage,
   createRestoreDryRunPlan,
   runRestoreExecution,
+  createRestoreSchemaPlan,
 };

@@ -4,9 +4,14 @@ import { useAppState } from "../state/useAppState";
 import { PackageInspectionPanel } from "../features/backups/PackageInspectionPanel";
 import { RestoreDryRunPanel } from "../features/backups/RestoreDryRunPanel";
 import { RestoreExecutionGatePanel } from "../features/backups/RestoreExecutionGatePanel";
+import { RestoreSchemaPlanPanel } from "../features/backups/RestoreSchemaPlanPanel";
 import { liveAirBridgeService } from "../services/liveAirBridgeService";
 import type { BackupPackageInspectionResult } from "../backend/types";
-import type { RestoreDryRunPlan, RestoreTargetMode } from "../backend/types";
+import type {
+  RestoreDryRunPlan,
+  RestoreSchemaPlanRequest,
+  RestoreTargetMode,
+} from "../backend/types";
 
 export function RestorePage() {
   const { state, compatibilitySummary } = useAppState();
@@ -97,6 +102,35 @@ export function RestorePage() {
                 setTargetMode(mode);
                 setTargetBaseName(baseName);
               }}
+            />
+
+            <div className="divider" style={{ margin: 0 }} />
+
+            {/* Schema creation plan — no Airtable calls, no token */}
+            <RestoreSchemaPlanPanel
+              service={liveAirBridgeService}
+              packageFilename={inspection?.filename ?? null}
+              dryRunStatus={
+                dryRunPlan ? (dryRunPlan.status as "ready" | "readyWithWarnings" | "blocked") : null
+              }
+              targetMode={targetMode}
+              targetBaseName={targetBaseName}
+              tables={
+                dryRunPlan
+                  ? dryRunPlan.tables.map((t): RestoreSchemaPlanRequest["tables"][number] => ({
+                      tableId: t.tableId,
+                      tableName: t.tableName,
+                      fields: t.fields.map((f) => ({
+                        fieldId: f.fieldId,
+                        fieldName: f.fieldName,
+                        fieldType: f.fieldType,
+                        linkedTableId:
+                          t.linkedRecordPlans.find((lp) => lp.fieldId === f.fieldId)
+                            ?.linkedTableId ?? undefined,
+                      })),
+                    }))
+                  : []
+              }
             />
 
             <div className="divider" style={{ margin: 0 }} />

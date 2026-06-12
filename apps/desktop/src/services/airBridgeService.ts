@@ -21,6 +21,8 @@ import type {
   RestoreDryRunRequest,
   RestoreExecutionRequest,
   RestoreExecutionResult,
+  RestoreSchemaPlan,
+  RestoreSchemaPlanRequest,
   RunBackupCommandRequest,
   RunBackupCommandResponse,
 } from "../backend/types";
@@ -84,4 +86,15 @@ export interface AirBridgeService {
    * - In this version always returns blocked/readyButDisabled — write engine not enabled.
    */
   runRestoreExecution(request: RestoreExecutionRequest): Promise<RestoreExecutionResult>;
+  /**
+   * Creates a schema creation plan from a dry-run result.
+   *
+   * - No Airtable API calls.
+   * - No token required.
+   * - No files extracted.
+   * - No write operations.
+   * - Returns filename only — the full path is never included.
+   * - Always returns noChangesMade: true.
+   */
+  createRestoreSchemaPlan(request: RestoreSchemaPlanRequest): Promise<RestoreSchemaPlan>;
 }

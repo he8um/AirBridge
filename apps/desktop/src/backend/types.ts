@@ -664,3 +664,145 @@ export interface RestoreExecutionResult {
   /** Always true — no Airtable changes were made. */
   noChangesMade: boolean;
 }
+
+// ── Restore schema creation planning types (mirrors Rust restore::schema_plan) ──
+
+export type RestoreSchemaPlanStatus = "ready" | "readyWithWarnings" | "blocked";
+
+export type RestoreFieldCreateClassification =
+  | "createDirectly"
+  | "createWithAdjustment"
+  | "deferUntilTablesExist"
+  | "metadataOnly"
+  | "manualActionRequired"
+  | "unsupported";
+
+export interface RestoreTableCreationStep {
+  tableId: string;
+  tableName: string;
+  stepIndex: number;
+  fieldCount: number;
+  directFieldCount: number;
+  deferredFieldCount: number;
+  manualActionCount: number;
+  unsupportedCount: number;
+  note: string;
+}
+
+export interface RestoreFieldCreationStep {
+  fieldId: string;
+  fieldName: string;
+  fieldType: string;
+  tableId: string;
+  tableName: string;
+  classification: RestoreFieldCreateClassification;
+  note: string;
+}
+
+export interface RestoreDeferredFieldStep {
+  fieldId: string;
+  fieldName: string;
+  fieldType: string;
+  tableId: string;
+  tableName: string;
+  reason: string;
+  linkedTableId?: string;
+}
+
+export interface RestoreManualActionField {
+  fieldId: string;
+  fieldName: string;
+  fieldType: string;
+  tableId: string;
+  tableName: string;
+  actionDescription: string;
+}
+
+export interface RestoreLinkedDependencyStep {
+  fieldId: string;
+  fieldName: string;
+  sourceTableId: string;
+  sourceTableName: string;
+  targetTableId: string;
+  targetTableName: string;
+  remappingRequired: boolean;
+  note: string;
+}
+
+export interface RestoreSchemaDependencyGraph {
+  edges: RestoreLinkedDependencyStep[];
+  hasCircularDependency: boolean;
+  resolutionNote: string;
+}
+
+export interface RestoreSchemaWarning {
+  code: string;
+  message: string;
+  tableName?: string;
+  fieldName?: string;
+}
+
+export interface RestoreSchemaError {
+  code: string;
+  message: string;
+}
+
+/** Input table for the schema creation plan command (derived from dry-run plan). */
+export interface SchemaPlanTableInput {
+  tableId: string;
+  tableName: string;
+  fields: SchemaPlanFieldInput[];
+}
+
+/** Input field for the schema creation plan command (derived from dry-run plan). */
+export interface SchemaPlanFieldInput {
+  fieldId: string;
+  fieldName: string;
+  fieldType: string;
+  linkedTableId?: string;
+}
+
+/**
+ * Input for the schema creation plan command.
+ * - No token — schema planning requires no Airtable access.
+ * - packageFilename is the filename only; never a full path.
+ */
+export interface RestoreSchemaPlanRequest {
+  /** Filename from the most recent package inspection or dry-run. Never a path. */
+  packageFilename: string;
+  /** Serialised dry-run plan status for gate-check ("ready" | "readyWithWarnings" | "blocked"). */
+  dryRunStatus: string;
+  targetMode: RestoreTargetMode;
+  targetBaseName?: string;
+  /** Tables extracted from the dry-run plan for planning purposes. */
+  tables: SchemaPlanTableInput[];
+}
+
+/**
+ * Full schema creation plan.
+ * - No Airtable calls.
+ * - No writes.
+ * - No token in the result.
+ * - noChangesMade is always true.
+ */
+export interface RestoreSchemaPlan {
+  /** Filename only — never the full path. */
+  filename: string;
+  status: RestoreSchemaPlanStatus;
+  targetMode: RestoreTargetMode;
+  targetBaseName?: string;
+  /** Ordered steps for table creation (tables planned before fields). */
+  tableSteps: RestoreTableCreationStep[];
+  /** Ordered steps for field creation (only directly-creatable fields). */
+  fieldSteps: RestoreFieldCreationStep[];
+  /** Fields deferred until tables and records exist. */
+  deferredSteps: RestoreDeferredFieldStep[];
+  /** Fields that require manual action outside the restore process. */
+  manualActionFields: RestoreManualActionField[];
+  /** Linked record dependency graph. */
+  dependencyGraph: RestoreSchemaDependencyGraph;
+  warnings: RestoreSchemaWarning[];
+  errors: RestoreSchemaError[];
+  /** Always true — no Airtable changes were made. */
+  noChangesMade: boolean;
+}

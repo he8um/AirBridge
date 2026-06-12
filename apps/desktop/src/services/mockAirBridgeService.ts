@@ -21,6 +21,8 @@ import type {
   RestoreDryRunRequest,
   RestoreExecutionRequest,
   RestoreExecutionResult,
+  RestoreSchemaPlan,
+  RestoreSchemaPlanRequest,
   RunBackupCommandRequest,
   RunBackupCommandResponse,
   TableExportPlan,
@@ -873,6 +875,148 @@ function runRestoreExecutionImpl(
   });
 }
 
+function createRestoreSchemaPlanImpl(
+  request: RestoreSchemaPlanRequest,
+): Promise<RestoreSchemaPlan> {
+  const filename = request.packageFilename;
+
+  if (request.dryRunStatus === "blocked" || !request.dryRunStatus) {
+    return Promise.resolve({
+      filename,
+      status: "blocked",
+      targetMode: request.targetMode,
+      tableSteps: [],
+      fieldSteps: [],
+      deferredSteps: [],
+      manualActionFields: [],
+      dependencyGraph: { edges: [], hasCircularDependency: false, resolutionNote: "" },
+      warnings: [],
+      errors: [{ code: "DRY_RUN_BLOCKED", message: "Dry-run plan is blocked." }],
+      noChangesMade: true,
+    });
+  }
+
+  return Promise.resolve({
+    filename,
+    status: "readyWithWarnings",
+    targetMode: request.targetMode,
+    targetBaseName: request.targetBaseName,
+    tableSteps: [
+      {
+        tableId: "tblMockProjects",
+        tableName: "Projects",
+        stepIndex: 0,
+        fieldCount: 5,
+        directFieldCount: 2,
+        deferredFieldCount: 1,
+        manualActionCount: 1,
+        unsupportedCount: 1,
+        note: "Create table 'Projects': 2 direct, 1 deferred, 1 manual, 1 unsupported.",
+      },
+      {
+        tableId: "tblMockTasks",
+        tableName: "Tasks",
+        stepIndex: 1,
+        fieldCount: 2,
+        directFieldCount: 2,
+        deferredFieldCount: 0,
+        manualActionCount: 0,
+        unsupportedCount: 0,
+        note: "Create table 'Tasks': 2 direct, 0 deferred, 0 manual, 0 unsupported.",
+      },
+    ],
+    fieldSteps: [
+      {
+        fieldId: "fldMockName",
+        fieldName: "Name",
+        fieldType: "singleLineText",
+        tableId: "tblMockProjects",
+        tableName: "Projects",
+        classification: "createDirectly",
+        note: "'singleLineText' can be created directly via the Airtable API.",
+      },
+      {
+        fieldId: "fldMockStatus",
+        fieldName: "Status",
+        fieldType: "singleSelect",
+        tableId: "tblMockProjects",
+        tableName: "Projects",
+        classification: "createDirectly",
+        note: "'singleSelect' can be created directly via the Airtable API.",
+      },
+      {
+        fieldId: "fldMockFiles",
+        fieldName: "Files",
+        fieldType: "multipleAttachments",
+        tableId: "tblMockProjects",
+        tableName: "Projects",
+        classification: "metadataOnly",
+        note: "Attachment metadata is captured. File content is not re-uploaded.",
+      },
+    ],
+    deferredSteps: [
+      {
+        fieldId: "fldMockTasks",
+        fieldName: "Tasks",
+        fieldType: "multipleRecordLinks",
+        tableId: "tblMockProjects",
+        tableName: "Projects",
+        reason: "Linked record field — deferred until all tables and records exist.",
+        linkedTableId: "tblMockTasks",
+      },
+    ],
+    manualActionFields: [
+      {
+        fieldId: "fldMockCalc",
+        fieldName: "Calculated Total",
+        fieldType: "formula",
+        tableId: "tblMockProjects",
+        tableName: "Projects",
+        actionDescription:
+          "'formula' must be recreated manually — cannot be set via the Airtable API.",
+      },
+    ],
+    dependencyGraph: {
+      edges: [
+        {
+          fieldId: "fldMockTasks",
+          fieldName: "Tasks",
+          sourceTableId: "tblMockProjects",
+          sourceTableName: "Projects",
+          targetTableId: "tblMockTasks",
+          targetTableName: "Tasks",
+          remappingRequired: true,
+          note: "Field 'Tasks' in 'Projects' links to 'Tasks'. Record IDs must be remapped after import.",
+        },
+      ],
+      hasCircularDependency: false,
+      resolutionNote:
+        "Linked record fields are deferred and applied after all tables and records are imported.",
+    },
+    warnings: [
+      {
+        code: "ATTACHMENT_METADATA_ONLY",
+        message:
+          "Attachment fields are present. File content is not re-uploaded; only metadata is captured.",
+        tableName: "Projects",
+      },
+      {
+        code: "LINKED_FIELDS_DEFERRED",
+        message: "1 linked record field(s) in 'Projects' will be deferred until all tables exist.",
+        tableName: "Projects",
+      },
+      {
+        code: "UNSUPPORTED_FIELDS_REQUIRE_MANUAL_RECREATION",
+        message:
+          "1 field(s) in 'Projects' cannot be created via the API and must be recreated manually.",
+        tableName: "Projects",
+      },
+    ],
+    errors: [],
+    noChangesMade: true,
+  });
+}
+
 export const mockCheckConnection = checkConnectionImpl;
 
 export const mockAirBridgeService: AirBridgeService = {
@@ -896,4 +1040,5 @@ export const mockAirBridgeService: AirBridgeService = {
   inspectBackupPackage: inspectBackupPackageImpl,
   createRestoreDryRunPlan: createRestoreDryRunPlanImpl,
   runRestoreExecution: runRestoreExecutionImpl,
+  createRestoreSchemaPlan: createRestoreSchemaPlanImpl,
 };

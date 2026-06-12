@@ -7,6 +7,8 @@ use crate::restore::dry_run::create_dry_run_plan;
 use crate::restore::execution::{RestoreExecutionRequest, RestoreExecutionResult};
 use crate::restore::execution_gate::validate_restore_execution_gate;
 use crate::restore::plan::{RestoreDryRunPlan, RestoreDryRunRequest};
+use crate::restore::schema_plan::{RestoreSchemaPlan, RestoreSchemaPlanRequest};
+use crate::restore::schema_planner::create_schema_plan;
 
 #[tauri::command]
 pub fn list_restore_plans() -> AirBridgeResult<Vec<RestorePlanSummary>> {
@@ -49,6 +51,18 @@ pub fn create_restore_dry_run_plan(request: RestoreDryRunRequest) -> RestoreDryR
     create_dry_run_plan(&request)
 }
 
+/// Creates a schema creation plan from a dry-run result.
+///
+/// - No Airtable API calls.
+/// - No token required.
+/// - No files written or extracted.
+/// - Filename in the result is never a full path.
+/// - no_changes_made is always true.
+#[tauri::command]
+pub fn create_restore_schema_plan(request: RestoreSchemaPlanRequest) -> RestoreSchemaPlan {
+    create_schema_plan(&request)
+}
+
 /// Validates the restore execution safety gate and returns a blocked/disabled result.
 ///
 /// In this version the write engine is not enabled. The command:
@@ -69,6 +83,152 @@ mod tests {
     use super::*;
     use crate::restore::execution::{RestoreExecutionStatus, RESTORE_CONFIRMATION_PHRASE};
     use crate::restore::plan::RestoreTargetMode;
+    use crate::restore::schema_plan::{
+        RestoreSchemaPlanStatus, SchemaPlanFieldInput, SchemaPlanTableInput,
+    };
+
+    // ── schema plan command tests ──────────────────────────────────────────
+
+    fn schema_plan_request(dry_run_status: &str) -> RestoreSchemaPlanRequest {
+        RestoreSchemaPlanRequest {
+            package_filename: "backup.airbridge".to_string(),
+            dry_run_status: dry_run_status.to_string(),
+            target_mode: RestoreTargetMode::NewBase,
+            target_base_name: Some("Restored Base".to_string()),
+            tables: vec![SchemaPlanTableInput {
+                table_id: "tbl01".to_string(),
+                table_name: "Projects".to_string(),
+                fields: vec![
+                    SchemaPlanFieldInput {
+                        field_id: "fld01".to_string(),
+                        field_name: "Name".to_string(),
+                        field_type: "singleLineText".to_string(),
+                        linked_table_id: None,
+                    },
+                    SchemaPlanFieldInput {
+                        field_id: "fld02".to_string(),
+                        field_name: "Status".to_string(),
+                        field_type: "singleSelect".to_string(),
+                        linked_table_id: None,
+                    },
+                ],
+            }],
+        }
+    }
+
+    #[test]
+    fn schema_plan_command_does_not_require_token() {
+        let req = schema_plan_request("ready");
+        let json = serde_json::to_string(&req).expect("serialize");
+        assert!(!json.contains("\"token\""));
+        assert!(!json.contains("\"apiKey\""));
+    }
+
+    #[test]
+    fn schema_plan_command_ready_status_produces_plan() {
+        let req = schema_plan_request("ready");
+        let plan = create_restore_schema_plan(req);
+        assert!(
+            plan.status == RestoreSchemaPlanStatus::Ready
+                || plan.status == RestoreSchemaPlanStatus::ReadyWithWarnings
+        );
+    }
+
+    #[test]
+    fn schema_plan_command_blocked_status_produces_blocked_plan() {
+        let req = schema_plan_request("blocked");
+        let plan = create_restore_schema_plan(req);
+        assert_eq!(plan.status, RestoreSchemaPlanStatus::Blocked);
+        assert!(!plan.errors.is_empty());
+    }
+
+    #[test]
+    fn schema_plan_result_no_changes_made_always_true() {
+        for status in &["ready", "readyWithWarnings", "blocked"] {
+            let req = schema_plan_request(status);
+            let plan = create_restore_schema_plan(req);
+            assert!(plan.no_changes_made);
+        }
+    }
+
+    #[test]
+    fn schema_plan_result_does_not_contain_absolute_path() {
+        let req = schema_plan_request("ready");
+        let plan = create_restore_schema_plan(req);
+        let json = serde_json::to_string(&plan).expect("serialize");
+        assert!(!json.contains("/Users/"));
+        assert!(!json.contains("/tmp/"));
+        assert!(!json.contains("/home/"));
+    }
+
+    #[test]
+    fn schema_plan_result_has_no_token() {
+        const SENTINEL: &str = "pat_command_test_sentinel_9999999999";
+        let req = schema_plan_request("ready");
+        let plan = create_restore_schema_plan(req);
+        let json = serde_json::to_string(&plan).expect("serialize");
+        assert!(!json.contains(SENTINEL));
+    }
+
+    #[test]
+    fn schema_plan_filename_is_not_a_path() {
+        let req = schema_plan_request("ready");
+        let plan = create_restore_schema_plan(req);
+        assert!(!plan.filename.contains('/'));
+        assert!(!plan.filename.contains('\\'));
+        assert_eq!(plan.filename, "backup.airbridge");
+    }
+
+    #[test]
+    fn schema_plan_result_has_table_steps() {
+        let req = schema_plan_request("ready");
+        let plan = create_restore_schema_plan(req);
+        assert!(!plan.table_steps.is_empty());
+        assert_eq!(plan.table_steps[0].table_name, "Projects");
+    }
+
+    #[test]
+    fn schema_plan_result_has_field_steps() {
+        let req = schema_plan_request("ready");
+        let plan = create_restore_schema_plan(req);
+        assert!(!plan.field_steps.is_empty());
+    }
+
+    #[test]
+    fn schema_plan_ready_with_warnings_dry_run_status_accepted() {
+        let req = schema_plan_request("readyWithWarnings");
+        let plan = create_restore_schema_plan(req);
+        assert!(
+            plan.status == RestoreSchemaPlanStatus::Ready
+                || plan.status == RestoreSchemaPlanStatus::ReadyWithWarnings
+        );
+    }
+
+    #[test]
+    fn schema_plan_empty_dry_run_status_produces_blocked() {
+        let req = schema_plan_request("");
+        let plan = create_restore_schema_plan(req);
+        assert_eq!(plan.status, RestoreSchemaPlanStatus::Blocked);
+    }
+
+    #[test]
+    fn schema_plan_serializes_with_no_changes_made_key() {
+        let req = schema_plan_request("ready");
+        let plan = create_restore_schema_plan(req);
+        let json = serde_json::to_string(&plan).expect("serialize");
+        assert!(json.contains("noChangesMade"));
+    }
+
+    #[test]
+    fn schema_plan_has_no_succeeded_status() {
+        for status in &["ready", "blocked"] {
+            let req = schema_plan_request(status);
+            let plan = create_restore_schema_plan(req);
+            let json = serde_json::to_string(&plan).expect("serialize");
+            assert!(!json.contains("succeeded"));
+            assert!(!json.contains("Succeeded"));
+        }
+    }
 
     // ── dry-run command tests ──────────────────────────────────────────────
 

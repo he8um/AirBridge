@@ -55,6 +55,25 @@ Use this checklist when verifying the restore functionality against a release bu
 
 ---
 
+## Schema Creation Plan (No Airtable Writes)
+
+- [ ] **Schema plan panel renders.** The "Schema Creation Plan" section is visible on the Restore page between the dry-run panel and the execution gate.
+- [ ] **Generate button disabled without inspection.** Before a package is inspected, the button is disabled and a "Inspect a package first." message is shown.
+- [ ] **Generate button disabled when dry-run is blocked.** If the dry-run status is "blocked", the button is disabled and a "Generate a restore plan preview first." message is shown.
+- [ ] **No token is requested.** The schema plan panel does not contain a token input field.
+- [ ] **No restore execution button.** The panel does not render a "Start Restore" or equivalent button.
+- [ ] **Plan shows status badge.** After generation, a status badge shows "Ready", "Ready with Warnings", or "Blocked".
+- [ ] **Table creation steps are listed.** Each table appears as a numbered step with direct, deferred, manual, and unsupported field counts.
+- [ ] **Field creation steps are listed.** Each directly-creatable field is listed with its classification.
+- [ ] **Deferred linked fields are listed.** Linked record fields appear in the deferred section, not the field creation steps section.
+- [ ] **Manual action fields are listed.** formula, rollup, lookup, and collaborator fields appear with their action descriptions.
+- [ ] **Dependency graph is shown.** Linked record dependency edges are rendered, showing source table, target table, and remapping notice.
+- [ ] **Warnings are shown.** Any attachment metadata, deferred link, unsupported, or manual-action warnings appear.
+- [ ] **"No Airtable changes were made" notice is always present.** The notice is visible after generating any plan.
+- [ ] **Full package path is not visible.** No absolute directory path appears in any visible element.
+
+---
+
 ## Restore Execution Gate (Current Version — Write Engine Disabled)
 
 - [ ] **Gate panel renders.** The "Restore Execution" section is visible on the Restore page with a prerequisites checklist and form inputs.
