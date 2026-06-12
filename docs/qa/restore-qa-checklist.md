@@ -55,6 +55,23 @@ Use this checklist when verifying the restore functionality against a release bu
 
 ---
 
+## Restore Execution Gate (Current Version — Write Engine Disabled)
+
+- [ ] **Gate panel renders.** The "Restore Execution" section is visible on the Restore page with a prerequisites checklist and form inputs.
+- [ ] **Not-enabled notice is always visible.** A notice reading "Restore execution is not enabled in this version" is shown at all times — before and after any attempt.
+- [ ] **Token input is a password field.** The access token input uses `type="password"`. The entered value is masked and not visible in the page text.
+- [ ] **Attempt button disabled without prerequisites.** With no package inspected, no dry-run plan, no token, or incorrect confirmation text, the "Attempt Restore" button is `disabled`.
+- [ ] **Button enables only when all five prerequisites are met.** Package valid, dry-run ready, target mode set, token non-empty, confirmation exactly "RESTORE BACKUP".
+- [ ] **Confirmation text must match exactly.** Typing "restore backup" (lowercase), "RESTORE" alone, or any other variation does not enable the button.
+- [ ] **Result shows "No Airtable changes were made."** After clicking Attempt Restore, the result panel always shows this notice regardless of gate outcome.
+- [ ] **Status is "Disabled" when all gates pass.** The result badge reads "Disabled" and the block reason is `restoreWriteEngineNotEnabled`.
+- [ ] **Token is cleared after attempt.** After the attempt completes (or is cancelled), the token input is empty.
+- [ ] **Full package path is not visible.** Inspect the DOM; no absolute directory path appears in any visible element.
+- [ ] **No success or "restore complete" message.** The result panel contains no text suggesting a restore completed or succeeded.
+- [ ] **Cancel button clears state.** Clicking Cancel after an attempt empties the token input and hides the result panel.
+
+---
+
 ## Restore Execution
 
 ### Basic Restore

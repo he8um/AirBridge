@@ -4,6 +4,8 @@ use crate::models::restore::{
     WarningSeverity,
 };
 use crate::restore::dry_run::create_dry_run_plan;
+use crate::restore::execution::{RestoreExecutionRequest, RestoreExecutionResult};
+use crate::restore::execution_gate::validate_restore_execution_gate;
 use crate::restore::plan::{RestoreDryRunPlan, RestoreDryRunRequest};
 
 #[tauri::command]
@@ -47,10 +49,28 @@ pub fn create_restore_dry_run_plan(request: RestoreDryRunRequest) -> RestoreDryR
     create_dry_run_plan(&request)
 }
 
+/// Validates the restore execution safety gate and returns a blocked/disabled result.
+///
+/// In this version the write engine is not enabled. The command:
+/// - Validates all preconditions (inspection, dry-run, target mode, token, confirmation).
+/// - Never calls the Airtable API.
+/// - Never writes any file.
+/// - Never stores or echoes the token.
+/// - Never includes the full package path in the result.
+/// - Always sets no_changes_made: true.
+#[tauri::command]
+pub fn run_restore_execution(request: RestoreExecutionRequest) -> RestoreExecutionResult {
+    // Token is forwarded to the gate for presence check only; it is not stored or logged.
+    validate_restore_execution_gate(&request)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::restore::execution::{RestoreExecutionStatus, RESTORE_CONFIRMATION_PHRASE};
     use crate::restore::plan::RestoreTargetMode;
+
+    // ── dry-run command tests ──────────────────────────────────────────────
 
     #[test]
     fn command_does_not_require_token() {
@@ -101,5 +121,102 @@ mod tests {
         let json = serde_json::to_string(&plan).expect("serialize");
         assert!(!json.contains("/Users/testuser/"));
         assert!(!json.contains("/backups/"));
+    }
+
+    // ── execution command tests ────────────────────────────────────────────
+
+    fn exec_request_missing_confirmation() -> RestoreExecutionRequest {
+        RestoreExecutionRequest {
+            package_filename: "backup.airbridge".to_string(),
+            package_path: "/tmp/backup.airbridge".to_string(),
+            package_validation_status: "valid".to_string(),
+            dry_run_status: "ready".to_string(),
+            target_mode: RestoreTargetMode::NewBase,
+            target_base_name: None,
+            token: "tok-test-value".to_string(),
+            confirmation: "".to_string(),
+        }
+    }
+
+    fn exec_request_valid() -> RestoreExecutionRequest {
+        RestoreExecutionRequest {
+            package_filename: "backup.airbridge".to_string(),
+            package_path: "/tmp/backup.airbridge".to_string(),
+            package_validation_status: "valid".to_string(),
+            dry_run_status: "ready".to_string(),
+            target_mode: RestoreTargetMode::NewBase,
+            target_base_name: None,
+            token: "tok-test-value".to_string(),
+            confirmation: RESTORE_CONFIRMATION_PHRASE.to_string(),
+        }
+    }
+
+    #[test]
+    fn execution_command_missing_confirmation_returns_blocked() {
+        let req = exec_request_missing_confirmation();
+        let result = run_restore_execution(req);
+        assert_eq!(result.status, RestoreExecutionStatus::Blocked);
+        assert!(result.no_changes_made);
+    }
+
+    #[test]
+    fn execution_command_valid_gate_returns_ready_but_disabled() {
+        let req = exec_request_valid();
+        let result = run_restore_execution(req);
+        assert_eq!(result.status, RestoreExecutionStatus::ReadyButDisabled);
+        assert!(result.no_changes_made);
+    }
+
+    #[test]
+    fn execution_result_does_not_contain_token() {
+        let req = exec_request_valid();
+        let result = run_restore_execution(req);
+        let json = serde_json::to_string(&result).expect("serialize");
+        assert!(!json.contains("tok-test-value"));
+    }
+
+    #[test]
+    fn execution_result_does_not_contain_absolute_path() {
+        let req = exec_request_valid();
+        let result = run_restore_execution(req);
+        let json = serde_json::to_string(&result).expect("serialize");
+        assert!(!json.contains("/tmp/"));
+    }
+
+    #[test]
+    fn execution_result_has_no_succeeded_status() {
+        let req = exec_request_valid();
+        let result = run_restore_execution(req);
+        let json = serde_json::to_string(&result).expect("serialize");
+        assert!(!json.contains("succeeded"));
+        assert!(!json.contains("Succeeded"));
+    }
+
+    #[test]
+    fn execution_missing_token_returns_blocked() {
+        let mut req = exec_request_valid();
+        req.token = "".to_string();
+        let result = run_restore_execution(req);
+        assert_eq!(result.status, RestoreExecutionStatus::Blocked);
+    }
+
+    #[test]
+    fn execution_invalid_package_returns_blocked() {
+        let mut req = exec_request_valid();
+        req.package_validation_status = "invalid".to_string();
+        let result = run_restore_execution(req);
+        assert_eq!(result.status, RestoreExecutionStatus::Blocked);
+    }
+
+    #[test]
+    fn execution_no_changes_made_always_true() {
+        // blocked case
+        let req = exec_request_missing_confirmation();
+        let result = run_restore_execution(req);
+        assert!(result.no_changes_made);
+        // ready-but-disabled case
+        let req2 = exec_request_valid();
+        let result2 = run_restore_execution(req2);
+        assert!(result2.no_changes_made);
     }
 }

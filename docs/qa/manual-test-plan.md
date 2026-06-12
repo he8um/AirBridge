@@ -159,6 +159,51 @@ Before executing this plan:
   2. Click "Generate Restore Plan".
 - Expected result: A "Blocked" badge is shown with an error message. The app does not crash. The "No Airtable changes were made." notice is still present.
 
+**TC-REST-00B: Restore execution gate — prerequisites checklist**
+
+- Preconditions: Application open on Restore page. No file has been inspected yet.
+- Steps:
+  1. Scroll to the "Restore Execution" section.
+  2. Observe the prerequisites checklist.
+  3. Observe the "not enabled" notice.
+  4. Observe the "Attempt Restore" button state.
+- Expected result: Prerequisites checklist shows five items, all in an incomplete state. "Restore execution is not enabled in this version" notice is visible. "Attempt Restore" button is `disabled`. "No Airtable changes" is mentioned in the notice.
+
+**TC-REST-00C: Restore execution gate — token field is masked**
+
+- Preconditions: Application open on Restore page.
+- Steps:
+  1. Click in the "Access Token" field in the "Restore Execution" section.
+  2. Type any text.
+- Expected result: The typed text is masked (shown as dots or asterisks). The text does not appear in plain view anywhere on the page.
+
+**TC-REST-00D: Restore execution gate — full attempt with all prerequisites**
+
+- Preconditions: A valid `.airbridge` package has been inspected (status: valid or warning). A dry-run plan has been generated (status: ready or ready with warnings). A target mode is selected.
+- Steps:
+  1. In the "Restore Execution" section, enter any non-empty string in the token field.
+  2. In the confirmation field, type `RESTORE BACKUP` exactly.
+  3. Observe the "Attempt Restore" button state — it should now be enabled.
+  4. Click "Attempt Restore".
+- Expected result: A result panel appears. The status badge reads "Disabled". The message states the write engine is not enabled. "No Airtable changes were made." is visible. No record or base was created in Airtable. The token field is empty after the attempt.
+
+**TC-REST-00E: Restore execution gate — wrong confirmation keeps button disabled**
+
+- Preconditions: Package inspected, dry-run plan ready, token non-empty.
+- Steps:
+  1. Type `restore backup` (lowercase) in the confirmation field.
+  2. Observe the button state.
+  3. Clear the field and type `RESTORE` alone.
+  4. Observe the button state.
+- Expected result: The "Attempt Restore" button remains `disabled` in both cases. Only the exact string `RESTORE BACKUP` enables the button.
+
+**TC-REST-00F: Restore execution gate — cancel clears token**
+
+- Preconditions: A successful gate attempt has completed (TC-REST-00D above).
+- Steps:
+  1. Click "Cancel" in the result area.
+- Expected result: The result panel disappears. The token input is empty. The form returns to idle state.
+
 **TC-REST-01: Dry-run restore**
 
 - Preconditions: A valid `.airbridge` backup package exists (can use fixture data loaded via "Open backup"). A connection with write access to an empty target base is available.

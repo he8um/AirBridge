@@ -1,13 +1,25 @@
+import { useState } from "react";
 import { SectionHeader } from "../components/SectionHeader";
 import { useAppState } from "../state/useAppState";
 import { PackageInspectionPanel } from "../features/backups/PackageInspectionPanel";
 import { RestoreDryRunPanel } from "../features/backups/RestoreDryRunPanel";
+import { RestoreExecutionGatePanel } from "../features/backups/RestoreExecutionGatePanel";
 import { liveAirBridgeService } from "../services/liveAirBridgeService";
+import type { BackupPackageInspectionResult } from "../backend/types";
+import type { RestoreDryRunPlan, RestoreTargetMode } from "../backend/types";
 
 export function RestorePage() {
   const { state, compatibilitySummary } = useAppState();
   const plan = state.restorePlans[0];
   const bases = state.bases;
+
+  // Shared state lifted from inspection and dry-run panels so the execution gate
+  // can read prerequisites without mounting a separate file picker.
+  const [inspection, setInspection] = useState<BackupPackageInspectionResult | null>(null);
+  const [packagePath, setPackagePath] = useState<string | null>(null);
+  const [dryRunPlan, setDryRunPlan] = useState<RestoreDryRunPlan | null>(null);
+  const [targetMode, setTargetMode] = useState<RestoreTargetMode>("newBase");
+  const [targetBaseName, setTargetBaseName] = useState<string | undefined>(undefined);
 
   return (
     <div className="page">
@@ -25,7 +37,7 @@ export function RestorePage() {
               gap: "var(--space-6)",
             }}
           >
-            {/* Backup file selector */}
+            {/* Backup file selector (placeholder — path shared with inspection panel) */}
             <div className="form-field">
               <label className="form-label">Backup File</label>
               <div style={{ display: "flex", gap: "var(--space-2)", alignItems: "center" }}>
@@ -65,17 +77,48 @@ export function RestorePage() {
 
             <div className="divider" style={{ margin: 0 }} />
 
-            {/* Inspection panel */}
-            <PackageInspectionPanel service={liveAirBridgeService} />
+            {/* Inspection panel — notifies RestorePage of results */}
+            <PackageInspectionPanel
+              service={liveAirBridgeService}
+              onInspected={(result, path) => {
+                setInspection(result);
+                setPackagePath(path);
+                setDryRunPlan(null);
+              }}
+            />
 
             <div className="divider" style={{ margin: 0 }} />
 
-            {/* Restore plan preview */}
-            <RestoreDryRunPanel service={liveAirBridgeService} />
+            {/* Restore plan preview — notifies RestorePage of plan + target selection */}
+            <RestoreDryRunPanel
+              service={liveAirBridgeService}
+              onPlanReady={(plan, mode, baseName) => {
+                setDryRunPlan(plan);
+                setTargetMode(mode);
+                setTargetBaseName(baseName);
+              }}
+            />
 
             <div className="divider" style={{ margin: 0 }} />
 
-            {/* Restore options */}
+            {/* Restore execution gate */}
+            <RestoreExecutionGatePanel
+              service={liveAirBridgeService}
+              inspectedFilename={inspection?.filename ?? null}
+              inspectionStatus={
+                inspection ? (inspection.validationStatus as "valid" | "warning" | "invalid") : null
+              }
+              packagePath={packagePath}
+              dryRunStatus={
+                dryRunPlan ? (dryRunPlan.status as "ready" | "readyWithWarnings" | "blocked") : null
+              }
+              targetMode={targetMode}
+              targetBaseName={targetBaseName}
+            />
+
+            <div className="divider" style={{ margin: 0 }} />
+
+            {/* Restore options (legacy placeholder) */}
             <div>
               <p
                 style={{
@@ -136,31 +179,6 @@ export function RestorePage() {
                       ))
                     )}
                   </select>
-                </div>
-
-                {/* Start restore */}
-                <div style={{ paddingTop: "var(--space-2)" }}>
-                  <button
-                    type="button"
-                    className="btn btn-primary"
-                    disabled
-                    aria-label="Start restore job"
-                  >
-                    <svg
-                      width="14"
-                      height="14"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      aria-hidden="true"
-                    >
-                      <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                    </svg>
-                    Start Restore
-                  </button>
                 </div>
               </div>
             </div>

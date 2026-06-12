@@ -11,11 +11,17 @@ import { pickBackupPackagePath } from "./PackageInspectionPicker";
 
 interface RestoreDryRunPanelProps {
   service: AirBridgeService;
+  /** Optional callback invoked when a plan is generated. Receives the plan, mode, and optional base name. */
+  onPlanReady?: (
+    plan: RestoreDryRunPlan,
+    targetMode: RestoreTargetMode,
+    targetBaseName: string | undefined,
+  ) => void;
 }
 
 type PlanState = "idle" | "loading" | "done";
 
-export function RestoreDryRunPanel({ service }: RestoreDryRunPanelProps) {
+export function RestoreDryRunPanel({ service, onPlanReady }: RestoreDryRunPanelProps) {
   const [planState, setPlanState] = useState<PlanState>("idle");
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const [targetMode, setTargetMode] = useState<RestoreTargetMode>("newBase");
@@ -41,6 +47,7 @@ export function RestoreDryRunPanel({ service }: RestoreDryRunPanelProps) {
         targetBaseName: targetBaseName.trim() || undefined,
       });
       setPlan(result);
+      onPlanReady?.(result, targetMode, targetBaseName.trim() || undefined);
     } finally {
       setPlanState("done");
     }

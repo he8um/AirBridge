@@ -19,6 +19,8 @@ import type {
   RecordsExportPlanRequest,
   RestoreDryRunPlan,
   RestoreDryRunRequest,
+  RestoreExecutionRequest,
+  RestoreExecutionResult,
   RunBackupCommandRequest,
   RunBackupCommandResponse,
 } from "../backend/types";
@@ -70,4 +72,16 @@ export interface AirBridgeService {
    * - The result contains filename only — the full path is never included.
    */
   createRestoreDryRunPlan(request: RestoreDryRunRequest): Promise<RestoreDryRunPlan>;
+  /**
+   * Validates the restore execution safety gate.
+   *
+   * - Token is forwarded to the command only; never stored.
+   * - No Airtable API calls.
+   * - No files extracted.
+   * - No write operations.
+   * - Returns filename only — the full path is never included.
+   * - Always returns noChangesMade: true.
+   * - In this version always returns blocked/readyButDisabled — write engine not enabled.
+   */
+  runRestoreExecution(request: RestoreExecutionRequest): Promise<RestoreExecutionResult>;
 }

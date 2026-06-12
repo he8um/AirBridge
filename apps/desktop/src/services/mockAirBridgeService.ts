@@ -19,6 +19,8 @@ import type {
   RecordsExportPlanRequest,
   RestoreDryRunPlan,
   RestoreDryRunRequest,
+  RestoreExecutionRequest,
+  RestoreExecutionResult,
   RunBackupCommandRequest,
   RunBackupCommandResponse,
   TableExportPlan,
@@ -758,6 +760,119 @@ function createRestoreDryRunPlanImpl(request: RestoreDryRunRequest): Promise<Res
   return Promise.resolve(plan);
 }
 
+export const MOCK_RESTORE_CONFIRMATION = "RESTORE BACKUP";
+
+function runRestoreExecutionImpl(
+  request: RestoreExecutionRequest,
+): Promise<RestoreExecutionResult> {
+  // Token is not stored. Checked for presence only.
+  const filename =
+    request.packageFilename ||
+    request.packagePath.split("/").pop()?.split("\\").pop() ||
+    "unknown.airbridge";
+
+  // Missing package inspection
+  if (!request.packageFilename) {
+    return Promise.resolve({
+      filename,
+      status: "blocked",
+      blockReason: "missingPackageInspection",
+      message: "No package has been inspected. Select and inspect a backup package first.",
+      warnings: [],
+      errors: [{ code: "GATE_BLOCKED", message: "Missing package inspection." }],
+      noChangesMade: true,
+    });
+  }
+
+  // Invalid package
+  if (
+    request.packageValidationStatus !== "valid" &&
+    request.packageValidationStatus !== "warning"
+  ) {
+    return Promise.resolve({
+      filename,
+      status: "blocked",
+      blockReason: "invalidPackage",
+      message: "The selected package is invalid or has not been inspected.",
+      warnings: [],
+      errors: [{ code: "GATE_BLOCKED", message: "Invalid package." }],
+      noChangesMade: true,
+    });
+  }
+
+  // Missing dry-run
+  if (!request.dryRunStatus) {
+    return Promise.resolve({
+      filename,
+      status: "blocked",
+      blockReason: "missingDryRunPlan",
+      message:
+        "A restore plan preview must be generated before restore execution can be attempted.",
+      warnings: [],
+      errors: [{ code: "GATE_BLOCKED", message: "Missing dry-run plan." }],
+      noChangesMade: true,
+    });
+  }
+
+  // Blocked dry-run
+  if (request.dryRunStatus !== "ready" && request.dryRunStatus !== "readyWithWarnings") {
+    return Promise.resolve({
+      filename,
+      status: "blocked",
+      blockReason: "dryRunBlocked",
+      message: "The restore plan is blocked. Resolve all errors in the plan before proceeding.",
+      warnings: [],
+      errors: [{ code: "GATE_BLOCKED", message: "Dry-run plan is blocked." }],
+      noChangesMade: true,
+    });
+  }
+
+  // Missing token
+  if (!request.token) {
+    return Promise.resolve({
+      filename,
+      status: "blocked",
+      blockReason: "missingToken",
+      message:
+        "An Airtable personal access token is required. The token is used only for this operation and is not stored.",
+      warnings: [],
+      errors: [{ code: "GATE_BLOCKED", message: "Missing token." }],
+      noChangesMade: true,
+    });
+  }
+
+  // Wrong confirmation
+  if (request.confirmation !== MOCK_RESTORE_CONFIRMATION) {
+    return Promise.resolve({
+      filename,
+      status: "blocked",
+      blockReason: "missingConfirmation",
+      message: "Confirmation text does not match. Type the exact phrase to proceed.",
+      warnings: [],
+      errors: [{ code: "GATE_BLOCKED", message: "Missing or incorrect confirmation." }],
+      noChangesMade: true,
+    });
+  }
+
+  // All gates pass — write engine not enabled.
+  return Promise.resolve({
+    filename,
+    status: "readyButDisabled",
+    blockReason: "restoreWriteEngineNotEnabled",
+    message:
+      "Restore execution contract is ready, but the write engine is not enabled in this version. No Airtable changes were made.",
+    warnings: [
+      {
+        code: "WRITE_ENGINE_DISABLED",
+        message:
+          "The restore write engine is not enabled. Schema creation and record import will be available in a future version.",
+      },
+    ],
+    errors: [],
+    noChangesMade: true,
+  });
+}
+
 export const mockCheckConnection = checkConnectionImpl;
 
 export const mockAirBridgeService: AirBridgeService = {
@@ -780,4 +895,5 @@ export const mockAirBridgeService: AirBridgeService = {
   getBackupJobStatus: getBackupJobStatusImpl,
   inspectBackupPackage: inspectBackupPackageImpl,
   createRestoreDryRunPlan: createRestoreDryRunPlanImpl,
+  runRestoreExecution: runRestoreExecutionImpl,
 };

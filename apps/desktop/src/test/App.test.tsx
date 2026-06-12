@@ -87,7 +87,7 @@ describe("AirBridge App", () => {
     it("navigates to Restore page when clicking Restore", async () => {
       const { user } = setup();
       await navigateTo(user, "Restore");
-      expect(screen.getByRole("button", { name: "Start restore job" })).toBeInTheDocument();
+      expect(screen.getByRole("heading", { name: "Restore from Backup" })).toBeInTheDocument();
     });
 
     it("navigates to Reports page when clicking Reports", async () => {
@@ -192,8 +192,9 @@ describe("AirBridge App", () => {
       expect(screen.getByText("Dry-run mode")).toBeInTheDocument();
     });
 
-    it("shows Start Restore button", () => {
-      expect(screen.getByRole("button", { name: "Start restore job" })).toBeInTheDocument();
+    it("shows restore execution gate", () => {
+      expect(screen.getByTestId("restore-execution-gate-panel")).toBeInTheDocument();
+      expect(screen.getByTestId("attempt-restore-button")).toBeInTheDocument();
     });
 
     it("shows compatibility section", () => {

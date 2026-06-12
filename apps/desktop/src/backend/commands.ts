@@ -13,6 +13,8 @@ import type {
   RecordsExportPlanRequest,
   RestoreDryRunPlan,
   RestoreDryRunRequest,
+  RestoreExecutionRequest,
+  RestoreExecutionResult,
   RunBackupCommandRequest,
   RunBackupCommandResponse,
 } from "./types";
@@ -168,4 +170,21 @@ export async function createRestoreDryRunPlan(
   request: RestoreDryRunRequest,
 ): Promise<RestoreDryRunPlan | null> {
   return safeInvoke<RestoreDryRunPlan>("create_restore_dry_run_plan", { request });
+}
+
+/**
+ * Validates the restore execution safety gate and returns a blocked/disabled result.
+ *
+ * - Token is forwarded to the Rust command only; never stored here.
+ * - No Airtable API calls.
+ * - No files extracted.
+ * - No write operations.
+ * - Returns filename only — the full path is never included in the result.
+ * - Returns null if Tauri IPC is unavailable.
+ */
+export async function runRestoreExecution(
+  request: RestoreExecutionRequest,
+): Promise<RestoreExecutionResult | null> {
+  // Token is forwarded to the Rust command only; not stored or logged here.
+  return safeInvoke<RestoreExecutionResult>("run_restore_execution", { request });
 }

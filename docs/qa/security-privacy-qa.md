@@ -231,3 +231,49 @@ If AirBridge supports user-configured field redaction:
 **DR-06: No restore execution button.**
 - `RestoreDryRunPanel` does not render a "Start Restore", "Execute", or "Run Restore" button.
 - The frontend tests assert the absence of any such button by scanning rendered button text.
+
+---
+
+## Restore Execution Gate Safety (V0.1)
+
+**Goal:** Confirm that the restore execution gate makes no Airtable API calls, never stores the token, and never exposes the full package path or a success status.
+
+**RX-01: Token is a password input and is cleared.**
+- The token input in `RestoreExecutionGatePanel` renders with `type="password"`.
+- Characters are masked; the token value is not visible as DOM text.
+- After any attempt (or cancel), the token state and the input ref value are both cleared to empty string.
+- The token is never written to `localStorage`, `sessionStorage`, or any persistent store.
+
+**RX-02: Token not echoed in result.**
+- `RestoreExecutionRequest` does not derive `Serialize` in Rust — the struct cannot be included in any response.
+- `RestoreExecutionResult` has no `token` field.
+- The serialized JSON result from the Tauri command does not contain the token string.
+- The frontend tests assert that `JSON.stringify(result)` does not contain the test token value.
+
+**RX-03: Full path not in result or UI.**
+- `RestoreExecutionResult.filename` is populated with `Path::file_name()` — directory components are stripped.
+- The serialized result does not contain `/Users/`, `/home/`, or `:\\`.
+- The rendered DOM does not contain any absolute path component after an attempt.
+
+**RX-04: No Airtable API calls.**
+- `validate_restore_execution_gate` contains no HTTP client calls.
+- The write engine is explicitly disabled; no Airtable API is reachable from this code path.
+- Network monitoring during an attempt shows zero connections to `api.airtable.com`.
+
+**RX-05: `noChangesMade` always true.**
+- Both the `blocked()` helper and the all-gates-pass path set `no_changes_made: true`.
+- Rust unit tests cover both code paths.
+- The result panel always shows "No Airtable changes were made." when rendered.
+
+**RX-06: No `succeeded` status.**
+- `RestoreExecutionStatus` has no `Succeeded` variant in Rust.
+- The serialized JSON result never contains `"succeeded"` as a status value.
+- The rendered DOM does not contain the text "restore complete", "restore succeeded", or equivalent.
+
+**RX-07: Gate enforces seven ordered checks.**
+- The gate returns `Blocked` for each of the seven conditions (see `restore-execution-command-contract.md`).
+- All-gates-pass returns `ReadyButDisabled` with `restoreWriteEngineNotEnabled` — not a success.
+
+**RX-08: UI button requires exact confirmation.**
+- The "Attempt Restore" button is `disabled` unless `confirmationText === "RESTORE BACKUP"` exactly.
+- Lowercase, partial, or empty confirmation text does not enable the button.

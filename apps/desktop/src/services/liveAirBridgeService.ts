@@ -19,6 +19,8 @@ import type {
   RecordsExportPlanRequest,
   RestoreDryRunPlan,
   RestoreDryRunRequest,
+  RestoreExecutionRequest,
+  RestoreExecutionResult,
   RunBackupCommandRequest,
   RunBackupCommandResponse,
 } from "../backend/types";
@@ -217,6 +219,25 @@ async function createRestoreDryRunPlan(request: RestoreDryRunRequest): Promise<R
   return result;
 }
 
+async function runRestoreExecution(
+  request: RestoreExecutionRequest,
+): Promise<RestoreExecutionResult> {
+  // Token is forwarded to the Rust command only; not stored or logged here.
+  const result = await commands.runRestoreExecution(request);
+  if (result === null) {
+    return {
+      filename: request.packageFilename,
+      status: "blocked",
+      blockReason: "missingPackageInspection",
+      message: "Tauri IPC unavailable. No Airtable changes were made.",
+      warnings: [],
+      errors: [{ code: "IPC_UNAVAILABLE", message: "Tauri IPC unavailable" }],
+      noChangesMade: true,
+    };
+  }
+  return result;
+}
+
 export const liveAirBridgeService: AirBridgeService = {
   listConnections,
   listWorkspaces,
@@ -237,4 +258,5 @@ export const liveAirBridgeService: AirBridgeService = {
   getBackupJobStatus,
   inspectBackupPackage,
   createRestoreDryRunPlan,
+  runRestoreExecution,
 };

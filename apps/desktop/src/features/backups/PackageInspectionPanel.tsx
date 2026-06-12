@@ -5,11 +5,13 @@ import { pickBackupPackagePath } from "./PackageInspectionPicker";
 
 interface PackageInspectionPanelProps {
   service: AirBridgeService;
+  /** Optional callback invoked after a successful inspection. Receives the result and the full path (for passing to commands). */
+  onInspected?: (result: BackupPackageInspectionResult, path: string) => void;
 }
 
 type InspectionState = "idle" | "loading" | "done";
 
-export function PackageInspectionPanel({ service }: PackageInspectionPanelProps) {
+export function PackageInspectionPanel({ service, onInspected }: PackageInspectionPanelProps) {
   const [inspectionState, setInspectionState] = useState<InspectionState>("idle");
   const [result, setResult] = useState<BackupPackageInspectionResult | null>(null);
 
@@ -23,6 +25,7 @@ export function PackageInspectionPanel({ service }: PackageInspectionPanelProps)
     try {
       const inspection = await service.inspectBackupPackage(path);
       setResult(inspection);
+      onInspected?.(inspection, path);
     } finally {
       setInspectionState("done");
     }

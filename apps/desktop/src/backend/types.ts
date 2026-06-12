@@ -594,3 +594,73 @@ export interface RestoreDryRunPlan {
   /** Always true — states that no Airtable changes were made. */
   noChangesMade: boolean;
 }
+
+// ── Restore execution command contract (mirrors Rust restore::execution) ───
+
+/**
+ * Status of the restore execution attempt.
+ * Note: "succeeded" is intentionally absent — the write engine is not enabled.
+ */
+export type RestoreExecutionStatus = "blocked" | "readyButDisabled" | "failed";
+
+/** The reason a restore execution was blocked. */
+export type RestoreExecutionBlockReason =
+  | "missingPackageInspection"
+  | "invalidPackage"
+  | "missingDryRunPlan"
+  | "dryRunBlocked"
+  | "missingTargetMode"
+  | "missingToken"
+  | "missingConfirmation"
+  | "restoreWriteEngineNotEnabled";
+
+export interface RestoreExecutionWarning {
+  code: string;
+  message: string;
+}
+
+export interface RestoreExecutionError {
+  code: string;
+  message: string;
+}
+
+/**
+ * Input for the restore execution command.
+ * - token is forwarded to the Rust command only; never stored here.
+ * - packagePath is the absolute path used to locate the file; never echoed in the result.
+ * - confirmation must equal "RESTORE BACKUP" exactly.
+ */
+export interface RestoreExecutionRequest {
+  /** Filename-only identifier from the most recent inspection result. */
+  packageFilename: string;
+  /** Absolute path to the package. Never echoed in the result. */
+  packagePath: string;
+  /** Validation status from the most recent inspection ("valid" | "warning"). */
+  packageValidationStatus: string;
+  /** Status from the most recent dry-run plan ("ready" | "readyWithWarnings"). */
+  dryRunStatus: string;
+  targetMode: RestoreTargetMode;
+  targetBaseName?: string;
+  /** Airtable personal access token. Forwarded to Rust only; never stored. */
+  token: string;
+  /** Must equal "RESTORE BACKUP" exactly. */
+  confirmation: string;
+}
+
+/**
+ * Result of the restore execution command.
+ * - No token.
+ * - No absolute path — filename only.
+ * - noChangesMade is always true.
+ */
+export interface RestoreExecutionResult {
+  /** Filename only — never the full path. */
+  filename: string;
+  status: RestoreExecutionStatus;
+  blockReason?: RestoreExecutionBlockReason;
+  message: string;
+  warnings: RestoreExecutionWarning[];
+  errors: RestoreExecutionError[];
+  /** Always true — no Airtable changes were made. */
+  noChangesMade: boolean;
+}
