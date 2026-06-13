@@ -8,6 +8,8 @@ This document defines the safety requirements that must all be satisfied before 
 
 All restore write paths are hard-disabled. `evaluate_write_gate()` returns `Disabled/DisabledByProductPolicy` unconditionally. `RestoreWriteEngineStatus::Succeeded` does not exist in the type system. `noChangesMade` is always `true`. `networkWritesAttempted` is always `false`.
 
+**Gate 1 — sandbox environment verification** is implemented via the `verify_restore_sandbox_environment` Tauri command. It runs 10 local safety checks (CHK-01 through CHK-10) and returns a structured result with `writesEnabled: false` always. CHK-10 (live Airtable metadata check) is always `Skipped` — it must be implemented before Gate 1 can be fully satisfied. No Airtable API calls are made. No token is required.
+
 This contract defines what must be true before `evaluate_write_gate()` is ever changed to return an enabled decision.
 
 ---

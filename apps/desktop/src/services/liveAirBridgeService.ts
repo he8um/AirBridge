@@ -39,6 +39,8 @@ import type {
   RestoreWriteEngineResult,
   RunBackupCommandRequest,
   RunBackupCommandResponse,
+  SandboxVerificationRequest,
+  SandboxVerificationResult,
   SchemaWriteRequestPlanRequest,
   SchemaWriteRequestPlanResult,
 } from "../backend/types";
@@ -431,6 +433,30 @@ async function previewRecordWriteRequestPlan(
   return result;
 }
 
+async function verifyRestoreSandboxEnvironment(
+  request: SandboxVerificationRequest,
+): Promise<SandboxVerificationResult> {
+  const result = await commands.verifyRestoreSandboxEnvironment(request);
+  if (result === null) {
+    return {
+      status: "blocked",
+      checks: [],
+      safetySummary: {
+        writesEnabled: false,
+        networkWritesAttempted: false,
+        noChangesMade: true,
+        writeGateStatus: "disabled",
+        liveMetadataCheckPerformed: false,
+      },
+      message: "Sandbox verification is not available in this context.",
+      noChangesMade: true,
+      networkWritesAttempted: false,
+      writesEnabled: false,
+    };
+  }
+  return result;
+}
+
 export const liveAirBridgeService: AirBridgeService = {
   listConnections,
   listWorkspaces,
@@ -462,4 +488,5 @@ export const liveAirBridgeService: AirBridgeService = {
   removeAirtableTokenFromKeychain,
   previewSchemaWriteRequestPlan,
   previewRecordWriteRequestPlan,
+  verifyRestoreSandboxEnvironment,
 };

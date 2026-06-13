@@ -46,6 +46,8 @@ import type {
   RunBackupCommandResponse,
   RecordWriteRequestPlanRequest,
   RecordWriteRequestPlanResult,
+  SandboxVerificationRequest,
+  SandboxVerificationResult,
   SchemaWriteRequestPlanRequest,
   SchemaWriteRequestPlanResult,
   TableExportPlan,
@@ -1685,6 +1687,70 @@ function previewRecordWriteRequestPlanImpl(
   });
 }
 
+function verifyRestoreSandboxEnvironmentImpl(
+  request: SandboxVerificationRequest,
+): Promise<SandboxVerificationResult> {
+  const isUnsafe = request.allowDestructiveOperations || !request.expectsEmptyTarget;
+
+  if (isUnsafe) {
+    return Promise.resolve({
+      status: "blocked" as const,
+      checks: [
+        {
+          checkId: "CHK-04",
+          label: "No Destructive Operations",
+          status: "failed" as const,
+          message: "Destructive operations are not permitted in sandbox mode.",
+          remediation: "Set allowDestructiveOperations to false.",
+        },
+      ],
+      safetySummary: {
+        writesEnabled: false,
+        networkWritesAttempted: false,
+        noChangesMade: true,
+        writeGateStatus: "disabled",
+        liveMetadataCheckPerformed: false,
+      },
+      message:
+        "Sandbox verification blocked: unsafe target configuration. writesEnabled is always false.",
+      noChangesMade: true,
+      networkWritesAttempted: false,
+      writesEnabled: false,
+    });
+  }
+
+  return Promise.resolve({
+    status: "warning" as const,
+    checks: [
+      {
+        checkId: "CHK-01",
+        label: "Target Mode",
+        status: "passed" as const,
+        message: "Target mode is allowed for sandbox restore.",
+      },
+      {
+        checkId: "CHK-10",
+        label: "Live Metadata Check",
+        status: "skipped" as const,
+        message: "Live Airtable metadata check is not performed in this environment.",
+        remediation: "Full verification requires a live Airtable connection.",
+      },
+    ],
+    safetySummary: {
+      writesEnabled: false,
+      networkWritesAttempted: false,
+      noChangesMade: true,
+      writeGateStatus: "disabled",
+      liveMetadataCheckPerformed: false,
+    },
+    message:
+      "Sandbox verification passed with warnings. Live metadata check was skipped. writesEnabled is always false.",
+    noChangesMade: true,
+    networkWritesAttempted: false,
+    writesEnabled: false,
+  });
+}
+
 export const mockAirBridgeService: AirBridgeService = {
   listConnections,
   listWorkspaces,
@@ -1716,4 +1782,5 @@ export const mockAirBridgeService: AirBridgeService = {
   removeAirtableTokenFromKeychain: removeAirtableTokenFromKeychainImpl,
   previewSchemaWriteRequestPlan: previewSchemaWriteRequestPlanImpl,
   previewRecordWriteRequestPlan: previewRecordWriteRequestPlanImpl,
+  verifyRestoreSandboxEnvironment: verifyRestoreSandboxEnvironmentImpl,
 };

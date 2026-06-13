@@ -9,14 +9,36 @@ Use this checklist to verify that all safety gates defined in the live restore w
 
 ---
 
-## Gate 1 — Current State Verification (Must Pass Before Any Other Gate)
+## Gate 1 — Sandbox Environment Verification
+
+**Status: Implemented (local checks only). Live Airtable metadata check deferred.**
+
+The `verify_restore_sandbox_environment` Tauri command runs 10 local safety checks (CHK-01 through CHK-10). No Airtable API calls are made. No token is required. No files are written. `noChangesMade` is always `true`. `writesEnabled` is always `false`.
+
+- [x] **Sandbox verification command implemented.** `verify_restore_sandbox_environment` runs CHK-01 through CHK-10. Accessible from the Restore page.
+- [x] **CHK-01 target mode.** `NewBase` and `EmptyExistingBase` pass; `EmptyExistingBase` without identifier is a warning.
+- [x] **CHK-02 empty target expectation.** Blocked if `expectsEmptyTarget` is false.
+- [x] **CHK-03 write gate.** Calls `evaluate_write_gate()` — must return `Disabled`. Passes if disabled; blocked if unexpectedly enabled.
+- [x] **CHK-04 destructive operations.** Blocked if `allowDestructiveOperations` is true.
+- [x] **CHK-05 attachment upload.** Warning (not blocked) if `allowAttachmentUpload` is true.
+- [x] **CHK-06 plan status.** Blocked if schema or record import plan status is `"blocked"`.
+- [x] **CHK-07 filename safety.** Warns if source package filename contains suspicious patterns.
+- [x] **CHK-08 token safety.** Always passes — no token accepted or returned by this command.
+- [x] **CHK-09 network safety.** Always passes — no Airtable API calls are made.
+- [x] **CHK-10 live metadata check.** Always skipped — future implementation required.
+- [x] **Safety summary fields always correct.** `writesEnabled: false`, `networkWritesAttempted: false`, `noChangesMade: true`, `writeGateStatus: "disabled"`, `liveMetadataCheckPerformed: false`.
+- [x] **22 Rust unit tests pass** for sandbox verification module.
+- [x] **25 frontend tests pass** for sandbox verification service contract and panel rendering.
+- [ ] **Live metadata check implemented.** A future release must implement CHK-10 with a real Airtable read call to verify the target base is empty and accessible before enabling writes.
+
+### Pre-write current state checks
 
 - [ ] **Write gate still disabled.** `evaluate_write_gate()` returns `Disabled/DisabledByProductPolicy`. No branch exists that returns an enabled decision.
 - [ ] **No `Succeeded` status.** `RestoreWriteEngineStatus` has no `Succeeded` variant. Confirm by grepping the Rust source: `grep -r "Succeeded" apps/desktop/src-tauri/src/restore/` returns no results in `write_result.rs`.
 - [ ] **`noChangesMade` always true.** All write engine result types set `no_changes_made: true`. Rust tests confirm this for every code path.
 - [ ] **`networkWritesAttempted` always false.** Schema and record write foundation result types set `network_writes_attempted: false`. Rust tests confirm this.
-- [ ] **887+ Rust unit tests pass.** `cargo test --lib` exits 0 with no failures.
-- [ ] **542+ frontend tests pass.** `vitest run` exits 0 with no failures.
+- [ ] **933+ Rust unit tests pass.** `cargo test --lib` exits 0 with no failures.
+- [ ] **567+ frontend tests pass.** `vitest run` exits 0 with no failures.
 
 ---
 

@@ -33,6 +33,8 @@ import type {
   RestoreWriteEngineResult,
   RunBackupCommandRequest,
   RunBackupCommandResponse,
+  SandboxVerificationRequest,
+  SandboxVerificationResult,
   SchemaWriteRequestPlanRequest,
   SchemaWriteRequestPlanResult,
 } from "./types";
@@ -351,4 +353,22 @@ export async function previewRecordWriteRequestPlan(
   return safeInvoke<RecordWriteRequestPlanResult>("preview_record_write_request_plan", {
     request,
   });
+}
+
+/**
+ * Read-only sandbox environment verification check (Gate 1).
+ *
+ * - No Airtable API calls.
+ * - No token required.
+ * - No files extracted.
+ * - No write operations of any kind.
+ * - writesEnabled is always false.
+ * - noChangesMade is always true.
+ * - Returns blocked for unsafe target configurations.
+ * - Returns null if Tauri IPC is unavailable.
+ */
+export async function verifyRestoreSandboxEnvironment(
+  request: SandboxVerificationRequest,
+): Promise<SandboxVerificationResult | null> {
+  return safeInvoke<SandboxVerificationResult>("verify_restore_sandbox_environment", { request });
 }

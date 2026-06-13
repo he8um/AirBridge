@@ -821,6 +821,50 @@ These test cases cover the command contract layer: confirmation enforcement, out
 
 ---
 
+## Sandbox Verification (Gate 1)
+
+**TC-SV-01: Disabled notice always visible**
+
+- Preconditions: Restore page open; no backup file selected.
+- Steps:
+  1. Scroll to the "Sandbox Verification (Gate 1)" section.
+- Expected result: A notice reads "Sandbox verification checks local safety conditions only. Restore writes remain disabled in this version." No execute button is shown. No token field is shown.
+
+**TC-SV-02: Verify button triggers check run**
+
+- Preconditions: Restore page open.
+- Steps:
+  1. Click "Verify sandbox safety".
+- Expected result: A result appears showing an overall status (`verified`, `warning`, or `blocked`), 10 check rows, and a safety summary. The status will be `warning` because CHK-10 (live metadata check) is always `skipped`.
+
+**TC-SV-03: CHK-10 always skipped**
+
+- Preconditions: Sandbox verification result is shown.
+- Steps:
+  1. Locate the "Live metadata check" row in the check list.
+- Expected result: Status is `skipped`. Message states the live check is not performed.
+
+**TC-SV-04: Safety summary shows no changes**
+
+- Preconditions: Sandbox verification result is shown.
+- Steps:
+  1. Locate the safety summary section.
+- Expected result: `writesEnabled: No`, `networkWritesAttempted: No`, "No Airtable changes were made.", `liveMetadataCheckPerformed: No`.
+
+**TC-SV-05: Blocked result on unsafe request**
+
+- Preconditions: N/A (mock service only).
+- Expected result: When `allowDestructiveOperations: true` is passed to the mock service, result status is `blocked`. A blocked notice is shown in the panel.
+
+**TC-SV-06: No execute button or token**
+
+- Preconditions: Sandbox verification result shown (any status).
+- Steps:
+  1. Inspect the Sandbox Verification section for buttons and input fields.
+- Expected result: No "Execute", "Run Restore", or similar button is present. No token input field is present.
+
+---
+
 ## Write Engine Skeleton
 
 **TC-WE-01: Write engine disabled notice is always visible**

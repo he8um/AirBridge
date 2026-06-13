@@ -15,6 +15,7 @@ pub mod record_write_executor;
 pub mod record_write_requests;
 pub mod record_write_result;
 pub mod record_write_skeleton;
+pub mod sandbox_verification;
 pub mod schema_dependencies;
 pub mod schema_plan;
 pub mod schema_planner;

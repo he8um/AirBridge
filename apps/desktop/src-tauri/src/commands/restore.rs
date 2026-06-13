@@ -14,6 +14,9 @@ use crate::restore::record_write_requests::build_record_write_request_plan;
 use crate::restore::record_write_result::{
     RecordWriteRequestPlanRequest, RecordWriteRequestPlanResult,
 };
+use crate::restore::sandbox_verification::{
+    verify_sandbox_environment, SandboxVerificationRequest, SandboxVerificationResult,
+};
 use crate::restore::schema_plan::{RestoreSchemaPlan, RestoreSchemaPlanRequest};
 use crate::restore::schema_planner::create_schema_plan;
 use crate::restore::schema_write_executor::execute_schema_write_dry_run;
@@ -406,6 +409,24 @@ pub fn preview_record_write_request_plan(
         no_changes_made: true,
         network_writes_attempted: false,
     }
+}
+
+/// Verifies local sandbox safety conditions for Gate 1 of the live restore write safety checklist.
+///
+/// - No Airtable API calls.
+/// - No token accepted or returned.
+/// - No files written.
+/// - No full paths in result.
+/// - No write operations of any kind.
+/// - no_changes_made is always true.
+/// - network_writes_attempted is always false.
+/// - writes_enabled is always false.
+/// - Returns blocked for unsafe target configurations.
+#[tauri::command]
+pub fn verify_restore_sandbox_environment(
+    request: SandboxVerificationRequest,
+) -> SandboxVerificationResult {
+    verify_sandbox_environment(&request)
 }
 
 #[cfg(test)]

@@ -1387,3 +1387,71 @@ export interface RecordWriteRequestPlanResult {
   noChangesMade: boolean;
   networkWritesAttempted: boolean;
 }
+
+// ── Sandbox verification types (mirrors Rust restore::sandbox_verification) ──
+
+export type SandboxVerificationStatus = "verified" | "warning" | "blocked";
+
+export type SandboxVerificationCheckStatus = "passed" | "warning" | "failed" | "skipped";
+
+export type SandboxVerificationFailureReason =
+  | "targetModeNotAllowed"
+  | "targetNotEmpty"
+  | "missingTargetIdentifier"
+  | "missingTargetName"
+  | "writeGateDisabled"
+  | "writeGateUnexpectedState"
+  | "destructiveOperationRequested"
+  | "attachmentUploadRequested"
+  | "tokenReturnForbidden"
+  | "fullPathReturnForbidden"
+  | "liveMetadataCheckUnavailable"
+  | "invalidRequest"
+  | "unsupportedTarget";
+
+export interface SandboxVerificationCheck {
+  checkId: string;
+  label: string;
+  status: SandboxVerificationCheckStatus;
+  message: string;
+  remediation?: string;
+}
+
+export interface SandboxVerificationTarget {
+  targetMode: RestoreTargetMode;
+  targetBaseId?: string;
+  targetBaseName?: string;
+}
+
+export interface SandboxVerificationSafetySummary {
+  writesEnabled: boolean;
+  networkWritesAttempted: boolean;
+  noChangesMade: boolean;
+  writeGateStatus: string;
+  liveMetadataCheckPerformed: boolean;
+}
+
+export interface SandboxVerificationRequest {
+  targetMode: RestoreTargetMode;
+  targetBaseId?: string;
+  targetBaseName?: string;
+  targetTableCount?: number;
+  targetRecordCount?: number;
+  expectsEmptyTarget: boolean;
+  allowAttachmentUpload: boolean;
+  allowDestructiveOperations: boolean;
+  sourcePackageFilename?: string;
+  schemaPlanStatus?: string;
+  recordImportPlanStatus?: string;
+}
+// NOTE: No token field. No full path field.
+
+export interface SandboxVerificationResult {
+  status: SandboxVerificationStatus;
+  checks: SandboxVerificationCheck[];
+  safetySummary: SandboxVerificationSafetySummary;
+  message: string;
+  noChangesMade: boolean;
+  networkWritesAttempted: boolean;
+  writesEnabled: boolean;
+}

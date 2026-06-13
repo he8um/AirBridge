@@ -39,6 +39,8 @@ import type {
   RestoreWriteEngineResult,
   RunBackupCommandRequest,
   RunBackupCommandResponse,
+  SandboxVerificationRequest,
+  SandboxVerificationResult,
   SchemaWriteRequestPlanRequest,
   SchemaWriteRequestPlanResult,
 } from "../backend/types";
@@ -199,4 +201,14 @@ export interface AirBridgeService {
   previewRecordWriteRequestPlan(
     request: RecordWriteRequestPlanRequest,
   ): Promise<RecordWriteRequestPlanResult>;
+  /**
+   * Read-only sandbox environment verification (Gate 1).
+   *
+   * - No Airtable writes. No token. No full path. No network writes.
+   * - writesEnabled is always false. noChangesMade is always true.
+   * - Returns blocked for unsafe target configurations.
+   */
+  verifyRestoreSandboxEnvironment(
+    request: SandboxVerificationRequest,
+  ): Promise<SandboxVerificationResult>;
 }

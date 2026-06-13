@@ -6,6 +6,7 @@ import { RestoreDryRunPanel } from "../features/backups/RestoreDryRunPanel";
 import { RestoreExecutionGatePanel } from "../features/backups/RestoreExecutionGatePanel";
 import { RestoreRecordImportPlanPanel } from "../features/backups/RestoreRecordImportPlanPanel";
 import { RestoreSchemaPlanPanel } from "../features/backups/RestoreSchemaPlanPanel";
+import { RestoreSandboxVerificationPanel } from "../features/backups/RestoreSandboxVerificationPanel";
 import { RestoreWriteEnginePanel } from "../features/backups/RestoreWriteEnginePanel";
 import { liveAirBridgeService } from "../services/liveAirBridgeService";
 import type { BackupPackageInspectionResult } from "../backend/types";
@@ -17,6 +18,7 @@ import type {
   RestoreSchemaPlanRequest,
   RestoreTargetMode,
   RestoreWriteEngineResult,
+  SandboxVerificationResult,
 } from "../backend/types";
 
 export function RestorePage() {
@@ -37,6 +39,8 @@ export function RestorePage() {
   const [schemaPlan, setSchemaPlan] = useState<RestoreSchemaPlan | null>(null);
   const [recordImportTables, setRecordImportTables] = useState<RecordImportTableInput[]>([]);
   const [writeEngineResult, setWriteEngineResult] = useState<RestoreWriteEngineResult | null>(null);
+  const [sandboxResult, setSandboxResult] = useState<SandboxVerificationResult | null>(null);
+  const [sandboxLoading, setSandboxLoading] = useState(false);
 
   return (
     <div className="page">
@@ -195,6 +199,36 @@ export function RestorePage() {
               targetMode={targetMode}
               targetBaseName={targetBaseName}
               tables={recordImportTables}
+            />
+
+            <div className="divider" style={{ margin: 0 }} />
+
+            {/* Sandbox verification — Gate 1. No Airtable calls. No token. No writes. */}
+            <RestoreSandboxVerificationPanel
+              result={sandboxResult}
+              loading={sandboxLoading}
+              onVerify={() => {
+                setSandboxLoading(true);
+                liveAirBridgeService
+                  .verifyRestoreSandboxEnvironment({
+                    targetMode,
+                    targetBaseName,
+                    expectsEmptyTarget: true,
+                    allowAttachmentUpload: false,
+                    allowDestructiveOperations: false,
+                    sourcePackageFilename: inspection?.filename ?? undefined,
+                    schemaPlanStatus: schemaPlanStatus ?? undefined,
+                  })
+                  .then((r) => {
+                    setSandboxResult(r);
+                  })
+                  .catch(() => {
+                    setSandboxResult(null);
+                  })
+                  .finally(() => {
+                    setSandboxLoading(false);
+                  });
+              }}
             />
 
             <div className="divider" style={{ margin: 0 }} />

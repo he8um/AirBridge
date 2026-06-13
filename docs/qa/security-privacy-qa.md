@@ -280,6 +280,44 @@ If AirBridge supports user-configured field redaction:
 
 ---
 
+## Restore Sandbox Verification Safety (Gate 1)
+
+**Goal:** Confirm that the sandbox verification command makes no Airtable API calls, requires no token, makes no writes of any kind, and always returns `noChangesMade: true` and `writesEnabled: false`.
+
+**SV-01: No token accepted.**
+- `SandboxVerificationRequest` has no `token` field.
+- The `verify_restore_sandbox_environment` Tauri command has no token parameter.
+- `RestoreSandboxVerificationPanel` renders no token input field.
+- The Rust unit test `result_serialization_has_no_token` confirms no token key in the serialized result.
+
+**SV-02: No Airtable API calls.**
+- All 10 checks are local-only (target mode, write gate state, request fields).
+- No HTTP client is constructed or called.
+- CHK-10 is always `Skipped` — the live metadata check is deferred to a future release.
+- Network monitoring shows zero connections to `api.airtable.com` during verification.
+
+**SV-03: No write operations.**
+- No files are written. No Airtable records, tables, or fields are created.
+- `evaluate_write_gate()` is called read-only to confirm the gate returns `Disabled`.
+- `writesEnabled` is always `false` in the result.
+- `networkWritesAttempted` is always `false` in the result.
+
+**SV-04: No full path in result.**
+- `SandboxVerificationRequest` has no `path` field.
+- `SandboxVerificationResult` has no field containing a filesystem path.
+- The Rust unit test `result_serialization_has_no_full_path` confirms no absolute path in the serialized result.
+
+**SV-05: `noChangesMade` always true.**
+- Every code path in `verify_sandbox_environment` sets `no_changes_made: true`.
+- 22 Rust unit tests assert this property.
+- 25 frontend tests assert this property via mock service contract tests.
+
+**SV-06: No execute button.**
+- `RestoreSandboxVerificationPanel` does not render an "Execute", "Start Restore", or "Run" button.
+- The frontend test `no execute button anywhere` confirms this by scanning all rendered buttons.
+
+---
+
 ## Restore Schema Creation Plan Safety (V0.1)
 
 **Goal:** Confirm that the schema creation planning flow makes no Airtable API calls, requires no token, creates no Airtable tables or fields, and always returns `noChangesMade: true`.

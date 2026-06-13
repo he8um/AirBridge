@@ -163,6 +163,48 @@ After completing a restore, perform the following manual checks in Airtable:
 
 ---
 
+## Sandbox Verification Checklist (Gate 1)
+
+### Before testing
+
+- [ ] Confirm `verify_restore_sandbox_environment` is registered in the Tauri invoke handler.
+- [ ] Confirm `RestoreSandboxVerificationPanel` is rendered on the Restore page.
+- [ ] Confirm no token field appears in the sandbox verification request type.
+
+### Panel behavior
+
+- [ ] The "Sandbox Verification (Gate 1)" section is visible on the Restore page at all times.
+- [ ] The disabled notice reads "Sandbox verification checks local safety conditions only. Restore writes remain disabled in this version."
+- [ ] A "Verify sandbox safety" button is shown before the first verification run.
+- [ ] Clicking the button triggers `verifyRestoreSandboxEnvironment` and shows the result.
+- [ ] After a result, the button changes to "Re-verify".
+- [ ] No execute button is shown anywhere in the panel.
+- [ ] No token input is shown.
+- [ ] No success message ("Restore complete", "Restore successful", "Succeeded") is shown.
+- [ ] Full filesystem path is not visible.
+
+### Result display
+
+- [ ] Overall status badge (`verified`, `warning`, or `blocked`) is shown.
+- [ ] Verification message is shown.
+- [ ] Each check row (CHK-01 through CHK-10) is shown with its label, status, and message.
+- [ ] CHK-10 (Live metadata check) always shows `skipped`.
+- [ ] Safety summary shows `writesEnabled: No`, `networkWritesAttempted: No`, `liveMetadataCheckPerformed: No`.
+- [ ] "No Airtable changes were made" is shown in the safety summary.
+- [ ] When status is `blocked`, a blocked notice is shown.
+- [ ] When status is `verified` or `warning`, a "writes still disabled" notice is shown.
+
+### Safety invariants
+
+- [ ] `noChangesMade` is `true` in every sandbox verification result (confirmed via Rust and frontend tests).
+- [ ] `writesEnabled` is always `false` in every sandbox verification result.
+- [ ] `networkWritesAttempted` is always `false`.
+- [ ] The sandbox verification request type has no `token` field.
+- [ ] The sandbox verification result has no `token` field.
+- [ ] The sandbox verification result contains no full filesystem path.
+
+---
+
 ## Write Engine Skeleton Checklist
 
 ### Before testing
