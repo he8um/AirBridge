@@ -138,7 +138,7 @@ Start with:
 
 ## Current Status (v0.1.0-alpha)
 
-AirBridge is under active development. The current alpha build supports:
+AirBridge is preparing for a v0.1.0-alpha release. The current build supports:
 
 - Personal access token connection checks and permission inspection.
 - Base catalog and schema read.
@@ -149,16 +149,20 @@ AirBridge is under active development. The current alpha build supports:
 - Restore schema creation planning — generates an ordered schema creation plan (table steps, field steps, deferred linked fields, dependency graph) from a dry-run result. Read-only; no token required; no Airtable tables or fields are created.
 - Restore record import planning — generates a complete record import batch plan (batch counts at size 10, field import policies, linked record second-pass plans, attachment policies, checkpoint plans, retry policy) from a dry-run result and schema plan. Read-only; no token required; no Airtable records are created.
 - Restore execution safety gate (all preconditions validated; write engine not yet enabled).
+- Local activity history — recent operations are shown on the Reports page with safe summaries (no tokens, no full paths, no record payloads). History is in-memory and does not persist between sessions.
 
 **Restore write execution is disabled in this version.** The safety gate validates all preconditions and returns a `readyButDisabled` result. No Airtable base, table, field, or record is created by restore operations.
 
 **Token persistence is not implemented.** Tokens must be entered for each operation.
+
+**v0.1.0-alpha preparation:** A `workflow_dispatch`-only GitHub Actions release workflow builds platform artifacts (macOS, Linux, Windows) and uploads them as workflow run artifacts. No release is published automatically. See the [release process](docs/release/release-process.md) for how to trigger and review a release build.
 
 See the full details in:
 
 - [Feature Status](docs/product/feature-status.md)
 - [Known Limitations](docs/release/known-limitations.md)
 - [v0.1.0-alpha Readiness](docs/release/v0.1.0-alpha-readiness.md)
+- [Release Process](docs/release/release-process.md)
 
 ---
 

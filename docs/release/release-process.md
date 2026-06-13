@@ -1,39 +1,99 @@
 # Release Process
 
-## Purpose
+## Overview
 
-Releases should be prepared from a release branch or tag, pass CI, build platform artifacts, generate checksums, and publish release notes with known limitations.
+AirBridge releases are prepared manually. No release is published automatically — every release requires a human to review artifacts, approve quality gates, and publish the GitHub release.
 
-## Required release checks
+The current release workflow (`release.yml`) is triggered exclusively via `workflow_dispatch`. It builds platform artifacts and uploads them as workflow artifacts only. A GitHub release must be created manually after reviewing the artifacts.
 
-- Changelog updated.
-- Version updated.
-- CI passing.
-- Documentation reviewed.
-- Known limitations reviewed.
-- Build artifacts generated.
-- Checksums generated.
-- Release notes drafted.
+---
 
-## Artifact naming
+## Pre-Release Checks
 
-```text
-AirBridge-x.y.z-macos.dmg
-AirBridge-x.y.z-windows.msi
-AirBridge-x.y.z-linux.AppImage
-AirBridge-x.y.z-linux.deb
-checksums.txt
+Before triggering the release workflow, verify:
+
+1. **All CI checks pass on `main`.** The CI workflow must be green before a release build is started.
+2. **Version is consistent** across:
+   - `apps/desktop/package.json` → `"version"`
+   - `apps/desktop/src-tauri/Cargo.toml` → `version`
+   - `apps/desktop/src-tauri/tauri.conf.json` → `"version"`
+3. **Alpha readiness document is current.** See `docs/release/v0.1.0-alpha-readiness.md`.
+4. **Known limitations are documented.** See `docs/release/known-limitations.md`.
+5. **Release notes draft is reviewed.** See `docs/release/v0.1.0-alpha-release-notes-draft.md`.
+6. **No prohibited content in repository.** Run the prohibited-terms scan before tagging.
+7. **Restore write execution remains disabled.** No Airtable writes should occur from restore operations.
+8. **Token persistence is not implemented.** Tokens must be entered per-operation.
+
+Run the full local quality gate to confirm:
+
+```bash
+npm run release:check
 ```
 
-## Release note sections
+This is equivalent to `npm --prefix apps/desktop run check` and runs typecheck, lint, format check, frontend tests, Rust checks, and a build verification.
 
-```text
-Summary
-Added
-Changed
-Fixed
-Security
-Known limitations
-Upgrade notes
-Checksums
-```
+---
+
+## Triggering the Release Workflow
+
+The release workflow is triggered manually:
+
+1. Go to **Actions → Release** on GitHub.
+2. Click **Run workflow**.
+3. Set `version` to the release tag (e.g. `v0.1.0-alpha`).
+4. Set `draft` to `true` (recommended — always build as draft first).
+5. Click **Run workflow**.
+
+The workflow will:
+
+- Run on macOS, Linux, and Windows.
+- Execute all quality gates (`npm --prefix apps/desktop run check`).
+- Build the Tauri application for each platform.
+- Upload artifacts named `airbridge-<version>-<OS>` as workflow run artifacts.
+
+**The workflow does not create a GitHub release automatically.** Artifacts are attached to the workflow run only.
+
+---
+
+## Reviewing Artifacts
+
+After the workflow completes:
+
+1. Open the workflow run in the **Actions** tab.
+2. Download the artifact for each platform.
+3. Verify artifact names match the convention in `artifact-naming.md`.
+4. Smoke-test the installer on each target platform (see `docs/qa/release-qa-checklist.md`).
+5. Verify no token, full path, or record payload content appears in any installer UI.
+
+---
+
+## Creating the GitHub Release Manually
+
+After artifacts are reviewed and approved:
+
+1. Go to **Releases → Draft a new release**.
+2. Set the tag to the release version (e.g. `v0.1.0-alpha`). Create the tag at this point — do not tag the repository locally before this step.
+3. Set the title to `AirBridge v0.1.0-alpha`.
+4. Copy the release body from `docs/release/github-release-draft-template.md`.
+5. Upload the reviewed platform artifacts.
+6. Mark as **pre-release** for alpha/beta releases.
+7. Keep as **draft** until final review is complete.
+8. Publish when ready.
+
+---
+
+## Cancellation and Rollback
+
+- If a workflow run needs to be cancelled, cancel it in the Actions tab before artifacts are published.
+- If a GitHub release was published in error, it can be converted back to draft or deleted from the GitHub Releases page.
+- Local repository state is not affected by triggering or cancelling a workflow run.
+- No local tagging or pushing is required to trigger the workflow — `workflow_dispatch` does not require a tag.
+
+---
+
+## Current Limitations
+
+- Code signing and notarization are not configured. macOS `.dmg` artifacts will not be notarized. Windows `.msi` artifacts will not be code-signed. Both are required before distributing to end users outside the development team.
+- Checksums are not automatically generated and uploaded. They must be created manually from the downloaded artifacts (see `docs/release/checksums.md`).
+- The release workflow does not run on self-hosted runners or ARM targets.
+- Linux `.deb` packaging is not verified end-to-end.

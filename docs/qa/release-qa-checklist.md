@@ -8,15 +8,26 @@ Complete this checklist before publishing any release. Each item must be checked
 
 ---
 
+## Release Workflow (workflow_dispatch)
+
+- [ ] The release workflow was triggered via **Actions → Release → Run workflow** with `version` set to the correct release tag.
+- [ ] The workflow completed successfully on all three matrix runners (macOS, Linux, Windows) — no matrix leg failed.
+- [ ] Each matrix leg ran the quality gates step (`npm --prefix apps/desktop run check`) without error.
+- [ ] Workflow artifacts are present: `airbridge-<version>-macOS`, `airbridge-<version>-Linux`, `airbridge-<version>-Windows`.
+- [ ] Artifact names match the convention in `docs/release/artifact-naming.md`.
+- [ ] The workflow did not create a GitHub release automatically — only workflow run artifacts are present.
+
+---
+
 ## Build Artifacts
 
-- [ ] macOS (Intel x86_64) `.dmg` artifact is present in the release directory.
-- [ ] macOS (Apple Silicon arm64) `.dmg` artifact is present in the release directory.
+- [ ] macOS (Intel x86_64) `.dmg` artifact is present in the workflow run artifacts.
+- [ ] macOS (Apple Silicon arm64) `.dmg` artifact is present in the workflow run artifacts.
 - [ ] Windows (x64) `.msi` or `.exe` installer is present.
 - [ ] Linux (x86_64) `.AppImage` or `.deb` artifact is present.
 - [ ] All artifact file sizes are within expected range (not suspiciously small or unexpectedly large).
 - [ ] SHA-256 checksums have been computed and recorded for all artifacts.
-- [ ] Artifact filenames include the correct version number (e.g., `airbridge-0.1.0-macos-arm64.dmg`).
+- [ ] Artifact filenames include the correct version number (e.g., `airbridge-v0.1.0-alpha-macOS`).
 
 ---
 
@@ -121,6 +132,13 @@ Perform a quick pass of the core flows on the release build, not the dev build:
 
 Complete this section for alpha releases only. These items are prerequisites for any alpha distribution.
 
+### Release Workflow Checks
+
+- [ ] Release workflow triggered via `workflow_dispatch` only — no push or tag auto-trigger fired.
+- [ ] All three matrix legs (macOS, Linux, Windows) passed quality gates before the build step.
+- [ ] Artifacts are uploaded as workflow run artifacts only — no GitHub release was created automatically.
+- [ ] Artifact names match `airbridge-<version>-<OS>` convention per `docs/release/artifact-naming.md`.
+
 ### Safety Gates
 
 - [ ] `run_restore_execution` returns `readyButDisabled` — confirmed no Airtable writes occur.
@@ -129,19 +147,31 @@ Complete this section for alpha releases only. These items are prerequisites for
 - [ ] `run_backup_job` requires the exact confirmation text `CREATE BACKUP` — partial or mis-cased text is rejected.
 - [ ] `inspect_backup_package` is read-only — no files extracted, no token, no API calls.
 - [ ] `create_restore_dry_run_plan` is read-only — no token, no API calls, no writes.
+- [ ] `create_restore_schema_creation_plan` is read-only — no token, no API calls, no tables or fields created.
+- [ ] `create_restore_record_import_plan` is read-only — no token, no API calls, no records created.
+- [ ] `list_job_history` response contains no token values, no full paths, no record payload content.
+
+### Installer Smoke Tests (per platform)
+
+- [ ] macOS installer launches and the application opens without a crash.
+- [ ] Linux AppImage is executable and opens without additional dependencies.
+- [ ] Windows installer completes and the application launches from the Start Menu.
+- [ ] No full path, token value, or record payload content is visible in any installer dialog or first-run screen.
 
 ### Known Limitations Documented
 
 - [ ] Restore write engine disabled — documented in `docs/release/known-limitations.md`.
 - [ ] Token persistence not implemented — documented.
 - [ ] Attachment files not downloaded — documented.
+- [ ] Job history does not persist between sessions — documented.
+- [ ] Release notes reviewed against `docs/release/v0.1.0-alpha-release-notes-draft.md`.
 - [ ] Known limitations document is accurate for the release commit.
 
 ### Test Counts Verified
 
-- [ ] Rust unit tests: 500 pass (or more — confirm actual count from `cargo test` output).
+- [ ] Rust unit tests: 680 pass (or more — confirm actual count from `cargo test` output).
 - [ ] Rust integration tests: 3 pass (or more).
-- [ ] Frontend tests: 362 pass (or more — confirm actual count from `vitest run` output).
+- [ ] Frontend tests: 444 pass (or more — confirm actual count from `vitest run` output).
 
 ### Prohibited Terms
 
@@ -151,6 +181,7 @@ Complete this section for alpha releases only. These items are prerequisites for
 - [ ] No generated `.airbridge` binary packages committed.
 - [ ] Docs do not imply restore write execution is enabled.
 - [ ] Docs do not imply credential storage is implemented.
+- [ ] No token or full path leakage in any UI visible in installer smoke tests.
 
 ---
 

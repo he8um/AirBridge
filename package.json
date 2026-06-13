@@ -4,6 +4,7 @@
   "scripts": {
     "build": "npm --prefix apps/desktop run build",
     "test": "npm --prefix apps/desktop run test",
-    "check": "npm --prefix apps/desktop run check"
+    "check": "npm --prefix apps/desktop run check",
+    "release:check": "npm --prefix apps/desktop run check"
   }
 }
