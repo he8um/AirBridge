@@ -41,8 +41,7 @@ The release workflow is triggered manually:
 1. Go to **Actions → Release** on GitHub.
 2. Click **Run workflow**.
 3. Set `version` to the release tag (e.g. `v0.1.0-alpha`).
-4. Set `draft` to `true` (recommended — always build as draft first).
-5. Click **Run workflow**.
+4. Click **Run workflow**.
 
 The workflow will:
 
@@ -51,7 +50,7 @@ The workflow will:
 - Build the Tauri application for each platform.
 - Upload artifacts named `airbridge-<version>-<OS>` as workflow run artifacts.
 
-**The workflow does not create a GitHub release automatically.** Artifacts are attached to the workflow run only.
+**The workflow does not create a GitHub release automatically.** It produces workflow run artifacts only. A GitHub release must be created manually after reviewing the artifacts.
 
 ---
 

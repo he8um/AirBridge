@@ -7,14 +7,6 @@ on:
         description: "Release version tag (e.g. v0.1.0-alpha)"
         required: true
         default: "v0.1.0-alpha"
-      draft:
-        description: "Create as a draft release"
-        required: true
-        default: "true"
-        type: choice
-        options:
-          - "true"
-          - "false"
 
 # No push or tag triggers — release is always initiated manually.
 
@@ -64,7 +56,6 @@ jobs:
       - name: Build Tauri app
         run: npm --prefix apps/desktop run tauri:build
         env:
-          # No signing keys are required for a draft artifact build.
           # macOS notarization and Windows code-signing are not configured in this workflow.
           # Set TAURI_SIGNING_PRIVATE_KEY and related secrets in repository settings
           # when code-signing is ready to enable.
