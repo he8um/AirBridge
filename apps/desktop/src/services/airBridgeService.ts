@@ -37,6 +37,8 @@ import type {
   RestoreSchemaPlanRequest,
   RestoreConfirmationRequest,
   RestoreConfirmationResult,
+  TargetEmptyVerificationRequest,
+  TargetEmptyVerificationResult,
   RestoreWriteEngineRequest,
   RestoreWriteEngineResult,
   RunBackupCommandRequest,
@@ -223,4 +225,14 @@ export interface AirBridgeService {
   validateRestoreConfirmationGate(
     request: RestoreConfirmationRequest,
   ): Promise<RestoreConfirmationResult>;
+  /**
+   * Verifies that the restore target base is empty (Gate 3).
+   *
+   * - No Airtable write API calls. No token. No full path. No network writes.
+   * - writesEnabled is always false. noChangesMade is always true.
+   * - Verified status does NOT enable restore writes.
+   */
+  verifyRestoreTargetEmpty(
+    request: TargetEmptyVerificationRequest,
+  ): Promise<TargetEmptyVerificationResult>;
 }

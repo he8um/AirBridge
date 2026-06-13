@@ -27,6 +27,9 @@ use crate::restore::schema_write_requests::build_schema_write_request_plan;
 use crate::restore::schema_write_result::{
     SchemaWriteRequestPlanRequest, SchemaWriteRequestPlanResult,
 };
+use crate::restore::target_empty_verification::{
+    verify_target_empty, TargetEmptyVerificationRequest, TargetEmptyVerificationResult,
+};
 use crate::restore::write_engine::{preview_write_engine, RestoreWriteEngineRequest};
 use crate::restore::write_gate::evaluate_write_gate;
 use crate::restore::write_result::RestoreWriteEngineResult;
@@ -447,6 +450,23 @@ pub fn validate_restore_confirmation_gate(
     request: RestoreConfirmationRequest,
 ) -> RestoreConfirmationResult {
     validate_restore_confirmation(&request)
+}
+
+/// Verifies that the restore target base is empty before any live writes begin (Gate 3).
+///
+/// - No Airtable write API calls.
+/// - No token accepted or returned.
+/// - No files written.
+/// - No full paths in result.
+/// - no_changes_made is always true.
+/// - network_writes_attempted is always false.
+/// - writes_enabled is always false.
+/// - Verified status does NOT enable restore writes.
+#[tauri::command]
+pub fn verify_restore_target_empty(
+    request: TargetEmptyVerificationRequest,
+) -> TargetEmptyVerificationResult {
+    verify_target_empty(&request)
 }
 
 #[cfg(test)]

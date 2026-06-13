@@ -8,6 +8,7 @@ import { RestoreRecordImportPlanPanel } from "../features/backups/RestoreRecordI
 import { RestoreSchemaPlanPanel } from "../features/backups/RestoreSchemaPlanPanel";
 import { RestoreConfirmationPanel } from "../features/backups/RestoreConfirmationPanel";
 import { RestoreSandboxVerificationPanel } from "../features/backups/RestoreSandboxVerificationPanel";
+import { RestoreTargetEmptyVerificationPanel } from "../features/backups/RestoreTargetEmptyVerificationPanel";
 import { RestoreWriteEnginePanel } from "../features/backups/RestoreWriteEnginePanel";
 import { liveAirBridgeService } from "../services/liveAirBridgeService";
 import type { BackupPackageInspectionResult } from "../backend/types";
@@ -21,6 +22,7 @@ import type {
   RestoreTargetMode,
   RestoreWriteEngineResult,
   SandboxVerificationResult,
+  TargetEmptyVerificationResult,
 } from "../backend/types";
 
 export function RestorePage() {
@@ -47,6 +49,10 @@ export function RestorePage() {
     null,
   );
   const [confirmationLoading, setConfirmationLoading] = useState(false);
+  const [targetEmptyResult, setTargetEmptyResult] = useState<TargetEmptyVerificationResult | null>(
+    null,
+  );
+  const [targetEmptyLoading, setTargetEmptyLoading] = useState(false);
 
   return (
     <div className="page">
@@ -268,6 +274,32 @@ export function RestorePage() {
                   })
                   .finally(() => {
                     setConfirmationLoading(false);
+                  });
+              }}
+            />
+
+            <div className="divider" style={{ margin: 0 }} />
+
+            {/* Target empty verification — Gate 3. No writes. No token. */}
+            <RestoreTargetEmptyVerificationPanel
+              result={targetEmptyResult}
+              loading={targetEmptyLoading}
+              onVerify={() => {
+                setTargetEmptyLoading(true);
+                liveAirBridgeService
+                  .verifyRestoreTargetEmpty({
+                    targetMode: targetMode,
+                    targetDisplayName: targetBaseName ?? undefined,
+                    liveCheckPerformed: false,
+                  })
+                  .then((r) => {
+                    setTargetEmptyResult(r);
+                  })
+                  .catch(() => {
+                    setTargetEmptyResult(null);
+                  })
+                  .finally(() => {
+                    setTargetEmptyLoading(false);
                   });
               }}
             />

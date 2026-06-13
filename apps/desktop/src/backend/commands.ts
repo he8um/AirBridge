@@ -33,6 +33,8 @@ import type {
   RestoreWriteEngineResult,
   RestoreConfirmationRequest,
   RestoreConfirmationResult,
+  TargetEmptyVerificationRequest,
+  TargetEmptyVerificationResult,
   RunBackupCommandRequest,
   RunBackupCommandResponse,
   SandboxVerificationRequest,
@@ -390,4 +392,20 @@ export async function validateRestoreConfirmationGate(
   request: RestoreConfirmationRequest,
 ): Promise<RestoreConfirmationResult | null> {
   return safeInvoke<RestoreConfirmationResult>("validate_restore_confirmation_gate", { request });
+}
+
+/**
+ * Verifies that the restore target base is empty (Gate 3).
+ *
+ * - No token accepted or returned.
+ * - No Airtable write API calls.
+ * - No files written.
+ * - noChangesMade is always true.
+ * - Verified status does NOT enable restore writes.
+ * - Returns null if Tauri IPC is unavailable.
+ */
+export async function verifyRestoreTargetEmpty(
+  request: TargetEmptyVerificationRequest,
+): Promise<TargetEmptyVerificationResult | null> {
+  return safeInvoke<TargetEmptyVerificationResult>("verify_restore_target_empty", { request });
 }

@@ -74,7 +74,26 @@ The `validate_restore_confirmation_gate` Tauri command validates the user's conf
 - [x] **39 frontend tests pass** for confirmation service contract and panel rendering.
 - [ ] **Confirmation enables live write path.** When the write engine is enabled in a future release, a valid `Confirmed` result (with all prerequisites met) must be checked before any write begins.
 
-## Gate 3 — Sandbox Write Testing
+## Gate 3 — Target Empty Verification
+
+**Status: Implemented (local and reported counts only). Live Airtable metadata check deferred.**
+
+The `verify_restore_target_empty` Tauri command verifies that the target base is empty before any live writes begin. No Airtable write API calls are made. No token is required. No files are written. `noChangesMade` is always `true`. `writesEnabled` is always `false`. A `Verified` result does NOT enable restore writes.
+
+- [x] **Target empty verification command implemented.** `verify_restore_target_empty` runs TEV-01 through TEV-05. Accessible from the Restore page.
+- [x] **TEV-01 write gate check.** Calls `evaluate_write_gate()` — must return `Disabled`. Always passes in this version.
+- [x] **TEV-02 target mode allowlist.** Only `newBase` and `emptyExistingBase` are supported. Any other value is blocked.
+- [x] **TEV-03 table count check.** `newBase` always passes. `emptyExistingBase` with 0 tables passes; non-zero is blocked; unknown is warning.
+- [x] **TEV-04 record count check.** `newBase` always passes. `emptyExistingBase` with 0 records passes; non-zero is blocked; unknown is warning.
+- [x] **TEV-05 no-writes-enabled check.** Always passes — verification does not enable writes.
+- [x] **Unknown counts produce warning, not blocked.** When counts are unavailable for `emptyExistingBase`, result is `warning` not `blocked` — allowing the user to proceed with awareness.
+- [x] **Non-zero table count is blocked.** `targetTableCount > 0` for `emptyExistingBase` produces `blocked`.
+- [x] **Non-zero record count is blocked.** `targetRecordCount > 0` for `emptyExistingBase` produces `blocked`.
+- [x] **29 Rust unit tests pass** for target empty verification module.
+- [x] **47 frontend tests pass** for target empty verification service contract and panel rendering.
+- [ ] **Live metadata check implemented.** A future release must implement a live Airtable read call to `GET /v0/meta/bases/{baseId}/tables` to count tables and records before enabling writes.
+
+## Gate 4 — Sandbox Write Testing
 
 - [ ] **Sandbox base designated.** A dedicated empty Airtable base exists for write testing. Its base ID is in test configuration only, not in release code.
 - [ ] **Schema creation phase tested in sandbox.** CreateTable, CreateField, and DeferLinkedField operations complete successfully against the sandbox base.
@@ -83,7 +102,7 @@ The `validate_restore_confirmation_gate` Tauri command validates the user's conf
 - [ ] **Final validation phase tested in sandbox.** Record and table counts verified; `Succeeded` status only set after validation passes.
 - [ ] **Sandbox base deleted after test.** No production data affected.
 
-## Gate 4 — User Confirmation for Live Writes
+## Gate 5 — User Confirmation for Live Writes
 
 - [ ] **Confirmation phrase enforced at Rust level.** The Rust command rejects any confirmation that is not exactly the required phrase (see Gate 2).
 - [ ] **Partial match rejected.** Lowercase, partial, and extra-word inputs all fail the check.
@@ -93,7 +112,7 @@ The `validate_restore_confirmation_gate` Tauri command validates the user's conf
 
 ---
 
-## Gate 4 — Target Base Safety
+## Gate 6 — Target Base Safety
 
 - [ ] **Empty-base check implemented.** Before the first write, the Airtable schema API is called to verify the target base has zero tables.
 - [ ] **Non-empty base rejected.** If the target base contains any tables, the write engine stops with a `BlockedByTargetSafety` reason before any write is attempted.
@@ -102,7 +121,7 @@ The `validate_restore_confirmation_gate` Tauri command validates the user's conf
 
 ---
 
-## Gate 5 — No Destructive Operations
+## Gate 7 — No Destructive Operations
 
 - [ ] **No delete record calls.** Grep confirms no `DELETE /v0/` record endpoint is called anywhere in the write path.
 - [ ] **No delete table calls.** Grep confirms no table deletion API call exists.
@@ -112,7 +131,7 @@ The `validate_restore_confirmation_gate` Tauri command validates the user's conf
 
 ---
 
-## Gate 6 — Write Phase Ordering
+## Gate 8 — Write Phase Ordering
 
 - [ ] **Tables created before fields.** `CreateTable` operations all complete before any `CreateField` operation begins.
 - [ ] **Fields created before records.** `CreateField` and `DeferLinkedField` operations complete before any `CreateRecordBatch` begins.
@@ -122,7 +141,7 @@ The `validate_restore_confirmation_gate` Tauri command validates the user's conf
 
 ---
 
-## Gate 7 — Checkpoint Safety
+## Gate 9 — Checkpoint Safety
 
 - [ ] **Checkpoint before each batch.** A durable checkpoint is written before each `CreateRecordBatch` operation begins.
 - [ ] **Checkpoint before second pass.** A durable checkpoint records first-pass completion before `UpdateLinkedRecordBatch` begins.
@@ -131,7 +150,7 @@ The `validate_restore_confirmation_gate` Tauri command validates the user's conf
 
 ---
 
-## Gate 8 — Rate Limit and Backoff
+## Gate 10 — Rate Limit and Backoff
 
 - [ ] **429 triggers backoff.** A 429 response from the Airtable API pauses the write engine and waits before retrying.
 - [ ] **Initial backoff ≥ 1 000 ms.** The first retry waits at least one second.
@@ -143,7 +162,7 @@ The `validate_restore_confirmation_gate` Tauri command validates the user's conf
 
 ---
 
-## Gate 9 — Failure Modes
+## Gate 11 — Failure Modes
 
 - [ ] **401 stops execution.** An authentication error stops all further writes. "Token invalid" message shown. No further API calls.
 - [ ] **403 stops execution.** A permission error stops all further writes. "Permission denied" message shown.
@@ -155,7 +174,7 @@ The `validate_restore_confirmation_gate` Tauri command validates the user's conf
 
 ---
 
-## Gate 10 — Rollback Limitation Notice
+## Gate 12 — Rollback Limitation Notice
 
 - [ ] **Notice shown in UI before confirmation.** Before the user types `"RESTORE BACKUP"`, a notice reads: "Restore cannot be automatically rolled back. If execution fails partway through, the partially-created base must be cleaned up manually."
 - [ ] **Notice not dismissable.** The notice is always visible when the confirmation input is shown — it is not collapsible or behind a toggle.
@@ -163,7 +182,7 @@ The `validate_restore_confirmation_gate` Tauri command validates the user's conf
 
 ---
 
-## Gate 11 — Final Validation
+## Gate 13 — Final Validation
 
 - [ ] **`FinalValidation` phase implemented.** A `FinalValidation` phase exists in the write engine and runs after all record writes complete.
 - [ ] **Record count check.** `FinalValidation` verifies the record count in the target base matches the count in the backup manifest.
@@ -173,7 +192,7 @@ The `validate_restore_confirmation_gate` Tauri command validates the user's conf
 
 ---
 
-## Gate 12 — Token Safety During Live Writes
+## Gate 14 — Token Safety During Live Writes
 
 - [ ] **Token not in any write engine result.** `RestoreWriteEngineResult` has no token field. `JSON.stringify(result)` does not contain the token string.
 - [ ] **Token not in any job history item.** After a live restore, `list_job_history` response does not contain the token.
@@ -183,7 +202,7 @@ The `validate_restore_confirmation_gate` Tauri command validates the user's conf
 
 ---
 
-## Gate 13 — Path Safety During Live Writes
+## Gate 15 — Path Safety During Live Writes
 
 - [ ] **Full path not in any result.** `RestoreWriteEngineResult.filename` contains only the basename.
 - [ ] **`Path::file_name()` applied.** Confirmed by code review that all result filenames are derived via `Path::file_name()`.
@@ -192,7 +211,7 @@ The `validate_restore_confirmation_gate` Tauri command validates the user's conf
 
 ---
 
-## Gate 14 — Attachment Phase Disabled
+## Gate 16 — Attachment Phase Disabled
 
 - [ ] **`AttachmentHandling` phase remains disabled.** The phase produces a disabled-status summary with zero operations.
 - [ ] **No attachment upload API call.** Grep confirms no attachment upload endpoint (`/v0/{baseId}/{tableId}/{recordId}/files` or similar) is called.
@@ -201,7 +220,7 @@ The `validate_restore_confirmation_gate` Tauri command validates the user's conf
 
 ---
 
-## Gate 15 — No Prohibited Terms in Public Files
+## Gate 17 — No Prohibited Terms in Public Files
 
 - [ ] **Full prohibited terms scan passes.** `grep -RniE 'claude|anthropic|chatgpt|openai|ai-generated|ai-assisted|agent|llm|co-authored|generated with|generated by'` returns no hits in source, docs, or config files.
 
@@ -211,23 +230,25 @@ The `validate_restore_confirmation_gate` Tauri command validates the user's conf
 
 | Gate | Description | Status |
 |------|-------------|--------|
-| 1 | Current state verification | ☐ |
-| 2 | Sandbox testing | ☐ |
-| 3 | User confirmation | ☐ |
-| 4 | Target base safety | ☐ |
-| 5 | No destructive operations | ☐ |
-| 6 | Write phase ordering | ☐ |
-| 7 | Checkpoint safety | ☐ |
-| 8 | Rate limit and backoff | ☐ |
-| 9 | Failure modes | ☐ |
-| 10 | Rollback limitation notice | ☐ |
-| 11 | Final validation | ☐ |
-| 12 | Token safety | ☐ |
-| 13 | Path safety | ☐ |
-| 14 | Attachment phase disabled | ☐ |
-| 15 | No prohibited terms | ☐ |
+| 1 | Sandbox environment verification | ☐ |
+| 2 | Explicit user confirmation | ☐ |
+| 3 | Target empty verification | ☐ |
+| 4 | Sandbox write testing | ☐ |
+| 5 | User confirmation for live writes | ☐ |
+| 6 | Target base safety | ☐ |
+| 7 | No destructive operations | ☐ |
+| 8 | Write phase ordering | ☐ |
+| 9 | Checkpoint safety | ☐ |
+| 10 | Rate limit and backoff | ☐ |
+| 11 | Failure modes | ☐ |
+| 12 | Rollback limitation notice | ☐ |
+| 13 | Final validation | ☐ |
+| 14 | Token safety | ☐ |
+| 15 | Path safety | ☐ |
+| 16 | Attachment phase disabled | ☐ |
+| 17 | No prohibited terms | ☐ |
 
-**Release decision:** Do not enable live writes until all 15 gates are marked Pass.
+**Release decision:** Do not enable live writes until all 17 gates are marked Pass.
 
 ---
 

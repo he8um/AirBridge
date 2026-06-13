@@ -359,6 +359,44 @@ If AirBridge supports user-configured field redaction:
 
 ---
 
+## Restore Target Empty Verification Safety (Gate 3)
+
+**Goal:** Confirm that the target empty verification gate makes no Airtable write API calls, requires no token, makes no writes, and always returns `noChangesMade: true` and `writesEnabled: false` — even when verified.
+
+**TEV-01: No token accepted.**
+- `TargetEmptyVerificationRequest` has no `token` field.
+- `verify_restore_target_empty` has no token parameter.
+- `RestoreTargetEmptyVerificationPanel` renders no token input.
+
+**TEV-02: No Airtable write API calls.**
+- All 5 checks are local (mode string, count values, write gate state).
+- No HTTP client is constructed or called in the write path.
+
+**TEV-03: No write operations.**
+- No files written. No Airtable records, tables, or fields created.
+- `writesEnabled` is always `false`. `networkWritesAttempted` is always `false`.
+- `Verified` status does NOT enable restore writes.
+
+**TEV-04: No full path in result.**
+- `TargetEmptyVerificationRequest` has no filesystem path field.
+- `TargetEmptyVerificationResult` has no field containing a path.
+- The Rust test `result_serialization_has_no_full_path` confirms no absolute path in result.
+
+**TEV-05: `noChangesMade` always true.**
+- Every code path in `verify_target_empty` sets `no_changes_made: true`.
+- 29 Rust unit tests assert this property.
+- 47 frontend tests assert this property via mock service contract and panel tests.
+
+**TEV-06: No execute button.**
+- `RestoreTargetEmptyVerificationPanel` does not render "Execute", "Run Restore", or "Start Restore".
+- The frontend test `no execute button in panel` confirms this.
+
+**TEV-07: Unsupported target mode is blocked.**
+- Only `"newBase"` and `"emptyExistingBase"` are allowed. Any other string returns `blocked`.
+- TEV-02 check fails for unknown modes; overall status becomes `blocked`.
+
+---
+
 ## Restore Schema Creation Plan Safety (V0.1)
 
 **Goal:** Confirm that the schema creation planning flow makes no Airtable API calls, requires no token, creates no Airtable tables or fields, and always returns `noChangesMade: true`.

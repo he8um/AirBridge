@@ -914,6 +914,52 @@ These test cases cover the command contract layer: confirmation enforcement, out
 
 ---
 
+## Restore Target Empty Verification (Gate 3)
+
+**TC-TEV-01: Writes-disabled notice always visible**
+
+- Preconditions: Restore page open.
+- Steps:
+  1. Scroll to the "Target Empty Verification (Gate 3)" section.
+- Expected result: A writes-disabled notice is shown. No execute button is shown. No token field is shown.
+
+**TC-TEV-02: newBase target mode returns verified**
+
+- Preconditions: Restore page open. Target mode is "New base" (the default).
+- Steps:
+  1. Click "Verify target is empty".
+- Expected result: Status badge shows `verified`. A verified notice is shown. "Restore writes remain disabled" is visible in the verified notice.
+
+**TC-TEV-03: Empty existing base (0 tables, 0 records) returns verified**
+
+- Preconditions: Restore page open. Target mode is "Empty existing base". Table count and record count are supplied as 0.
+- Steps:
+  1. Click "Verify target is empty".
+- Expected result: Status badge shows `verified`. TEV-03 and TEV-04 check rows show `passed`.
+
+**TC-TEV-04: Existing base with tables returns blocked**
+
+- Preconditions: Restore page open. Target mode is "Empty existing base". Table count is > 0.
+- Steps:
+  1. Click "Verify target is empty".
+- Expected result: Status badge shows `blocked`. TEV-03 row shows `failed` with a message indicating the table count.
+
+**TC-TEV-05: Counts unknown returns warning**
+
+- Preconditions: Restore page open. Target mode is "Empty existing base". No table or record count provided.
+- Steps:
+  1. Click "Verify target is empty".
+- Expected result: Status badge shows `warning`. TEV-03 and TEV-04 check rows show `warning`. Warning notice is shown.
+
+**TC-TEV-06: No execute button or token input**
+
+- Preconditions: Restore page open with a target empty result (any status).
+- Steps:
+  1. Inspect the Target Empty Verification section for buttons and input fields.
+- Expected result: No "Execute", "Run Restore", or similar button. No password or token input field.
+
+---
+
 ## Write Engine Skeleton
 
 **TC-WE-01: Write engine disabled notice is always visible**

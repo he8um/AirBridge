@@ -1,6 +1,7 @@
 export { BackupExecutionPanel } from "./BackupExecutionPanel";
 export { RestoreConfirmationPanel } from "./RestoreConfirmationPanel";
 export { RestoreSandboxVerificationPanel } from "./RestoreSandboxVerificationPanel";
+export { RestoreTargetEmptyVerificationPanel } from "./RestoreTargetEmptyVerificationPanel";
 export { JobHistoryPanel } from "./JobHistoryPanel";
 export { RestoreRecordImportPlanPanel } from "./RestoreRecordImportPlanPanel";
 export { BackupConfirmationBox } from "./BackupConfirmationBox";

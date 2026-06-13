@@ -12,6 +12,8 @@ All restore write paths are hard-disabled. `evaluate_write_gate()` returns `Disa
 
 **Gate 2 — explicit user confirmation** is implemented via the `validate_restore_confirmation_gate` Tauri command. It runs 5 checks (CHK-C01 through CHK-C05): write gate state, sandbox prerequisite, exact text match, no-token check, and a writes-remain-disabled assertion. Required confirmation text is built deterministically from target label or package filename. No Airtable API calls are made. No token is required. A `Confirmed` result does NOT enable restore writes — it only validates the confirmation contract.
 
+**Gate 3 — target empty verification** is implemented via the `verify_restore_target_empty` Tauri command. It runs 5 checks (TEV-01 through TEV-05): write gate state, target mode allowlist, table count, record count, and a no-writes-enabled assertion. `newBase` mode is always verified (no counts needed). `emptyExistingBase` mode requires both table count and record count to be 0; if counts are unknown, status is `Warning`. No Airtable write API calls are made. No token is required. A `Verified` result does NOT enable restore writes.
+
 This contract defines what must be true before `evaluate_write_gate()` is ever changed to return an enabled decision.
 
 ---

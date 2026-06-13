@@ -37,6 +37,8 @@ import type {
   RestoreSchemaPlanRequest,
   RestoreConfirmationRequest,
   RestoreConfirmationResult,
+  TargetEmptyVerificationRequest,
+  TargetEmptyVerificationResult,
   RestoreWriteEngineRequest,
   RestoreWriteEngineResult,
   RunBackupCommandRequest,
@@ -478,6 +480,23 @@ async function validateRestoreConfirmationGate(
   return result;
 }
 
+async function verifyRestoreTargetEmpty(
+  request: TargetEmptyVerificationRequest,
+): Promise<TargetEmptyVerificationResult> {
+  const result = await commands.verifyRestoreTargetEmpty(request);
+  if (result === null) {
+    return {
+      status: "blocked",
+      checks: [],
+      message: "Target empty verification is not available in this context.",
+      noChangesMade: true,
+      networkWritesAttempted: false,
+      writesEnabled: false,
+    };
+  }
+  return result;
+}
+
 export const liveAirBridgeService: AirBridgeService = {
   listConnections,
   listWorkspaces,
@@ -511,4 +530,5 @@ export const liveAirBridgeService: AirBridgeService = {
   previewRecordWriteRequestPlan,
   verifyRestoreSandboxEnvironment,
   validateRestoreConfirmationGate,
+  verifyRestoreTargetEmpty,
 };

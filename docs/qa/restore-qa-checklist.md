@@ -274,6 +274,59 @@ After completing a restore, perform the following manual checks in Airtable:
 
 ---
 
+## Restore Target Empty Verification Checklist (Gate 3)
+
+### Before testing
+
+- [ ] Confirm `verify_restore_target_empty` is registered in the Tauri invoke handler.
+- [ ] Confirm `RestoreTargetEmptyVerificationPanel` is rendered on the Restore page.
+- [ ] Confirm no `token` field appears in `TargetEmptyVerificationRequest`.
+- [ ] Confirm `TargetEmptyVerificationResult` has no `token` field.
+
+### Panel behavior
+
+- [ ] The "Target Empty Verification (Gate 3)" section is visible on the Restore page at all times.
+- [ ] A writes-disabled notice is shown at the top of the panel.
+- [ ] A "Verify target is empty" button is shown before the first verification run.
+- [ ] Clicking the button triggers `verifyRestoreTargetEmpty` and shows the result.
+- [ ] After a result, the button label changes to "Re-verify".
+- [ ] No execute button ("Start Restore", "Run Restore", "Execute Restore") is shown.
+- [ ] No token input is shown.
+- [ ] No "Restore complete", "Restore succeeded", or "succeeded" language appears.
+- [ ] Full filesystem path is not visible in any rendered element.
+
+### Result display
+
+- [ ] Overall status badge (`verified`, `warning`, or `blocked`) is shown.
+- [ ] Result message is shown.
+- [ ] Each check row (TEV-01 through TEV-05) is shown with its ID, label, and message.
+- [ ] Safety summary shows `writesEnabled: No`, `networkWritesAttempted: No`.
+- [ ] "No Airtable changes were made." is shown in the safety summary.
+- [ ] When status is `verified`, a verified notice reads "Restore writes remain disabled".
+- [ ] When status is `warning`, a warning notice is shown.
+- [ ] When status is `blocked`, a blocked notice is shown.
+
+### Status scenarios
+
+- [ ] `newBase` target mode → `verified` status.
+- [ ] `emptyExistingBase` with 0 tables and 0 records → `verified` status.
+- [ ] `emptyExistingBase` with table count > 0 → `blocked` status.
+- [ ] `emptyExistingBase` with record count > 0 → `blocked` status.
+- [ ] `emptyExistingBase` with counts unknown → `warning` status.
+- [ ] Unsupported target mode → `blocked` status.
+
+### Safety invariants
+
+- [ ] `noChangesMade` is `true` in every target empty verification result.
+- [ ] `writesEnabled` is `false` in every target empty verification result.
+- [ ] `networkWritesAttempted` is `false` in every target empty verification result.
+- [ ] The verification request type has no `token` field.
+- [ ] The verification result has no `token` field.
+- [ ] The verification result contains no full filesystem path.
+- [ ] A `verified` result does NOT enable restore writes.
+
+---
+
 ## Write Engine Skeleton Checklist
 
 ### Before testing

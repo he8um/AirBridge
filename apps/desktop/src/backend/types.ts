@@ -1506,3 +1506,47 @@ export interface RestoreConfirmationResult {
   networkWritesAttempted: boolean;
   writesEnabled: boolean;
 }
+
+// ── Target empty verification types (mirrors Rust restore::target_empty_verification) ──
+
+export type TargetEmptyVerificationStatus = "verified" | "warning" | "blocked";
+
+export type TargetEmptyVerificationCheckStatus = "passed" | "warning" | "failed" | "skipped";
+
+export interface TargetEmptyVerificationCheck {
+  checkId: string;
+  label: string;
+  status: TargetEmptyVerificationCheckStatus;
+  message: string;
+  remediation?: string;
+}
+
+/**
+ * Request for Gate 3 target empty verification.
+ * - No token field.
+ * - No filesystem path field.
+ */
+export interface TargetEmptyVerificationRequest {
+  targetMode: string;
+  targetTableCount?: number;
+  targetRecordCount?: number;
+  targetDisplayName?: string;
+  liveCheckPerformed: boolean;
+}
+
+/**
+ * Result from verify_restore_target_empty.
+ * - No token field.
+ * - writesEnabled is always false.
+ * - noChangesMade is always true.
+ * - networkWritesAttempted is always false.
+ * - Verified status does NOT enable restore writes.
+ */
+export interface TargetEmptyVerificationResult {
+  status: TargetEmptyVerificationStatus;
+  checks: TargetEmptyVerificationCheck[];
+  message: string;
+  noChangesMade: boolean;
+  networkWritesAttempted: boolean;
+  writesEnabled: boolean;
+}

@@ -45,6 +45,9 @@ import type {
   RunBackupCommandRequest,
   RestoreConfirmationRequest,
   RestoreConfirmationResult,
+  TargetEmptyVerificationRequest,
+  TargetEmptyVerificationResult,
+  TargetEmptyVerificationStatus,
   RunBackupCommandResponse,
   RecordWriteRequestPlanRequest,
   RecordWriteRequestPlanResult,
@@ -1861,6 +1864,151 @@ function validateRestoreConfirmationGateImpl(
   });
 }
 
+function verifyRestoreTargetEmptyImpl(
+  request: TargetEmptyVerificationRequest,
+): Promise<TargetEmptyVerificationResult> {
+  const mode = request.targetMode;
+  const modeSafe = mode === "newBase" || mode === "emptyExistingBase";
+
+  const checks: TargetEmptyVerificationResult["checks"] = [];
+
+  // TEV-01: write gate
+  checks.push({
+    checkId: "TEV-01",
+    label: "write-gate",
+    status: "passed",
+    message: "Write gate is disabled — no writes can be executed.",
+  });
+
+  // TEV-02: target mode
+  if (modeSafe) {
+    checks.push({
+      checkId: "TEV-02",
+      label: "target-mode",
+      status: "passed",
+      message: `Target mode '${mode}' is supported.`,
+    });
+  } else {
+    checks.push({
+      checkId: "TEV-02",
+      label: "target-mode",
+      status: "failed",
+      message: `Target mode '${mode}' is not supported. Only 'newBase' and 'emptyExistingBase' are allowed.`,
+      remediation: "Set targetMode to 'newBase' or 'emptyExistingBase'.",
+    });
+  }
+
+  // TEV-03: table count
+  let tableCountOk = false;
+  if (mode === "newBase" && request.targetTableCount === undefined) {
+    checks.push({
+      checkId: "TEV-03",
+      label: "table-count",
+      status: "passed",
+      message: "New base target — no existing tables expected.",
+    });
+    tableCountOk = true;
+  } else if (request.targetTableCount === undefined) {
+    checks.push({
+      checkId: "TEV-03",
+      label: "table-count",
+      status: "warning",
+      message: "Table count is not known. Live metadata check was not performed.",
+      remediation:
+        "Perform a live metadata check to verify the target base is empty before enabling writes.",
+    });
+  } else if (request.targetTableCount === 0) {
+    checks.push({
+      checkId: "TEV-03",
+      label: "table-count",
+      status: "passed",
+      message: "Target base has zero tables — safe to restore.",
+    });
+    tableCountOk = true;
+  } else {
+    checks.push({
+      checkId: "TEV-03",
+      label: "table-count",
+      status: "failed",
+      message: `Target base has ${request.targetTableCount} table(s). Restoring into a non-empty base is not safe.`,
+      remediation: "Choose an empty base or create a new base as the restore target.",
+    });
+  }
+
+  // TEV-04: record count
+  let recordCountOk = false;
+  if (mode === "newBase" && request.targetRecordCount === undefined) {
+    checks.push({
+      checkId: "TEV-04",
+      label: "record-count",
+      status: "passed",
+      message: "New base target — no existing records expected.",
+    });
+    recordCountOk = true;
+  } else if (request.targetRecordCount === undefined) {
+    checks.push({
+      checkId: "TEV-04",
+      label: "record-count",
+      status: "warning",
+      message: "Record count is not known. Live metadata check was not performed.",
+      remediation:
+        "Perform a live metadata check to verify the target base is empty before enabling writes.",
+    });
+  } else if (request.targetRecordCount === 0) {
+    checks.push({
+      checkId: "TEV-04",
+      label: "record-count",
+      status: "passed",
+      message: "Target base has zero records — safe to restore.",
+    });
+    recordCountOk = true;
+  } else {
+    checks.push({
+      checkId: "TEV-04",
+      label: "record-count",
+      status: "failed",
+      message: `Target base has ${request.targetRecordCount} record(s). Restoring into a non-empty base is not safe.`,
+      remediation: "Choose an empty base or delete all records before restoring.",
+    });
+  }
+
+  // TEV-05: no writes enabled
+  checks.push({
+    checkId: "TEV-05",
+    label: "no-writes-enabled",
+    status: "passed",
+    message: "Restore writes are not enabled. This check always passes in this version.",
+  });
+
+  const anyHardFail = checks.some((c) => c.status === "failed");
+  const anyWarningOnly = !anyHardFail && (!tableCountOk || !recordCountOk);
+
+  const status: TargetEmptyVerificationStatus =
+    !modeSafe || anyHardFail ? "blocked" : anyWarningOnly ? "warning" : "verified";
+
+  const targetName = request.targetDisplayName ?? "the target base";
+
+  const message =
+    status === "verified"
+      ? mode === "newBase"
+        ? "New base target — no existing data to conflict with. Restore is safe to proceed when writes are enabled."
+        : `${targetName} is confirmed empty (0 tables, 0 records). Restore is safe to proceed when writes are enabled.`
+      : status === "warning"
+        ? `Target base emptiness could not be confirmed for ${targetName}. Live metadata check was not performed. Resolve this before enabling live writes.`
+        : !modeSafe
+          ? `Target mode '${mode}' is not supported. Only 'newBase' and 'emptyExistingBase' are allowed.`
+          : `${targetName} is not empty. Restoring into a non-empty base is blocked to prevent data loss.`;
+
+  return Promise.resolve({
+    status,
+    checks,
+    message,
+    noChangesMade: true,
+    networkWritesAttempted: false,
+    writesEnabled: false,
+  });
+}
+
 export const mockAirBridgeService: AirBridgeService = {
   listConnections,
   listWorkspaces,
@@ -1894,4 +2042,5 @@ export const mockAirBridgeService: AirBridgeService = {
   previewRecordWriteRequestPlan: previewRecordWriteRequestPlanImpl,
   verifyRestoreSandboxEnvironment: verifyRestoreSandboxEnvironmentImpl,
   validateRestoreConfirmationGate: validateRestoreConfirmationGateImpl,
+  verifyRestoreTargetEmpty: verifyRestoreTargetEmptyImpl,
 };
