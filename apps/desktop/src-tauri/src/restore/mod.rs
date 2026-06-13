@@ -1,9 +1,16 @@
+pub mod attachment_restore_policy;
 pub mod compatibility;
 pub mod dry_run;
 pub mod execution;
 pub mod execution_gate;
+pub mod linked_record_updates;
 pub mod ordering;
 pub mod plan;
+pub mod record_import_batches;
+pub mod record_import_plan;
+pub mod record_import_planner;
+pub mod record_import_warnings;
+pub mod record_mapping;
 pub mod schema_dependencies;
 pub mod schema_plan;
 pub mod schema_planner;

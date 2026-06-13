@@ -4,11 +4,14 @@ import { useAppState } from "../state/useAppState";
 import { PackageInspectionPanel } from "../features/backups/PackageInspectionPanel";
 import { RestoreDryRunPanel } from "../features/backups/RestoreDryRunPanel";
 import { RestoreExecutionGatePanel } from "../features/backups/RestoreExecutionGatePanel";
+import { RestoreRecordImportPlanPanel } from "../features/backups/RestoreRecordImportPlanPanel";
 import { RestoreSchemaPlanPanel } from "../features/backups/RestoreSchemaPlanPanel";
 import { liveAirBridgeService } from "../services/liveAirBridgeService";
 import type { BackupPackageInspectionResult } from "../backend/types";
 import type {
+  RecordImportTableInput,
   RestoreDryRunPlan,
+  RestoreRecordImportPlanStatus,
   RestoreSchemaPlanRequest,
   RestoreTargetMode,
 } from "../backend/types";
@@ -25,6 +28,10 @@ export function RestorePage() {
   const [dryRunPlan, setDryRunPlan] = useState<RestoreDryRunPlan | null>(null);
   const [targetMode, setTargetMode] = useState<RestoreTargetMode>("newBase");
   const [targetBaseName, setTargetBaseName] = useState<string | undefined>(undefined);
+  const [schemaPlanStatus, setSchemaPlanStatus] = useState<RestoreRecordImportPlanStatus | null>(
+    null,
+  );
+  const [recordImportTables, setRecordImportTables] = useState<RecordImportTableInput[]>([]);
 
   return (
     <div className="page">
@@ -131,6 +138,41 @@ export function RestorePage() {
                     }))
                   : []
               }
+              onPlanReady={(plan) => {
+                setSchemaPlanStatus(plan.status as RestoreRecordImportPlanStatus);
+                setRecordImportTables(
+                  dryRunPlan
+                    ? dryRunPlan.tables.map((t) => ({
+                        tableId: t.tableId,
+                        tableName: t.tableName,
+                        recordCount: undefined,
+                        fields: t.fields.map((f) => ({
+                          fieldId: f.fieldId,
+                          fieldName: f.fieldName,
+                          fieldType: f.fieldType,
+                          linkedTableId:
+                            t.linkedRecordPlans.find((lp) => lp.fieldId === f.fieldId)
+                              ?.linkedTableId ?? undefined,
+                        })),
+                      }))
+                    : [],
+                );
+              }}
+            />
+
+            <div className="divider" style={{ margin: 0 }} />
+
+            {/* Record import plan — no Airtable calls, no token */}
+            <RestoreRecordImportPlanPanel
+              service={liveAirBridgeService}
+              packageFilename={inspection?.filename ?? null}
+              dryRunStatus={
+                dryRunPlan ? (dryRunPlan.status as "ready" | "readyWithWarnings" | "blocked") : null
+              }
+              schemaPlanStatus={schemaPlanStatus}
+              targetMode={targetMode}
+              targetBaseName={targetBaseName}
+              tables={recordImportTables}
             />
 
             <div className="divider" style={{ margin: 0 }} />

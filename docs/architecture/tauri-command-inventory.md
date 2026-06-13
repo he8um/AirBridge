@@ -206,6 +206,28 @@ This document lists all commands registered in the Tauri invoke handler as of v0
 | Can change Airtable data | No |
 | Safety status | **Read-only.** No token required. Full path never in result — filename only returned. No Airtable API calls |
 
+### `create_restore_schema_plan`
+
+| Property | Value |
+|----------|-------|
+| Purpose | Creates a schema creation plan (table and field ordering) from a dry-run result |
+| Input sensitivity | Low — no token; no path |
+| Writes files | No |
+| Network access | No |
+| Can change Airtable data | No |
+| Safety status | **Read-only.** No token required. Filename only in result. `noChangesMade` always `true` |
+
+### `create_restore_record_import_plan`
+
+| Property | Value |
+|----------|-------|
+| Purpose | Creates a record import batch plan from a dry-run result and schema plan |
+| Input sensitivity | Low — no token; no path |
+| Writes files | No |
+| Network access | No |
+| Can change Airtable data | No |
+| Safety status | **Read-only.** No token required. Filename only in result. `noChangesMade` always `true` |
+
 ---
 
 ## Restore Execution Gate
@@ -280,6 +302,8 @@ This document lists all commands registered in the Tauri invoke handler as of v0
 | `cancel_backup_job` | No | No | No | No | None |
 | `list_restore_plans` | No | No | No | No | None |
 | `create_restore_dry_run_plan` | No | No | No | No | None |
+| `create_restore_schema_plan` | No | No | No | No | None |
+| `create_restore_record_import_plan` | No | No | No | No | None |
 | `run_restore_execution` | Yes | No | No | **Disabled** | `RESTORE BACKUP` |
 | `list_reports` | No | No | No | No | None |
 | `list_logs` | No | No | No | No | None |

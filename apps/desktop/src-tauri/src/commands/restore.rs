@@ -7,6 +7,8 @@ use crate::restore::dry_run::create_dry_run_plan;
 use crate::restore::execution::{RestoreExecutionRequest, RestoreExecutionResult};
 use crate::restore::execution_gate::validate_restore_execution_gate;
 use crate::restore::plan::{RestoreDryRunPlan, RestoreDryRunRequest};
+use crate::restore::record_import_plan::{RestoreRecordImportPlan, RestoreRecordImportPlanRequest};
+use crate::restore::record_import_planner::create_record_import_plan;
 use crate::restore::schema_plan::{RestoreSchemaPlan, RestoreSchemaPlanRequest};
 use crate::restore::schema_planner::create_schema_plan;
 
@@ -61,6 +63,20 @@ pub fn create_restore_dry_run_plan(request: RestoreDryRunRequest) -> RestoreDryR
 #[tauri::command]
 pub fn create_restore_schema_plan(request: RestoreSchemaPlanRequest) -> RestoreSchemaPlan {
     create_schema_plan(&request)
+}
+
+/// Creates a record import plan from a dry-run result and schema plan.
+///
+/// - No Airtable API calls.
+/// - No token required.
+/// - No files written or extracted.
+/// - Filename in the result is never a full path.
+/// - no_changes_made is always true.
+#[tauri::command]
+pub fn create_restore_record_import_plan(
+    request: RestoreRecordImportPlanRequest,
+) -> RestoreRecordImportPlan {
+    create_record_import_plan(&request)
 }
 
 /// Validates the restore execution safety gate and returns a blocked/disabled result.
@@ -378,5 +394,186 @@ mod tests {
         let req2 = exec_request_valid();
         let result2 = run_restore_execution(req2);
         assert!(result2.no_changes_made);
+    }
+
+    // ── record import plan command tests ───────────────────────────────────
+
+    use crate::restore::record_import_plan::{
+        RecordImportFieldInput, RecordImportTableInput, RestoreRecordImportPlanRequest,
+        RestoreRecordImportPlanStatus,
+    };
+
+    fn record_import_plan_request(
+        dry_run_status: &str,
+        schema_plan_status: &str,
+    ) -> RestoreRecordImportPlanRequest {
+        RestoreRecordImportPlanRequest {
+            package_filename: "backup.airbridge".to_string(),
+            dry_run_status: dry_run_status.to_string(),
+            schema_plan_status: schema_plan_status.to_string(),
+            target_mode: RestoreTargetMode::NewBase,
+            target_base_name: Some("Restored Base".to_string()),
+            tables: vec![RecordImportTableInput {
+                table_id: "tbl01".to_string(),
+                table_name: "Projects".to_string(),
+                record_count: Some(20),
+                fields: vec![
+                    RecordImportFieldInput {
+                        field_id: "fld01".to_string(),
+                        field_name: "Name".to_string(),
+                        field_type: "singleLineText".to_string(),
+                        linked_table_id: None,
+                    },
+                    RecordImportFieldInput {
+                        field_id: "fld02".to_string(),
+                        field_name: "Status".to_string(),
+                        field_type: "singleSelect".to_string(),
+                        linked_table_id: None,
+                    },
+                ],
+            }],
+        }
+    }
+
+    #[test]
+    fn record_import_plan_command_does_not_require_token() {
+        let req = record_import_plan_request("ready", "ready");
+        let json = serde_json::to_string(&req).expect("serialize");
+        assert!(!json.contains("\"token\""));
+        assert!(!json.contains("\"apiKey\""));
+    }
+
+    #[test]
+    fn record_import_plan_command_ready_status_produces_plan() {
+        let req = record_import_plan_request("ready", "ready");
+        let plan = create_restore_record_import_plan(req);
+        assert!(
+            plan.status == RestoreRecordImportPlanStatus::Ready
+                || plan.status == RestoreRecordImportPlanStatus::ReadyWithWarnings
+        );
+    }
+
+    #[test]
+    fn record_import_plan_command_blocked_dry_run_produces_blocked() {
+        let req = record_import_plan_request("blocked", "ready");
+        let plan = create_restore_record_import_plan(req);
+        assert_eq!(plan.status, RestoreRecordImportPlanStatus::Blocked);
+        assert!(!plan.errors.is_empty());
+    }
+
+    #[test]
+    fn record_import_plan_command_blocked_schema_plan_produces_blocked() {
+        let req = record_import_plan_request("ready", "blocked");
+        let plan = create_restore_record_import_plan(req);
+        assert_eq!(plan.status, RestoreRecordImportPlanStatus::Blocked);
+        assert_eq!(plan.errors[0].code, "SCHEMA_PLAN_BLOCKED");
+    }
+
+    #[test]
+    fn record_import_plan_command_no_changes_made_always_true() {
+        for (dry, schema) in &[
+            ("ready", "ready"),
+            ("readyWithWarnings", "readyWithWarnings"),
+            ("blocked", "ready"),
+            ("ready", "blocked"),
+        ] {
+            let req = record_import_plan_request(dry, schema);
+            let plan = create_restore_record_import_plan(req);
+            assert!(
+                plan.no_changes_made,
+                "no_changes_made must be true for dry={dry}, schema={schema}"
+            );
+        }
+    }
+
+    #[test]
+    fn record_import_plan_result_does_not_contain_absolute_path() {
+        let req = record_import_plan_request("ready", "ready");
+        let plan = create_restore_record_import_plan(req);
+        let json = serde_json::to_string(&plan).expect("serialize");
+        assert!(!json.contains("/Users/"));
+        assert!(!json.contains("/tmp/"));
+        assert!(!json.contains("/home/"));
+    }
+
+    #[test]
+    fn record_import_plan_result_does_not_contain_token() {
+        const SENTINEL: &str = "pat_command_test_import_sentinel_9999999999";
+        let req = record_import_plan_request("ready", "ready");
+        let plan = create_restore_record_import_plan(req);
+        let json = serde_json::to_string(&plan).expect("serialize");
+        assert!(!json.contains(SENTINEL));
+    }
+
+    #[test]
+    fn record_import_plan_filename_is_not_a_path() {
+        let req = record_import_plan_request("ready", "ready");
+        let plan = create_restore_record_import_plan(req);
+        assert!(!plan.filename.contains('/'));
+        assert!(!plan.filename.contains('\\'));
+        assert_eq!(plan.filename, "backup.airbridge");
+    }
+
+    #[test]
+    fn record_import_plan_result_has_table_plans() {
+        let req = record_import_plan_request("ready", "ready");
+        let plan = create_restore_record_import_plan(req);
+        assert!(!plan.table_plans.is_empty());
+        assert_eq!(plan.table_plans[0].table_name, "Projects");
+    }
+
+    #[test]
+    fn record_import_plan_result_has_batch_size() {
+        let req = record_import_plan_request("ready", "ready");
+        let plan = create_restore_record_import_plan(req);
+        assert_eq!(plan.table_plans[0].batch_size, 10);
+    }
+
+    #[test]
+    fn record_import_plan_result_has_retry_policy() {
+        let req = record_import_plan_request("ready", "ready");
+        let plan = create_restore_record_import_plan(req);
+        assert!(plan.retry_policy.max_retries_on_rate_limit > 0);
+        assert!(plan.retry_policy.initial_backoff_ms > 0);
+    }
+
+    #[test]
+    fn record_import_plan_ready_with_warnings_dry_run_status_accepted() {
+        let req = record_import_plan_request("readyWithWarnings", "readyWithWarnings");
+        let plan = create_restore_record_import_plan(req);
+        assert_ne!(plan.status, RestoreRecordImportPlanStatus::Blocked);
+    }
+
+    #[test]
+    fn record_import_plan_empty_tables_produces_blocked() {
+        let req = RestoreRecordImportPlanRequest {
+            package_filename: "backup.airbridge".to_string(),
+            dry_run_status: "ready".to_string(),
+            schema_plan_status: "ready".to_string(),
+            target_mode: RestoreTargetMode::NewBase,
+            target_base_name: None,
+            tables: vec![],
+        };
+        let plan = create_restore_record_import_plan(req);
+        assert_eq!(plan.status, RestoreRecordImportPlanStatus::Blocked);
+        assert_eq!(plan.errors[0].code, "NO_TABLES");
+    }
+
+    #[test]
+    fn record_import_plan_has_no_succeeded_status() {
+        for (dry, schema) in &[("ready", "ready"), ("blocked", "ready")] {
+            let req = record_import_plan_request(dry, schema);
+            let plan = create_restore_record_import_plan(req);
+            let json = serde_json::to_string(&plan).expect("serialize");
+            assert!(!json.contains("succeeded"), "dry={dry}, schema={schema}");
+        }
+    }
+
+    #[test]
+    fn record_import_plan_serializes_no_changes_made_key() {
+        let req = record_import_plan_request("ready", "ready");
+        let plan = create_restore_record_import_plan(req);
+        let json = serde_json::to_string(&plan).expect("serialize");
+        assert!(json.contains("noChangesMade"));
     }
 }

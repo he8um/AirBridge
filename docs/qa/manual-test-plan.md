@@ -662,3 +662,105 @@ These test cases cover the command contract layer: confirmation enforcement, out
 - Steps:
   1. Read the Run Backup panel.
 - Expected result: All three safety statements are visible: "The full output path is not displayed", "The token is not stored", "Backup creation runs only after confirmation".
+
+---
+
+## Record Import Plan Test Cases
+
+**TC-IMPORT-01: Panel renders on Restore page**
+
+- Preconditions: Restore page is open.
+- Steps:
+  1. Open the Restore page.
+- Expected result: The "Record Import Plan" section is visible below the schema plan section.
+
+**TC-IMPORT-02: Button disabled before inspection**
+
+- Preconditions: No package has been inspected.
+- Steps:
+  1. Observe the "Preview Record Import Plan" button.
+- Expected result: Button is disabled. "Inspect a package first." message is shown.
+
+**TC-IMPORT-03: Button disabled when dry-run blocked**
+
+- Preconditions: Package inspected, but dry-run is not yet generated.
+- Steps:
+  1. Observe the button.
+- Expected result: Button is disabled. "Generate a restore plan preview first." message is shown.
+
+**TC-IMPORT-04: Button disabled when schema plan blocked**
+
+- Preconditions: Dry-run ready, but schema plan is not yet generated.
+- Steps:
+  1. Observe the button.
+- Expected result: Button is disabled. "Generate a schema creation plan first." message is shown.
+
+**TC-IMPORT-05: Plan generates successfully**
+
+- Preconditions: Package inspected, dry-run generated (ready), schema plan generated (ready).
+- Steps:
+  1. Click "Preview Record Import Plan".
+- Expected result: Plan result section appears. Status badge shows "Ready" or "Ready with Warnings".
+
+**TC-IMPORT-06: Table import list is shown**
+
+- Preconditions: Plan generated successfully.
+- Steps:
+  1. Read the table import list.
+- Expected result: Each table appears with its name, record count or "unknown", and batch count.
+
+**TC-IMPORT-07: Batch size is 10**
+
+- Preconditions: Plan generated for a table with known record count.
+- Steps:
+  1. Read the batch count for a table with 25 records.
+- Expected result: 3 create batches shown (25 / 10 = 3 batches).
+
+**TC-IMPORT-08: Attachment metadata notice is shown**
+
+- Preconditions: Package has tables with attachment fields.
+- Steps:
+  1. Read the table import entry for that table.
+- Expected result: "attachment fields: metadata only, manual re-attachment required" note is visible.
+
+**TC-IMPORT-09: Linked record second-pass section is shown**
+
+- Preconditions: Package has tables with linked record fields.
+- Steps:
+  1. Read the linked record update section.
+- Expected result: The linked record field name, source table, and linked table are shown.
+
+**TC-IMPORT-10: No token input in panel**
+
+- Preconditions: Restore page is open.
+- Steps:
+  1. Inspect the "Record Import Plan" section.
+- Expected result: No token or API key input field is present anywhere in the panel.
+
+**TC-IMPORT-11: No execute button in panel**
+
+- Preconditions: Restore page is open.
+- Steps:
+  1. Inspect the "Record Import Plan" section.
+- Expected result: No "Start Restore", "Execute", or equivalent button is present.
+
+**TC-IMPORT-12: No changes disclaimer is always shown**
+
+- Preconditions: Plan generated (ready or blocked).
+- Steps:
+  1. Read the result section.
+- Expected result: "No Airtable records were created or modified." message is always present.
+
+**TC-IMPORT-13: Retry policy is visible**
+
+- Preconditions: Plan generated.
+- Steps:
+  1. Read the retry policy note.
+- Expected result: Max retries, initial backoff, and multiplier are visible.
+
+**TC-IMPORT-14: Full path is not shown**
+
+- Preconditions: Plan generated.
+- Steps:
+  1. Search for absolute path patterns on the page.
+- Expected result: No `/Users/`, `/home/`, or `C:\` paths are visible.

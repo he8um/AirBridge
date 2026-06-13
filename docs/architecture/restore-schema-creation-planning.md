@@ -100,3 +100,7 @@ src-tauri/src/restore/
 - Command bridge: `createRestoreSchemaPlan()` in `backend/commands.ts`.
 - Service method: `createRestoreSchemaPlan()` in `AirBridgeService`.
 - UI: `RestoreSchemaPlanPanel.tsx` — generates and displays the plan, with `data-testid` attributes on all key elements.
+
+## Next Step
+
+See [restore-record-import-planning.md](restore-record-import-planning.md) for the record import batch planner that follows this schema plan in the restore flow.

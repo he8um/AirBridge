@@ -15,6 +15,8 @@ import type {
   RestoreDryRunRequest,
   RestoreExecutionRequest,
   RestoreExecutionResult,
+  RestoreRecordImportPlan,
+  RestoreRecordImportPlanRequest,
   RestoreSchemaPlan,
   RestoreSchemaPlanRequest,
   RunBackupCommandRequest,
@@ -205,4 +207,19 @@ export async function createRestoreSchemaPlan(
   request: RestoreSchemaPlanRequest,
 ): Promise<RestoreSchemaPlan | null> {
   return safeInvoke<RestoreSchemaPlan>("create_restore_schema_plan", { request });
+}
+
+/**
+ * Creates a record import plan from a dry-run result and schema plan.
+ *
+ * - No Airtable API calls.
+ * - No token required.
+ * - No files written or extracted.
+ * - Returns filename only — the full path is never included in the result.
+ * - Returns null if Tauri IPC is unavailable.
+ */
+export async function createRestoreRecordImportPlan(
+  request: RestoreRecordImportPlanRequest,
+): Promise<RestoreRecordImportPlan | null> {
+  return safeInvoke<RestoreRecordImportPlan>("create_restore_record_import_plan", { request });
 }

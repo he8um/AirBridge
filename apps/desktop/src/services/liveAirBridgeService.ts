@@ -21,6 +21,8 @@ import type {
   RestoreDryRunRequest,
   RestoreExecutionRequest,
   RestoreExecutionResult,
+  RestoreRecordImportPlan,
+  RestoreRecordImportPlanRequest,
   RestoreSchemaPlan,
   RestoreSchemaPlanRequest,
   RunBackupCommandRequest,
@@ -262,6 +264,31 @@ async function createRestoreSchemaPlan(
   return result;
 }
 
+async function createRestoreRecordImportPlan(
+  request: RestoreRecordImportPlanRequest,
+): Promise<RestoreRecordImportPlan> {
+  const result = await commands.createRestoreRecordImportPlan(request);
+  if (result === null) {
+    return {
+      filename: request.packageFilename,
+      status: "blocked",
+      targetMode: request.targetMode,
+      tablePlans: [],
+      linkedRecordUpdatePlans: [],
+      retryPolicy: {
+        maxRetriesOnRateLimit: 5,
+        initialBackoffMs: 1000,
+        backoffMultiplier: 2,
+        note: "",
+      },
+      warnings: [],
+      errors: [{ code: "IPC_UNAVAILABLE", message: "Tauri IPC unavailable" }],
+      noChangesMade: true,
+    };
+  }
+  return result;
+}
+
 export const liveAirBridgeService: AirBridgeService = {
   listConnections,
   listWorkspaces,
@@ -284,4 +311,5 @@ export const liveAirBridgeService: AirBridgeService = {
   createRestoreDryRunPlan,
   runRestoreExecution,
   createRestoreSchemaPlan,
+  createRestoreRecordImportPlan,
 };

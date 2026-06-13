@@ -21,6 +21,10 @@ import type {
   RestoreDryRunRequest,
   RestoreExecutionRequest,
   RestoreExecutionResult,
+  RecordImportFieldInput,
+  RecordImportTableInput,
+  RestoreRecordImportPlan,
+  RestoreRecordImportPlanRequest,
   RestoreSchemaPlan,
   RestoreSchemaPlanRequest,
   RunBackupCommandRequest,
@@ -1019,6 +1023,256 @@ function createRestoreSchemaPlanImpl(
 
 export const mockCheckConnection = checkConnectionImpl;
 
+function makeLinkedField(id: string, name: string, linkedTableId: string): RecordImportFieldInput {
+  return { fieldId: id, fieldName: name, fieldType: "multipleRecordLinks", linkedTableId };
+}
+
+function makePrimitiveField(id: string, name: string, fieldType: string): RecordImportFieldInput {
+  return { fieldId: id, fieldName: name, fieldType, linkedTableId: undefined };
+}
+
+function makeAttachmentField(id: string, name: string): RecordImportFieldInput {
+  return {
+    fieldId: id,
+    fieldName: name,
+    fieldType: "multipleAttachments",
+    linkedTableId: undefined,
+  };
+}
+
+function makeComputedField(id: string, name: string): RecordImportFieldInput {
+  return { fieldId: id, fieldName: name, fieldType: "formula", linkedTableId: undefined };
+}
+
+function createRestoreRecordImportPlanImpl(
+  request: RestoreRecordImportPlanRequest,
+): Promise<RestoreRecordImportPlan> {
+  const batchSize = 10;
+
+  const knownTable: RecordImportTableInput = {
+    tableId: "tblMock01",
+    tableName: "Projects",
+    recordCount: 25,
+    fields: [
+      makePrimitiveField("fld001", "Name", "singleLineText"),
+      makePrimitiveField("fld002", "Status", "singleSelect"),
+      makeLinkedField("fld003", "Tasks", "tblMock02"),
+      makeAttachmentField("fld004", "Files"),
+      makeComputedField("fld005", "Summary"),
+    ],
+  };
+
+  const unknownTable: RecordImportTableInput = {
+    tableId: "tblMock02",
+    tableName: "Tasks",
+    recordCount: undefined,
+    fields: [
+      makePrimitiveField("fld006", "Title", "singleLineText"),
+      makePrimitiveField("fld007", "Done", "checkbox"),
+    ],
+  };
+
+  const BATCH_SIZE = batchSize;
+  const knownCount = knownTable.recordCount as number;
+  const knownBatchCount = Math.ceil(knownCount / BATCH_SIZE);
+
+  const plan: RestoreRecordImportPlan = {
+    filename: request.packageFilename,
+    status: "readyWithWarnings",
+    targetMode: request.targetMode,
+    targetBaseName: request.targetBaseName,
+    tablePlans: [
+      {
+        tableId: knownTable.tableId,
+        tableName: knownTable.tableName,
+        importOrder: 0,
+        recordCount: knownCount,
+        recordCountKnown: true,
+        batchSize: BATCH_SIZE,
+        createBatchCount: knownBatchCount,
+        updateBatchCount: knownBatchCount,
+        firstPassBatches: Array.from({ length: knownBatchCount }, (_, i) => ({
+          batchIndex: i,
+          phase: "createRecords" as const,
+          recordCount: i < knownBatchCount - 1 ? BATCH_SIZE : knownCount % BATCH_SIZE || BATCH_SIZE,
+          note: `Batch ${i + 1} of ${knownBatchCount}`,
+        })),
+        secondPassBatches: Array.from({ length: knownBatchCount }, (_, i) => ({
+          batchIndex: i,
+          phase: "updateLinkedRecords" as const,
+          recordCount: i < knownBatchCount - 1 ? BATCH_SIZE : knownCount % BATCH_SIZE || BATCH_SIZE,
+          note: `Linked record update batch ${i + 1} of ${knownBatchCount}`,
+        })),
+        fieldPolicies: [
+          {
+            fieldId: "fld001",
+            fieldName: "Name",
+            fieldType: "singleLineText",
+            policy: "include",
+            note: "",
+          },
+          {
+            fieldId: "fld002",
+            fieldName: "Status",
+            fieldType: "singleSelect",
+            policy: "include",
+            note: "",
+          },
+          {
+            fieldId: "fld003",
+            fieldName: "Tasks",
+            fieldType: "multipleRecordLinks",
+            policy: "deferToLinkedRecordPass",
+            note: "",
+          },
+          {
+            fieldId: "fld004",
+            fieldName: "Files",
+            fieldType: "multipleAttachments",
+            policy: "metadataOnly",
+            note: "",
+          },
+          {
+            fieldId: "fld005",
+            fieldName: "Summary",
+            fieldType: "formula",
+            policy: "skip",
+            note: "",
+          },
+        ],
+        attachmentPolicies: [
+          {
+            tableId: knownTable.tableId,
+            tableName: knownTable.tableName,
+            fieldId: "fld004",
+            fieldName: "Files",
+            policy: "metadataOnly",
+            note: "Attachment metadata captured; files must be manually re-attached.",
+          },
+        ],
+        mappingPlan: {
+          tableId: knownTable.tableId,
+          tableName: knownTable.tableName,
+          strategy: "mapSourceRecordIdToCreatedRecordId",
+          remappingRequired: true,
+          note: "Linked record fields require ID remapping after first pass.",
+        },
+        checkpointPlan: {
+          tableId: knownTable.tableId,
+          tableName: knownTable.tableName,
+          checkpointBatchIndex: 0,
+          sourceRecordIdOffsetPlaceholder: "<source_record_id_at_checkpoint>",
+          completedPhase: "createRecords",
+          note: "",
+        },
+        linkedRecordUpdates: [
+          {
+            tableId: knownTable.tableId,
+            tableName: knownTable.tableName,
+            fieldId: "fld003",
+            fieldName: "Tasks",
+            linkedTableId: "tblMock02",
+            linkedTableName: "Tasks",
+            updateBatchCount: knownBatchCount,
+            note: "Second pass update after ID mapping.",
+          },
+        ],
+      },
+      {
+        tableId: unknownTable.tableId,
+        tableName: unknownTable.tableName,
+        importOrder: 1,
+        recordCount: undefined,
+        recordCountKnown: false,
+        batchSize: BATCH_SIZE,
+        createBatchCount: undefined,
+        updateBatchCount: undefined,
+        firstPassBatches: [],
+        secondPassBatches: [],
+        fieldPolicies: [
+          {
+            fieldId: "fld006",
+            fieldName: "Title",
+            fieldType: "singleLineText",
+            policy: "include",
+            note: "",
+          },
+          {
+            fieldId: "fld007",
+            fieldName: "Done",
+            fieldType: "checkbox",
+            policy: "include",
+            note: "",
+          },
+        ],
+        attachmentPolicies: [],
+        mappingPlan: {
+          tableId: unknownTable.tableId,
+          tableName: unknownTable.tableName,
+          strategy: "mapSourceRecordIdToCreatedRecordId",
+          remappingRequired: false,
+          note: "No linked record fields — no remapping required.",
+        },
+        checkpointPlan: {
+          tableId: unknownTable.tableId,
+          tableName: unknownTable.tableName,
+          checkpointBatchIndex: 0,
+          sourceRecordIdOffsetPlaceholder: "<source_record_id_at_checkpoint>",
+          completedPhase: "createRecords",
+          note: "Batch count unknown until import begins.",
+        },
+        linkedRecordUpdates: [],
+      },
+    ],
+    linkedRecordUpdatePlans: [
+      {
+        tableId: knownTable.tableId,
+        tableName: knownTable.tableName,
+        fieldId: "fld003",
+        fieldName: "Tasks",
+        linkedTableId: "tblMock02",
+        linkedTableName: "Tasks",
+        updateBatchCount: knownBatchCount,
+        note: "Second pass update after all records created.",
+      },
+    ],
+    retryPolicy: {
+      maxRetriesOnRateLimit: 5,
+      initialBackoffMs: 1000,
+      backoffMultiplier: 2,
+      note: "Exponential backoff on rate-limit responses.",
+    },
+    warnings: [
+      {
+        code: "RECORD_COUNT_UNKNOWN",
+        message: "Record count for 'Tasks' is not available.",
+        tableName: "Tasks",
+      },
+      {
+        code: "ATTACHMENT_METADATA_ONLY",
+        message: "'Projects' contains attachment fields. Files must be manually re-attached.",
+        tableName: "Projects",
+      },
+      {
+        code: "COMPUTED_FIELDS_SKIPPED",
+        message: "1 field(s) in 'Projects' will be skipped.",
+        tableName: "Projects",
+      },
+      {
+        code: "LINKED_RECORD_SECOND_PASS_REQUIRED",
+        message: "'Projects' has 1 linked record field(s) requiring a second pass.",
+        tableName: "Projects",
+      },
+    ],
+    errors: [],
+    noChangesMade: true,
+  };
+
+  void knownTable;
+  void unknownTable;
+  return Promise.resolve(plan);
+}
+
 export const mockAirBridgeService: AirBridgeService = {
   listConnections,
   listWorkspaces,
@@ -1041,4 +1295,5 @@ export const mockAirBridgeService: AirBridgeService = {
   createRestoreDryRunPlan: createRestoreDryRunPlanImpl,
   runRestoreExecution: runRestoreExecutionImpl,
   createRestoreSchemaPlan: createRestoreSchemaPlanImpl,
+  createRestoreRecordImportPlan: createRestoreRecordImportPlanImpl,
 };

@@ -806,3 +806,156 @@ export interface RestoreSchemaPlan {
   /** Always true — no Airtable changes were made. */
   noChangesMade: boolean;
 }
+
+// ─── Restore Record Import Plan ───────────────────────────────────────────────
+
+export type RestoreRecordImportPlanStatus = "ready" | "readyWithWarnings" | "blocked";
+
+export type RestoreRecordBatchPhase =
+  | "createRecords"
+  | "updateLinkedRecords"
+  | "skippedFields"
+  | "validation";
+
+export type RestoreRecordMappingStrategy =
+  | "mapSourceRecordIdToCreatedRecordId"
+  | "preserveSourceIdInMetadata"
+  | "unavailableUntilExecution";
+
+export type RestoreAttachmentRestorePolicy =
+  | "metadataOnly"
+  | "downloadNotSupported"
+  | "uploadNotSupported"
+  | "manualActionRequired";
+
+export type RestoreRecordFieldImportPolicy =
+  | "include"
+  | "deferToLinkedRecordPass"
+  | "skip"
+  | "metadataOnly";
+
+export interface RestoreRecordBatchPlan {
+  batchIndex: number;
+  phase: RestoreRecordBatchPhase;
+  recordCount?: number;
+  note: string;
+}
+
+export interface RestoreRecordMappingPlan {
+  tableId: string;
+  tableName: string;
+  strategy: RestoreRecordMappingStrategy;
+  remappingRequired: boolean;
+  note: string;
+}
+
+export interface RestoreLinkedRecordUpdatePlan {
+  tableId: string;
+  tableName: string;
+  fieldId: string;
+  fieldName: string;
+  linkedTableId: string;
+  linkedTableName: string;
+  updateBatchCount?: number;
+  note: string;
+}
+
+export interface RestoreAttachmentImportPolicy {
+  tableId: string;
+  tableName: string;
+  fieldId: string;
+  fieldName: string;
+  policy: RestoreAttachmentRestorePolicy;
+  note: string;
+}
+
+export interface RestoreRecordFieldPolicy {
+  fieldId: string;
+  fieldName: string;
+  fieldType: string;
+  policy: RestoreRecordFieldImportPolicy;
+  note: string;
+}
+
+export interface RestoreRecordImportCheckpointPlan {
+  tableId: string;
+  tableName: string;
+  checkpointBatchIndex: number;
+  sourceRecordIdOffsetPlaceholder: string;
+  completedPhase: RestoreRecordBatchPhase;
+  note: string;
+}
+
+export interface RestoreTableImportPlan {
+  tableId: string;
+  tableName: string;
+  importOrder: number;
+  recordCount?: number;
+  recordCountKnown: boolean;
+  batchSize: number;
+  createBatchCount?: number;
+  updateBatchCount?: number;
+  firstPassBatches: RestoreRecordBatchPlan[];
+  secondPassBatches: RestoreRecordBatchPlan[];
+  fieldPolicies: RestoreRecordFieldPolicy[];
+  attachmentPolicies: RestoreAttachmentImportPolicy[];
+  mappingPlan: RestoreRecordMappingPlan;
+  checkpointPlan: RestoreRecordImportCheckpointPlan;
+  linkedRecordUpdates: RestoreLinkedRecordUpdatePlan[];
+}
+
+export interface RestoreRetryPolicy {
+  maxRetriesOnRateLimit: number;
+  initialBackoffMs: number;
+  backoffMultiplier: number;
+  note: string;
+}
+
+export interface RestoreRecordImportWarning {
+  code: string;
+  message: string;
+  tableName?: string;
+  fieldName?: string;
+}
+
+export interface RestoreRecordImportError {
+  code: string;
+  message: string;
+}
+
+export interface RecordImportFieldInput {
+  fieldId: string;
+  fieldName: string;
+  fieldType: string;
+  linkedTableId?: string;
+}
+
+export interface RecordImportTableInput {
+  tableId: string;
+  tableName: string;
+  recordCount?: number;
+  fields: RecordImportFieldInput[];
+}
+
+export interface RestoreRecordImportPlanRequest {
+  packageFilename: string;
+  dryRunStatus: string;
+  schemaPlanStatus: string;
+  targetMode: RestoreTargetMode;
+  targetBaseName?: string;
+  tables: RecordImportTableInput[];
+}
+
+export interface RestoreRecordImportPlan {
+  filename: string;
+  status: RestoreRecordImportPlanStatus;
+  targetMode: RestoreTargetMode;
+  targetBaseName?: string;
+  tablePlans: RestoreTableImportPlan[];
+  linkedRecordUpdatePlans: RestoreLinkedRecordUpdatePlan[];
+  retryPolicy: RestoreRetryPolicy;
+  warnings: RestoreRecordImportWarning[];
+  errors: RestoreRecordImportError[];
+  /** Always true — no Airtable changes were made. */
+  noChangesMade: boolean;
+}

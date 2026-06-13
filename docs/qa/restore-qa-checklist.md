@@ -74,6 +74,26 @@ Use this checklist when verifying the restore functionality against a release bu
 
 ---
 
+## Record Import Plan (No Airtable Writes)
+
+- [ ] **Record import plan panel renders.** The "Record Import Plan" section is visible on the Restore page between the schema plan panel and the execution gate.
+- [ ] **Generate button disabled without inspection.** Before a package is inspected, the button is disabled and a "Inspect a package first." message is shown.
+- [ ] **Generate button disabled when dry-run is blocked.** If the dry-run status is "blocked", the button is disabled.
+- [ ] **Generate button disabled when schema plan is blocked.** If the schema plan status is "blocked", the button is disabled and a "Generate a schema creation plan first." message is shown.
+- [ ] **No token is requested.** The record import plan panel does not contain a token input field.
+- [ ] **No restore execution button.** The panel does not render a "Start Restore" or equivalent button.
+- [ ] **Plan shows status badge.** After generation, a status badge shows "Ready", "Ready with Warnings", or "Blocked".
+- [ ] **Table import plans are listed.** Each table appears with its name, record count (or "unknown"), create batch count, and batch size.
+- [ ] **Linked record second-pass section is shown.** Tables with linked record fields show a second-pass update entry.
+- [ ] **Attachment metadata notice is shown.** Tables with attachment fields show a "metadata only, manual re-attachment required" notice.
+- [ ] **Retry policy note is shown.** The retry configuration (max retries, initial backoff, multiplier) is visible.
+- [ ] **Warnings are shown.** RECORD_COUNT_UNKNOWN, ATTACHMENT_METADATA_ONLY, COMPUTED_FIELDS_SKIPPED, LINKED_RECORD_SECOND_PASS_REQUIRED warnings are visible where applicable.
+- [ ] **"No Airtable records were created or modified" notice is always present.** The notice is visible after generating any plan.
+- [ ] **Full package path is not visible.** No absolute directory path appears in any visible element.
+- [ ] **Batch size is 10.** All batch count calculations use a batch size of 10.
+
+---
+
 ## Restore Execution Gate (Current Version — Write Engine Disabled)
 
 - [ ] **Gate panel renders.** The "Restore Execution" section is visible on the Restore page with a prerequisites checklist and form inputs.

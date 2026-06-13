@@ -39,7 +39,7 @@ Formula, lookup, rollup, and count fields may depend on Airtable-specific config
 
 ## Attachment limitations
 
-In v0.1, AirBridge backs up attachment metadata. Full file download and re-upload are planned for later exploration.
+In v0.1, AirBridge backs up attachment metadata. Full file download and re-upload are planned for later exploration. The record import planner assigns `MetadataOnly` policy to all attachment fields; files must be manually re-attached after restore.
 
 ## Collaborator limitations
 

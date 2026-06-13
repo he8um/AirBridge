@@ -19,6 +19,8 @@ interface RestoreSchemaPlanPanelProps {
   targetBaseName?: string;
   /** Tables derived from the dry-run plan tables (mapped to SchemaPlanTableInput). */
   tables: RestoreSchemaPlanRequest["tables"];
+  /** Optional callback invoked after a plan is generated, with the plan result. */
+  onPlanReady?: (plan: RestoreSchemaPlan) => void;
 }
 
 type PanelState = "idle" | "loading" | "done";
@@ -59,6 +61,7 @@ export function RestoreSchemaPlanPanel({
   targetMode,
   targetBaseName,
   tables,
+  onPlanReady,
 }: RestoreSchemaPlanPanelProps) {
   const [panelState, setPanelState] = useState<PanelState>("idle");
   const [plan, setPlan] = useState<RestoreSchemaPlan | null>(null);
@@ -81,6 +84,7 @@ export function RestoreSchemaPlanPanel({
         tables,
       });
       setPlan(result);
+      onPlanReady?.(result);
     } finally {
       setPanelState("done");
     }

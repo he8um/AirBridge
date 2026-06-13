@@ -21,6 +21,8 @@ import type {
   RestoreDryRunRequest,
   RestoreExecutionRequest,
   RestoreExecutionResult,
+  RestoreRecordImportPlan,
+  RestoreRecordImportPlanRequest,
   RestoreSchemaPlan,
   RestoreSchemaPlanRequest,
   RunBackupCommandRequest,
@@ -97,4 +99,16 @@ export interface AirBridgeService {
    * - Always returns noChangesMade: true.
    */
   createRestoreSchemaPlan(request: RestoreSchemaPlanRequest): Promise<RestoreSchemaPlan>;
+  /**
+   * Creates a record import plan from a dry-run result and schema plan.
+   *
+   * - No Airtable API calls.
+   * - No token required.
+   * - No files written or extracted.
+   * - Returns filename only — the full path is never included.
+   * - Always returns noChangesMade: true.
+   */
+  createRestoreRecordImportPlan(
+    request: RestoreRecordImportPlanRequest,
+  ): Promise<RestoreRecordImportPlan>;
 }

@@ -45,6 +45,7 @@ pub fn run() {
             commands::restore::list_restore_plans,
             commands::restore::create_restore_dry_run_plan,
             commands::restore::create_restore_schema_plan,
+            commands::restore::create_restore_record_import_plan,
             commands::restore::run_restore_execution,
             commands::reports::list_reports,
             commands::logs::list_logs,
