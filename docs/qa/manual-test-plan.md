@@ -865,6 +865,55 @@ These test cases cover the command contract layer: confirmation enforcement, out
 
 ---
 
+## Restore Confirmation Gate (Gate 2)
+
+**TC-CF-01: Writes-disabled notice always visible**
+
+- Preconditions: Restore page open.
+- Steps:
+  1. Scroll to the "Restore Confirmation (Gate 2)" section.
+- Expected result: A writes-disabled notice is shown at the top of the confirmation panel. No execute button is shown. No token field is shown.
+
+**TC-CF-02: Required text is displayed before the input**
+
+- Preconditions: Restore page open.
+- Steps:
+  1. Observe the confirmation panel.
+- Expected result: A required confirmation text label is shown above the input field. The text follows the pattern `RESTORE TO <TARGET>`, `RESTORE <FILENAME>`, or `RESTORE BACKUP` depending on context. The text does not contain path separators or token-format strings.
+
+**TC-CF-03: Validate button disabled when input is empty**
+
+- Preconditions: Restore page open.
+- Steps:
+  1. Observe the "Validate" button in the confirmation panel before typing.
+- Expected result: The button is `disabled`.
+
+**TC-CF-04: Exact match returns confirmed**
+
+- Preconditions: Restore page open. Required text is visible in the panel.
+- Steps:
+  1. Type the required text exactly as shown in the panel.
+  2. Click "Validate".
+- Expected result: Status badge shows `confirmed`. An accepted notice is shown. "Writes remain disabled" notice is still visible. No execute button appears.
+
+**TC-CF-05: Wrong case returns rejected**
+
+- Preconditions: Restore page open.
+- Steps:
+  1. Type the required text in all lowercase (e.g., `restore backup`).
+  2. Click "Validate".
+- Expected result: Status badge shows `rejected`. A rejected notice is shown. CHK-C03 row shows `failed`.
+
+**TC-CF-06: Blocked sandbox propagates to blocked confirmation**
+
+- Preconditions: Sandbox verification has been run and returned status `blocked`.
+- Steps:
+  1. In the confirmation panel, type the exact required text.
+  2. Click "Validate".
+- Expected result: Status badge shows `blocked`, not `confirmed`. A blocked notice is shown explaining the sandbox prerequisite failed.
+
+---
+
 ## Write Engine Skeleton
 
 **TC-WE-01: Write engine disabled notice is always visible**

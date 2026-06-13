@@ -318,6 +318,47 @@ If AirBridge supports user-configured field redaction:
 
 ---
 
+## Restore Confirmation Gate Safety (Gate 2)
+
+**Goal:** Confirm that the confirmation gate makes no Airtable API calls, requires no token, makes no writes, and always returns `noChangesMade: true` and `writesEnabled: false` — even when confirmed.
+
+**CF-01: No token accepted.**
+- `RestoreConfirmationRequest` has no `token` field.
+- `validate_restore_confirmation_gate` has no token parameter.
+- `RestoreConfirmationPanel` renders no token input (no `type="password"` input).
+- The Rust test `result_serialization_has_no_token` confirms no `"token"` key in serialized result.
+
+**CF-02: No Airtable API calls.**
+- All 5 checks are local (write gate state, string comparison, sandbox status string).
+- No HTTP client is constructed or called.
+- Network monitoring shows zero connections to `api.airtable.com` during validation.
+
+**CF-03: No write operations.**
+- No files written. No Airtable records, tables, or fields created.
+- `writesEnabled` is always `false`. `networkWritesAttempted` is always `false`.
+- `Confirmed` status does NOT enable restore writes — it only records that the text was correct.
+
+**CF-04: No full path in result.**
+- `RestoreConfirmationRequest` has no filesystem path field.
+- `RestoreConfirmationResult` has no field containing a path.
+- `requiredText` is sanitized: path separators and non-alphanumeric characters are stripped.
+- The Rust test `result_serialization_has_no_full_path` confirms no absolute path in result.
+
+**CF-05: `noChangesMade` always true.**
+- Every code path in `validate_restore_confirmation` sets `no_changes_made: true`.
+- 30 Rust unit tests assert this property across all status variants.
+- 39 frontend tests assert this property via mock service contract tests.
+
+**CF-06: No execute button.**
+- `RestoreConfirmationPanel` does not render "Execute", "Run Restore", or "Start Restore".
+- The frontend test `no execute button anywhere` confirms this by scanning all rendered buttons.
+
+**CF-07: Blocked sandbox propagates.**
+- If `sandboxVerificationStatus` is `"blocked"`, confirmation result is `"blocked"` regardless of entered text.
+- This prevents Gate 2 from being satisfied while Gate 1 is blocked.
+
+---
+
 ## Restore Schema Creation Plan Safety (V0.1)
 
 **Goal:** Confirm that the schema creation planning flow makes no Airtable API calls, requires no token, creates no Airtable tables or fields, and always returns `noChangesMade: true`.

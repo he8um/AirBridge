@@ -31,6 +31,8 @@ import type {
   RestoreSchemaPlanRequest,
   RestoreWriteEngineRequest,
   RestoreWriteEngineResult,
+  RestoreConfirmationRequest,
+  RestoreConfirmationResult,
   RunBackupCommandRequest,
   RunBackupCommandResponse,
   SandboxVerificationRequest,
@@ -371,4 +373,21 @@ export async function verifyRestoreSandboxEnvironment(
   request: SandboxVerificationRequest,
 ): Promise<SandboxVerificationResult | null> {
   return safeInvoke<SandboxVerificationResult>("verify_restore_sandbox_environment", { request });
+}
+
+/**
+ * Validates the restore confirmation text (Gate 2).
+ *
+ * - No Airtable API calls.
+ * - No token required.
+ * - No write operations.
+ * - writesEnabled is always false.
+ * - noChangesMade is always true.
+ * - Confirmed status does NOT enable restore writes.
+ * - Returns null if Tauri IPC is unavailable.
+ */
+export async function validateRestoreConfirmationGate(
+  request: RestoreConfirmationRequest,
+): Promise<RestoreConfirmationResult | null> {
+  return safeInvoke<RestoreConfirmationResult>("validate_restore_confirmation_gate", { request });
 }

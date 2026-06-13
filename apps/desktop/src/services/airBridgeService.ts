@@ -35,6 +35,8 @@ import type {
   RestoreRecordImportPlanRequest,
   RestoreSchemaPlan,
   RestoreSchemaPlanRequest,
+  RestoreConfirmationRequest,
+  RestoreConfirmationResult,
   RestoreWriteEngineRequest,
   RestoreWriteEngineResult,
   RunBackupCommandRequest,
@@ -211,4 +213,14 @@ export interface AirBridgeService {
   verifyRestoreSandboxEnvironment(
     request: SandboxVerificationRequest,
   ): Promise<SandboxVerificationResult>;
+  /**
+   * Validates restore confirmation text (Gate 2).
+   *
+   * - No Airtable writes. No token. No full path. No network writes.
+   * - writesEnabled is always false. noChangesMade is always true.
+   * - Confirmed status does NOT enable restore writes.
+   */
+  validateRestoreConfirmationGate(
+    request: RestoreConfirmationRequest,
+  ): Promise<RestoreConfirmationResult>;
 }

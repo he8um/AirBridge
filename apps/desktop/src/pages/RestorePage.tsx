@@ -6,12 +6,14 @@ import { RestoreDryRunPanel } from "../features/backups/RestoreDryRunPanel";
 import { RestoreExecutionGatePanel } from "../features/backups/RestoreExecutionGatePanel";
 import { RestoreRecordImportPlanPanel } from "../features/backups/RestoreRecordImportPlanPanel";
 import { RestoreSchemaPlanPanel } from "../features/backups/RestoreSchemaPlanPanel";
+import { RestoreConfirmationPanel } from "../features/backups/RestoreConfirmationPanel";
 import { RestoreSandboxVerificationPanel } from "../features/backups/RestoreSandboxVerificationPanel";
 import { RestoreWriteEnginePanel } from "../features/backups/RestoreWriteEnginePanel";
 import { liveAirBridgeService } from "../services/liveAirBridgeService";
 import type { BackupPackageInspectionResult } from "../backend/types";
 import type {
   RecordImportTableInput,
+  RestoreConfirmationResult,
   RestoreDryRunPlan,
   RestoreRecordImportPlanStatus,
   RestoreSchemaPlan,
@@ -41,6 +43,10 @@ export function RestorePage() {
   const [writeEngineResult, setWriteEngineResult] = useState<RestoreWriteEngineResult | null>(null);
   const [sandboxResult, setSandboxResult] = useState<SandboxVerificationResult | null>(null);
   const [sandboxLoading, setSandboxLoading] = useState(false);
+  const [confirmationResult, setConfirmationResult] = useState<RestoreConfirmationResult | null>(
+    null,
+  );
+  const [confirmationLoading, setConfirmationLoading] = useState(false);
 
   return (
     <div className="page">
@@ -227,6 +233,41 @@ export function RestorePage() {
                   })
                   .finally(() => {
                     setSandboxLoading(false);
+                  });
+              }}
+            />
+
+            <div className="divider" style={{ margin: 0 }} />
+
+            {/* Restore confirmation — Gate 2. No Airtable calls. No token. No writes. */}
+            <RestoreConfirmationPanel
+              result={confirmationResult}
+              loading={confirmationLoading}
+              requiredText={
+                confirmationResult?.requiredText ??
+                (targetBaseName
+                  ? `RESTORE TO ${targetBaseName.toUpperCase()}`
+                  : inspection?.filename
+                    ? `RESTORE ${inspection.filename.toUpperCase()}`
+                    : "RESTORE BACKUP")
+              }
+              onValidate={(enteredText) => {
+                setConfirmationLoading(true);
+                liveAirBridgeService
+                  .validateRestoreConfirmationGate({
+                    enteredText,
+                    sourcePackageLabel: inspection?.filename ?? undefined,
+                    targetLabel: targetBaseName ?? undefined,
+                    sandboxVerificationStatus: sandboxResult?.status ?? undefined,
+                  })
+                  .then((r) => {
+                    setConfirmationResult(r);
+                  })
+                  .catch(() => {
+                    setConfirmationResult(null);
+                  })
+                  .finally(() => {
+                    setConfirmationLoading(false);
                   });
               }}
             />

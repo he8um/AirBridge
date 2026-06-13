@@ -14,6 +14,9 @@ use crate::restore::record_write_requests::build_record_write_request_plan;
 use crate::restore::record_write_result::{
     RecordWriteRequestPlanRequest, RecordWriteRequestPlanResult,
 };
+use crate::restore::restore_confirmation::{
+    validate_restore_confirmation, RestoreConfirmationRequest, RestoreConfirmationResult,
+};
 use crate::restore::sandbox_verification::{
     verify_sandbox_environment, SandboxVerificationRequest, SandboxVerificationResult,
 };
@@ -427,6 +430,23 @@ pub fn verify_restore_sandbox_environment(
     request: SandboxVerificationRequest,
 ) -> SandboxVerificationResult {
     verify_sandbox_environment(&request)
+}
+
+/// Validates the user's restore confirmation text for Gate 2.
+///
+/// - No Airtable API calls.
+/// - No token accepted or returned.
+/// - No files written.
+/// - No full paths in result.
+/// - no_changes_made is always true.
+/// - network_writes_attempted is always false.
+/// - writes_enabled is always false.
+/// - Confirmed status does NOT enable restore writes.
+#[tauri::command]
+pub fn validate_restore_confirmation_gate(
+    request: RestoreConfirmationRequest,
+) -> RestoreConfirmationResult {
+    validate_restore_confirmation(&request)
 }
 
 #[cfg(test)]

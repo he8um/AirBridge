@@ -1455,3 +1455,54 @@ export interface SandboxVerificationResult {
   networkWritesAttempted: boolean;
   writesEnabled: boolean;
 }
+
+// ── Restore confirmation types (mirrors Rust restore::restore_confirmation) ──
+
+export type RestoreConfirmationStatus = "confirmed" | "rejected" | "blocked";
+
+export type RestoreConfirmationCheckStatus = "passed" | "failed" | "skipped";
+
+export interface RestoreConfirmationRequirement {
+  requirementId: string;
+  label: string;
+  satisfied: boolean;
+  note: string;
+}
+
+export interface RestoreConfirmationCheck {
+  checkId: string;
+  label: string;
+  status: RestoreConfirmationCheckStatus;
+  message: string;
+}
+
+/**
+ * Request for Gate 2 confirmation validation.
+ * - No token field.
+ * - No filesystem path field.
+ */
+export interface RestoreConfirmationRequest {
+  enteredText: string;
+  sourcePackageLabel?: string;
+  targetLabel?: string;
+  sandboxVerificationStatus?: string;
+}
+
+/**
+ * Result from validate_restore_confirmation_gate.
+ * - No token field.
+ * - writesEnabled is always false.
+ * - noChangesMade is always true.
+ * - networkWritesAttempted is always false.
+ * - Confirmed status does NOT enable restore writes.
+ */
+export interface RestoreConfirmationResult {
+  status: RestoreConfirmationStatus;
+  checks: RestoreConfirmationCheck[];
+  requirements: RestoreConfirmationRequirement[];
+  requiredText: string;
+  message: string;
+  noChangesMade: boolean;
+  networkWritesAttempted: boolean;
+  writesEnabled: boolean;
+}

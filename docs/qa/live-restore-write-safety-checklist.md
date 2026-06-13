@@ -53,13 +53,43 @@ The `verify_restore_sandbox_environment` Tauri command runs 10 local safety chec
 
 ---
 
-## Gate 3 — User Confirmation
+## Gate 2 — Explicit User Confirmation
 
-- [ ] **Confirmation phrase enforced at Rust level.** The Rust command rejects any confirmation that is not exactly `"RESTORE BACKUP"`.
-- [ ] **Partial match rejected.** `"restore backup"` (lowercase), `"RESTORE"`, `"BACKUP"`, `" RESTORE BACKUP "` (extra spaces) all fail the check.
+**Status: Implemented (local validation only). Live writes still disabled.**
+
+The `validate_restore_confirmation_gate` Tauri command validates the user's confirmation text. No Airtable API calls are made. No token is required. No files are written. `noChangesMade` is always `true`. `writesEnabled` is always `false`. A `Confirmed` result does NOT enable restore writes.
+
+- [x] **Confirmation command implemented.** `validate_restore_confirmation_gate` runs CHK-C01 through CHK-C05. Accessible from the Restore page.
+- [x] **CHK-C01 write gate check.** Calls `evaluate_write_gate()` — must return `Disabled`. Always passes in this version.
+- [x] **CHK-C02 sandbox prerequisite.** Blocked if sandbox status is `"blocked"`. Skipped if not yet run. Passes if `"verified"` or `"warning"`.
+- [x] **CHK-C03 exact text match.** Requires exact trim-then-compare match, case-sensitive.
+- [x] **CHK-C04 no token in text.** Blocked if entered text resembles an Airtable PAT format.
+- [x] **CHK-C05 writes remain disabled.** Always passes — confirmation does not enable writes.
+- [x] **Required text is deterministic.** Built from target label or package filename; falls back to `"RESTORE BACKUP"`. Never contains path or token.
+- [x] **Wrong case rejected.** `"restore to my base"` returns `rejected`.
+- [x] **Partial match rejected.** `"RESTORE"` alone returns `rejected`.
+- [x] **Extra words rejected.** `"RESTORE TO MY BASE NOW"` returns `rejected`.
+- [x] **Blocked sandbox propagates.** If sandbox status is `"blocked"`, confirmation result is `"blocked"` regardless of entered text.
+- [x] **30 Rust unit tests pass** for confirmation module.
+- [x] **39 frontend tests pass** for confirmation service contract and panel rendering.
+- [ ] **Confirmation enables live write path.** When the write engine is enabled in a future release, a valid `Confirmed` result (with all prerequisites met) must be checked before any write begins.
+
+## Gate 3 — Sandbox Write Testing
+
+- [ ] **Sandbox base designated.** A dedicated empty Airtable base exists for write testing. Its base ID is in test configuration only, not in release code.
+- [ ] **Schema creation phase tested in sandbox.** CreateTable, CreateField, and DeferLinkedField operations complete successfully against the sandbox base.
+- [ ] **Record creation phase tested in sandbox.** CreateRecordBatch operations complete with correct field values. Record count in target matches expected count.
+- [ ] **Linked second-pass tested in sandbox.** UpdateLinkedRecordBatch operations complete after first-pass records exist. Linked field values point to new record IDs, not source IDs.
+- [ ] **Final validation phase tested in sandbox.** Record and table counts verified; `Succeeded` status only set after validation passes.
+- [ ] **Sandbox base deleted after test.** No production data affected.
+
+## Gate 4 — User Confirmation for Live Writes
+
+- [ ] **Confirmation phrase enforced at Rust level.** The Rust command rejects any confirmation that is not exactly the required phrase (see Gate 2).
+- [ ] **Partial match rejected.** Lowercase, partial, and extra-word inputs all fail the check.
 - [ ] **Confirmation phrase shown in UI.** The user sees the phrase they must type before the input field is rendered.
 - [ ] **No auto-fill.** The confirmation input is never pre-filled programmatically.
-- [ ] **Confirmation constant shared.** A single Rust constant and a single TypeScript constant both hold `"RESTORE BACKUP"`. Tests use these constants, not inline strings.
+- [ ] **Confirmation constant shared.** A single Rust constant and a single TypeScript constant hold the fixed fallback phrase. Tests use these constants, not inline strings.
 
 ---
 

@@ -10,6 +10,8 @@ All restore write paths are hard-disabled. `evaluate_write_gate()` returns `Disa
 
 **Gate 1 — sandbox environment verification** is implemented via the `verify_restore_sandbox_environment` Tauri command. It runs 10 local safety checks (CHK-01 through CHK-10) and returns a structured result with `writesEnabled: false` always. CHK-10 (live Airtable metadata check) is always `Skipped` — it must be implemented before Gate 1 can be fully satisfied. No Airtable API calls are made. No token is required.
 
+**Gate 2 — explicit user confirmation** is implemented via the `validate_restore_confirmation_gate` Tauri command. It runs 5 checks (CHK-C01 through CHK-C05): write gate state, sandbox prerequisite, exact text match, no-token check, and a writes-remain-disabled assertion. Required confirmation text is built deterministically from target label or package filename. No Airtable API calls are made. No token is required. A `Confirmed` result does NOT enable restore writes — it only validates the confirmation contract.
+
 This contract defines what must be true before `evaluate_write_gate()` is ever changed to return an enabled decision.
 
 ---

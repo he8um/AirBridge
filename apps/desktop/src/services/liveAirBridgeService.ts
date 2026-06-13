@@ -35,6 +35,8 @@ import type {
   RestoreRecordImportPlanRequest,
   RestoreSchemaPlan,
   RestoreSchemaPlanRequest,
+  RestoreConfirmationRequest,
+  RestoreConfirmationResult,
   RestoreWriteEngineRequest,
   RestoreWriteEngineResult,
   RunBackupCommandRequest,
@@ -457,6 +459,25 @@ async function verifyRestoreSandboxEnvironment(
   return result;
 }
 
+async function validateRestoreConfirmationGate(
+  request: RestoreConfirmationRequest,
+): Promise<RestoreConfirmationResult> {
+  const result = await commands.validateRestoreConfirmationGate(request);
+  if (result === null) {
+    return {
+      status: "blocked",
+      checks: [],
+      requirements: [],
+      requiredText: "RESTORE BACKUP",
+      message: "Confirmation validation is not available in this context.",
+      noChangesMade: true,
+      networkWritesAttempted: false,
+      writesEnabled: false,
+    };
+  }
+  return result;
+}
+
 export const liveAirBridgeService: AirBridgeService = {
   listConnections,
   listWorkspaces,
@@ -489,4 +510,5 @@ export const liveAirBridgeService: AirBridgeService = {
   previewSchemaWriteRequestPlan,
   previewRecordWriteRequestPlan,
   verifyRestoreSandboxEnvironment,
+  validateRestoreConfirmationGate,
 };

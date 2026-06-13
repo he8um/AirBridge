@@ -205,6 +205,75 @@ After completing a restore, perform the following manual checks in Airtable:
 
 ---
 
+## Restore Confirmation Gate Checklist (Gate 2)
+
+### Before testing
+
+- [ ] Confirm `validate_restore_confirmation_gate` is registered in the Tauri invoke handler.
+- [ ] Confirm `RestoreConfirmationPanel` is rendered on the Restore page.
+- [ ] Confirm no `token` field appears in `RestoreConfirmationRequest`.
+- [ ] Confirm `RestoreConfirmationResult` has no `token` field.
+
+### Panel behavior
+
+- [ ] The "Restore Confirmation (Gate 2)" section is visible on the Restore page at all times.
+- [ ] A writes-disabled notice is shown at the top of the panel.
+- [ ] The required confirmation text is displayed before the text input.
+- [ ] The text input accepts freeform entry.
+- [ ] The "Validate" button is disabled when the text input is empty.
+- [ ] The "Validate" button is enabled after typing any non-empty text.
+- [ ] No execute button ("Start Restore", "Run Restore", "Execute Restore") is shown in the panel.
+- [ ] No token input is shown.
+- [ ] No "Restore complete", "Restore successful", or "Succeeded" language appears.
+- [ ] Full filesystem path is not visible in any rendered element.
+
+### Result display — rejected
+
+- [ ] After submitting wrong-case text (e.g., `restore to my base`), status badge shows `rejected`.
+- [ ] After submitting partial text (e.g., `RESTORE`), status badge shows `rejected`.
+- [ ] After submitting text with extra words, status badge shows `rejected`.
+- [ ] Rejected notice is shown with a message explaining the mismatch.
+
+### Result display — confirmed
+
+- [ ] After submitting the exact required text, status badge shows `confirmed`.
+- [ ] Accepted notice is shown with a message indicating the text matched.
+- [ ] "Writes remain disabled" notice is still shown even when status is `confirmed`.
+- [ ] No execute button appears after a confirmed result.
+
+### Result display — blocked
+
+- [ ] If `sandboxVerificationStatus` is `"blocked"`, result is `blocked` regardless of text.
+- [ ] Blocked notice is shown with a message explaining the prerequisite failure.
+- [ ] A token-like string entered as text (e.g., a PAT-format string) results in `blocked` with CHK-C04 failed.
+
+### Result display — check rows
+
+- [ ] CHK-C01 (write gate) is shown with `passed` status.
+- [ ] CHK-C02 (sandbox prerequisite) shows `skipped` when sandbox has not been run, `passed` when verified or warning, `failed` when blocked.
+- [ ] CHK-C03 (exact text match) shows `passed` when text matches, `failed` when it does not.
+- [ ] CHK-C04 (no token in text) shows `passed` for normal text, `failed` for PAT-format input.
+- [ ] CHK-C05 (writes remain disabled) always shows `passed`.
+
+### Required text display
+
+- [ ] Required text is shown before the input.
+- [ ] When a `targetLabel` is set in the service call, required text reflects the label.
+- [ ] When no `targetLabel` and a `sourcePackageLabel` is set, required text reflects the filename.
+- [ ] When neither is set, required text is `RESTORE BACKUP`.
+
+### Safety invariants
+
+- [ ] `noChangesMade` is `true` in every confirmation result (confirmed via Rust and frontend tests).
+- [ ] `writesEnabled` is `false` in every confirmation result, including when status is `confirmed`.
+- [ ] `networkWritesAttempted` is `false` in every confirmation result.
+- [ ] The confirmation request type has no `token` field.
+- [ ] The confirmation result has no `token` field.
+- [ ] The confirmation result contains no full filesystem path.
+- [ ] A `confirmed` result does NOT enable restore writes.
+
+---
+
 ## Write Engine Skeleton Checklist
 
 ### Before testing

@@ -43,6 +43,8 @@ import type {
   RestoreWriteEngineRequest,
   RestoreWriteEngineResult,
   RunBackupCommandRequest,
+  RestoreConfirmationRequest,
+  RestoreConfirmationResult,
   RunBackupCommandResponse,
   RecordWriteRequestPlanRequest,
   RecordWriteRequestPlanResult,
@@ -1751,6 +1753,114 @@ function verifyRestoreSandboxEnvironmentImpl(
   });
 }
 
+function validateRestoreConfirmationGateImpl(
+  request: RestoreConfirmationRequest,
+): Promise<RestoreConfirmationResult> {
+  // Build required text using the same logic as the Rust implementation.
+  const target = request.targetLabel?.trim().toUpperCase();
+  const pkg = request.sourcePackageLabel?.trim().toUpperCase();
+  const requiredText = target ? `RESTORE TO ${target}` : pkg ? `RESTORE ${pkg}` : "RESTORE BACKUP";
+
+  const sandboxStatus = request.sandboxVerificationStatus ?? "unknown";
+  const sandboxOk = sandboxStatus === "verified" || sandboxStatus === "warning";
+  const sandboxBlocked = sandboxStatus === "blocked";
+  const entered = request.enteredText.trim();
+  const textMatches = entered === requiredText;
+  const hasTokenPattern =
+    entered.startsWith("pat") && entered.length > 20 && /^[a-zA-Z0-9]+$/.test(entered.slice(3));
+
+  const checks: RestoreConfirmationResult["checks"] = [
+    {
+      checkId: "CHK-C01",
+      label: "Write gate disabled",
+      status: "passed",
+      message: "Write gate is disabled — no writes will occur.",
+    },
+    {
+      checkId: "CHK-C02",
+      label: "Sandbox verification not blocked",
+      status: sandboxOk ? "passed" : sandboxStatus === "unknown" ? "skipped" : "failed",
+      message: sandboxOk
+        ? `Sandbox verification status is '${sandboxStatus}'.`
+        : sandboxStatus === "unknown"
+          ? "Sandbox verification has not been run."
+          : "Sandbox verification is blocked. Resolve Gate 1 before confirming.",
+    },
+    {
+      checkId: "CHK-C03",
+      label: "Confirmation text exact match",
+      status: textMatches ? "passed" : "failed",
+      message: textMatches
+        ? "Confirmation text matches exactly."
+        : entered === ""
+          ? "No confirmation text entered."
+          : "Confirmation text does not match.",
+    },
+    {
+      checkId: "CHK-C04",
+      label: "No token in confirmation text",
+      status: hasTokenPattern ? "failed" : "passed",
+      message: hasTokenPattern
+        ? "Confirmation text resembles an API token."
+        : "Confirmation text does not resemble an API token.",
+    },
+    {
+      checkId: "CHK-C05",
+      label: "Restore writes remain disabled",
+      status: "passed",
+      message:
+        "Restore write execution is not enabled. Confirmation is recorded but triggers no writes.",
+    },
+  ];
+
+  const anyHardFail = hasTokenPattern;
+  const status: RestoreConfirmationResult["status"] =
+    anyHardFail || sandboxBlocked ? "blocked" : textMatches && sandboxOk ? "confirmed" : "rejected";
+
+  const message =
+    status === "confirmed"
+      ? "Confirmation accepted. Restore writes remain disabled — no Airtable changes will be made."
+      : status === "blocked"
+        ? sandboxBlocked
+          ? "Sandbox verification is blocked. Resolve Gate 1 first."
+          : "Confirmation text must not be an API token."
+        : entered === ""
+          ? "No confirmation text entered. Type the exact required text."
+          : sandboxStatus === "unknown"
+            ? "Run sandbox verification (Gate 1) before confirming."
+            : "Confirmation text does not match. Type the exact required text (case-sensitive).";
+
+  return Promise.resolve({
+    status,
+    checks,
+    requirements: [
+      {
+        requirementId: "REQ-C01",
+        label: "Write gate disabled",
+        satisfied: true,
+        note: "evaluate_write_gate() returns Disabled.",
+      },
+      {
+        requirementId: "REQ-C02",
+        label: "Sandbox verification not blocked",
+        satisfied: sandboxOk,
+        note: "Gate 1 must not be blocked.",
+      },
+      {
+        requirementId: "REQ-C03",
+        label: "Confirmation text exact match",
+        satisfied: textMatches,
+        note: `Required: "${requiredText}"`,
+      },
+    ],
+    requiredText,
+    message,
+    noChangesMade: true,
+    networkWritesAttempted: false,
+    writesEnabled: false,
+  });
+}
+
 export const mockAirBridgeService: AirBridgeService = {
   listConnections,
   listWorkspaces,
@@ -1783,4 +1893,5 @@ export const mockAirBridgeService: AirBridgeService = {
   previewSchemaWriteRequestPlan: previewSchemaWriteRequestPlanImpl,
   previewRecordWriteRequestPlan: previewRecordWriteRequestPlanImpl,
   verifyRestoreSandboxEnvironment: verifyRestoreSandboxEnvironmentImpl,
+  validateRestoreConfirmationGate: validateRestoreConfirmationGateImpl,
 };
