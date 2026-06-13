@@ -25,6 +25,11 @@ jobs:
         with:
           components: rustfmt
 
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/desktop/src-tauri
+
       - name: Install system dependencies (Tauri/Linux)
         run: |
           sudo apt-get update
@@ -37,6 +42,10 @@ jobs:
 
       - name: Install frontend dependencies
         run: npm --prefix apps/desktop ci
+
+      - name: Fetch Rust dependencies
+        working-directory: apps/desktop/src-tauri
+        run: cargo fetch || (sleep 10 && cargo fetch)
 
       - name: Run all checks
         run: npm --prefix apps/desktop run check

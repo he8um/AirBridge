@@ -90,6 +90,18 @@ After artifacts are reviewed and approved:
 
 ---
 
+## Dependency Caching
+
+Both CI and release workflows cache npm and Cargo dependencies:
+
+- **npm** — `actions/setup-node` caches the npm module cache keyed to `apps/desktop/package-lock.json`. A cache hit skips most of the `npm ci` download time.
+- **Cargo** — `Swatinem/rust-cache@v2` caches the Cargo registry and compiled dependency artifacts keyed per OS and `Cargo.lock`. A cache hit significantly reduces Rust compilation time.
+- **`cargo fetch`** — runs before checks and builds with one automatic retry (`cargo fetch || sleep 10 && cargo fetch`). This reduces failures caused by transient crates.io registry or network resets. It does not mask real compile failures.
+
+If a CI run fails on a dependency download step (e.g. a registry connection reset), re-run the job once before investigating the code.
+
+---
+
 ## Current Limitations
 
 - Code signing and notarization are not configured. macOS `.dmg` artifacts will not be notarized. Windows `.msi` artifacts will not be code-signed. Both are required before distributing to end users outside the development team.
