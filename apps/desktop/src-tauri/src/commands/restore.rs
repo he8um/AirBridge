@@ -3,6 +3,9 @@ use crate::models::restore::{
     RestoreCompatibilityWarning, RestoreMode, RestorePlanStatus, RestorePlanSummary,
     WarningSeverity,
 };
+use crate::restore::attachment_upload_policy::{
+    verify_attachment_upload_policy, AttachmentUploadPolicyRequest, AttachmentUploadPolicyResult,
+};
 use crate::restore::destructive_operation_policy::{
     verify_destructive_operation_policy, DestructiveOperationPolicyRequest,
     DestructiveOperationPolicyResult,
@@ -488,6 +491,25 @@ pub fn verify_destructive_operation_policy_gate(
     request: DestructiveOperationPolicyRequest,
 ) -> DestructiveOperationPolicyResult {
     verify_destructive_operation_policy(&request)
+}
+
+/// Verifies the attachment upload policy for all declared attachment fields (Gate 5).
+///
+/// Safety:
+/// - No Airtable API calls.
+/// - No token accepted or returned.
+/// - No filesystem path accepted or returned.
+/// - No full attachment URL accepted or returned.
+/// - no_changes_made is always true.
+/// - network_writes_attempted is always false.
+/// - writes_enabled is always false.
+/// - Compliant status does NOT enable restore writes.
+/// - Attachment file bytes are never uploaded.
+#[tauri::command]
+pub fn verify_attachment_upload_policy_gate(
+    request: AttachmentUploadPolicyRequest,
+) -> AttachmentUploadPolicyResult {
+    verify_attachment_upload_policy(&request)
 }
 
 #[cfg(test)]

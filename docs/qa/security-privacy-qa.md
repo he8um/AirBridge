@@ -434,6 +434,52 @@ If AirBridge supports user-configured field redaction:
 
 ---
 
+## Restore Attachment Upload Policy Safety (Gate 5)
+
+**Goal:** Confirm that the attachment upload policy gate makes no Airtable API calls, requires no token, makes no writes, never uploads attachment file bytes, and always returns `noChangesMade: true` and `writesEnabled: false`.
+
+**AUP-01: No token accepted.**
+- The `verify_attachment_upload_policy_gate` Tauri command has no `token` parameter.
+- The `RestoreAttachmentUploadPolicyPanel` component does not render a token input field.
+- No token flows through the attachment upload policy code path.
+
+**AUP-02: No Airtable API calls.**
+- `verify_attachment_upload_policy` accepts no HTTP client or base client argument.
+- No HTTP calls are made by this command.
+- All checks run purely against the declared attachment fields list.
+
+**AUP-03: No write operations.**
+- No Airtable record, table, field, or base is created, updated, or deleted.
+- `networkWritesAttempted` is always `false` in the result.
+
+**AUP-04: No full attachment URL in any result field.**
+- `dl.airtable.com` and `airtableusercontent.com` never appear in any serialized result field.
+- Rust serialization test asserts this for every output field.
+
+**AUP-05: No full path in result.**
+- `AttachmentUploadPolicyResult` has no path field.
+- `AttachmentUploadPolicyRequest` has no path field.
+- Serialized result does not contain `/Users/`, `/home/`, or `:\\`.
+
+**AUP-06: `noChangesMade` always true.**
+- All code paths in `verify_attachment_upload_policy` set `no_changes_made: true`.
+- Rust unit tests assert this for every status branch.
+
+**AUP-07: No execute button.**
+- `RestoreAttachmentUploadPolicyPanel` does not render any button with execute, run, or restore semantics.
+- Panel tests assert no button with text matching `/execute/i` or `/run restore/i` is present.
+
+**AUP-08: Compliant status does not enable writes.**
+- `writesEnabled` is always `false` regardless of policy status.
+- `Compliant` is a policy check result, not an execution gate — it does not change the write engine state.
+
+**AUP-09: Attachment file bytes are never uploaded.**
+- `UploadRequested` intent is blocked (status `Blocked`), not permitted.
+- `DownloadRequested` intent produces a warning only — no download is attempted.
+- No attachment binary data flows through any code path in this gate.
+
+---
+
 ## Restore Schema Creation Plan Safety (V0.1)
 
 **Goal:** Confirm that the schema creation planning flow makes no Airtable API calls, requires no token, creates no Airtable tables or fields, and always returns `noChangesMade: true`.

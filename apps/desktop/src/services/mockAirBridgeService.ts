@@ -51,6 +51,9 @@ import type {
   DestructiveOperationPolicyRequest,
   DestructiveOperationPolicyResult,
   DestructiveOperationPolicyStatus,
+  AttachmentUploadPolicyRequest,
+  AttachmentUploadPolicyResult,
+  AttachmentUploadPolicyStatus,
   RunBackupCommandResponse,
   RecordWriteRequestPlanRequest,
   RecordWriteRequestPlanResult,
@@ -2170,6 +2173,140 @@ function verifyDestructiveOperationPolicyImpl(
   });
 }
 
+function verifyAttachmentUploadPolicyImpl(
+  request: AttachmentUploadPolicyRequest,
+): Promise<AttachmentUploadPolicyResult> {
+  const checks: AttachmentUploadPolicyResult["checks"] = [];
+
+  const uploadFields = request.declaredAttachmentFields.filter(
+    (f) => f.intent === "uploadRequested",
+  );
+  const downloadFields = request.declaredAttachmentFields.filter(
+    (f) => f.intent === "downloadRequested",
+  );
+  const unknownFields = request.declaredAttachmentFields.filter((f) => f.intent === "unknown");
+  const metadataOnlyCount = request.declaredAttachmentFields.filter(
+    (f) => f.intent === "metadataOnly",
+  ).length;
+
+  const blockedFieldNames = uploadFields.map((f) => `${f.tableName}.${f.fieldName}`);
+
+  // AUP-01: write gate always disabled
+  checks.push({
+    checkId: "AUP-01",
+    label: "write-gate-disabled",
+    status: "passed",
+    message:
+      "Write gate is disabled — no writes can be executed. Restore write execution is not enabled in this version.",
+  });
+
+  // AUP-02: no upload-requested intents
+  if (uploadFields.length > 0) {
+    checks.push({
+      checkId: "AUP-02",
+      label: "no-upload-requested",
+      status: "failed",
+      message: `Attachment upload is not permitted in this version: ${uploadFields.map((f) => `${f.tableName}.${f.fieldName}`).join(", ")}.`,
+      remediation:
+        "Change all attachment fields to MetadataOnly intent. File bytes cannot be uploaded during restore.",
+    });
+  } else {
+    checks.push({
+      checkId: "AUP-02",
+      label: "no-upload-requested",
+      status: "passed",
+      message: "No attachment upload operations requested.",
+    });
+  }
+
+  // AUP-03: no download-requested intents (warning)
+  if (downloadFields.length > 0) {
+    checks.push({
+      checkId: "AUP-03",
+      label: "no-download-requested",
+      status: "warning",
+      message: `Attachment download is deferred — file bytes will not be fetched: ${downloadFields.map((f) => `${f.tableName}.${f.fieldName}`).join(", ")}.`,
+      remediation:
+        "Attachment download is not implemented in this version. Only metadata is preserved.",
+    });
+  } else {
+    checks.push({
+      checkId: "AUP-03",
+      label: "no-download-requested",
+      status: "passed",
+      message: "No attachment download operations requested.",
+    });
+  }
+
+  // AUP-04: no unknown intents (warning)
+  if (unknownFields.length > 0) {
+    checks.push({
+      checkId: "AUP-04",
+      label: "no-unknown-intents",
+      status: "warning",
+      message: `Some attachment fields have unknown intent: ${unknownFields.map((f) => `${f.tableName}.${f.fieldName}`).join(", ")}.`,
+      remediation: "Classify all attachment fields before enabling live writes.",
+    });
+  } else {
+    checks.push({
+      checkId: "AUP-04",
+      label: "no-unknown-intents",
+      status: "passed",
+      message: "All declared attachment fields have a known intent.",
+    });
+  }
+
+  // AUP-05: metadata-only confirmation
+  const allMetadataOnly =
+    uploadFields.length === 0 && downloadFields.length === 0 && unknownFields.length === 0;
+  if (allMetadataOnly) {
+    checks.push({
+      checkId: "AUP-05",
+      label: "metadata-only-confirmed",
+      status: "passed",
+      message: `All ${metadataOnlyCount} declared attachment field(s) use metadata-only handling. File bytes are not uploaded or downloaded.`,
+    });
+  } else {
+    const totalNonMetadata = uploadFields.length + downloadFields.length + unknownFields.length;
+    checks.push({
+      checkId: "AUP-05",
+      label: "metadata-only-confirmed",
+      status: uploadFields.length > 0 ? "failed" : "warning",
+      message: `${totalNonMetadata} attachment field(s) are not confirmed as metadata-only.`,
+      remediation: "Set all attachment fields to MetadataOnly intent before enabling live writes.",
+    });
+  }
+
+  const hasBlocked = uploadFields.length > 0;
+  const hasWarning = downloadFields.length > 0 || unknownFields.length > 0;
+
+  const status: AttachmentUploadPolicyStatus = hasBlocked
+    ? "blocked"
+    : hasWarning
+      ? "warning"
+      : "compliant";
+
+  const targetName = request.targetDisplayName ?? "the target base";
+
+  const message =
+    status === "compliant"
+      ? `All ${metadataOnlyCount} declared attachment field(s) for ${targetName} use metadata-only handling. Attachment file bytes are not uploaded or downloaded. Restore writes remain disabled.`
+      : status === "warning"
+        ? `Some attachment fields for ${targetName} have deferred or unknown intent. Attachment file bytes will not be uploaded or downloaded in this version.`
+        : `Attachment upload is not permitted for ${targetName}: ${blockedFieldNames.join(", ")}. Change all attachment fields to MetadataOnly intent.`;
+
+  return Promise.resolve({
+    status,
+    checks,
+    message,
+    blockedFieldNames,
+    metadataOnlyFieldCount: metadataOnlyCount,
+    noChangesMade: true,
+    networkWritesAttempted: false,
+    writesEnabled: false,
+  });
+}
+
 export const mockAirBridgeService: AirBridgeService = {
   listConnections,
   listWorkspaces,
@@ -2205,4 +2342,5 @@ export const mockAirBridgeService: AirBridgeService = {
   validateRestoreConfirmationGate: validateRestoreConfirmationGateImpl,
   verifyRestoreTargetEmpty: verifyRestoreTargetEmptyImpl,
   verifyDestructiveOperationPolicy: verifyDestructiveOperationPolicyImpl,
+  verifyAttachmentUploadPolicy: verifyAttachmentUploadPolicyImpl,
 };

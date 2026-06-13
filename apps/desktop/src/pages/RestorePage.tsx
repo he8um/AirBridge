@@ -10,6 +10,7 @@ import { RestoreConfirmationPanel } from "../features/backups/RestoreConfirmatio
 import { RestoreSandboxVerificationPanel } from "../features/backups/RestoreSandboxVerificationPanel";
 import { RestoreTargetEmptyVerificationPanel } from "../features/backups/RestoreTargetEmptyVerificationPanel";
 import { RestoreDestructiveOperationPolicyPanel } from "../features/backups/RestoreDestructiveOperationPolicyPanel";
+import { RestoreAttachmentUploadPolicyPanel } from "../features/backups/RestoreAttachmentUploadPolicyPanel";
 import { RestoreWriteEnginePanel } from "../features/backups/RestoreWriteEnginePanel";
 import { liveAirBridgeService } from "../services/liveAirBridgeService";
 import type { BackupPackageInspectionResult } from "../backend/types";
@@ -25,6 +26,7 @@ import type {
   SandboxVerificationResult,
   TargetEmptyVerificationResult,
   DestructiveOperationPolicyResult,
+  AttachmentUploadPolicyResult,
 } from "../backend/types";
 
 export function RestorePage() {
@@ -57,6 +59,8 @@ export function RestorePage() {
   const [targetEmptyLoading, setTargetEmptyLoading] = useState(false);
   const [dopResult, setDopResult] = useState<DestructiveOperationPolicyResult | null>(null);
   const [dopLoading, setDopLoading] = useState(false);
+  const [aupResult, setAupResult] = useState<AttachmentUploadPolicyResult | null>(null);
+  const [aupLoading, setAupLoading] = useState(false);
 
   return (
     <div className="page">
@@ -329,6 +333,31 @@ export function RestorePage() {
                   })
                   .finally(() => {
                     setDopLoading(false);
+                  });
+              }}
+            />
+
+            <div className="divider" style={{ margin: 0 }} />
+
+            {/* Attachment upload policy — Gate 5. No writes. No token. No file bytes uploaded. */}
+            <RestoreAttachmentUploadPolicyPanel
+              result={aupResult}
+              loading={aupLoading}
+              onVerify={() => {
+                setAupLoading(true);
+                liveAirBridgeService
+                  .verifyAttachmentUploadPolicy({
+                    declaredAttachmentFields: [],
+                    targetDisplayName: targetBaseName ?? undefined,
+                  })
+                  .then((r) => {
+                    setAupResult(r);
+                  })
+                  .catch(() => {
+                    setAupResult(null);
+                  })
+                  .finally(() => {
+                    setAupLoading(false);
                   });
               }}
             />

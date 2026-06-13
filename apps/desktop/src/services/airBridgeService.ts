@@ -41,6 +41,8 @@ import type {
   TargetEmptyVerificationResult,
   DestructiveOperationPolicyRequest,
   DestructiveOperationPolicyResult,
+  AttachmentUploadPolicyRequest,
+  AttachmentUploadPolicyResult,
   RestoreWriteEngineRequest,
   RestoreWriteEngineResult,
   RunBackupCommandRequest,
@@ -247,4 +249,15 @@ export interface AirBridgeService {
   verifyDestructiveOperationPolicy(
     request: DestructiveOperationPolicyRequest,
   ): Promise<DestructiveOperationPolicyResult>;
+  /**
+   * Verifies the attachment upload policy for all declared attachment fields (Gate 5).
+   *
+   * - No Airtable write API calls. No token. No full path. No full attachment URL. No network writes.
+   * - writesEnabled is always false. noChangesMade is always true.
+   * - Compliant status does NOT enable restore writes.
+   * - Attachment file bytes are never uploaded.
+   */
+  verifyAttachmentUploadPolicy(
+    request: AttachmentUploadPolicyRequest,
+  ): Promise<AttachmentUploadPolicyResult>;
 }

@@ -376,6 +376,57 @@ After completing a restore, perform the following manual checks in Airtable:
 
 ---
 
+## Restore Attachment Upload Policy Checklist (Gate 5)
+
+### Before testing
+
+- [ ] Confirm `verify_attachment_upload_policy_gate` is registered in the Tauri invoke handler.
+- [ ] Confirm `RestoreAttachmentUploadPolicyPanel` is rendered on the Restore page after the destructive operation policy section.
+- [ ] Confirm no execute button is present in the panel.
+- [ ] Confirm no token input is present in the panel.
+
+### Panel behavior
+
+- [ ] A writes-disabled notice is always shown in the attachment upload policy section.
+- [ ] A "Verify attachment policy" button is shown before any result is available.
+- [ ] Clicking the button calls `verifyAttachmentUploadPolicy` and updates the panel.
+- [ ] While loading, the verify button is disabled and shows a loading label.
+- [ ] After a result is returned, the button label changes to "Re-verify".
+
+### Result display
+
+- [ ] Status badge shows `compliant`, `warning`, or `blocked` correctly.
+- [ ] The result message is shown beneath the status badge.
+- [ ] The checks table shows one row per check (AUP-01 through AUP-05).
+- [ ] Each check row shows the check ID, label, status badge, and message.
+- [ ] A safety summary showing `noChangesMade`, `writesEnabled`, `networkWritesAttempted`, and `metadataOnlyFields` is shown.
+- [ ] A "No changes have been made to Airtable. Attachment file bytes have not been uploaded." notice is shown.
+
+### Status scenarios
+
+- [ ] An empty declared attachment fields list returns `compliant`.
+- [ ] All `metadataOnly` fields return `compliant`.
+- [ ] Any `uploadRequested` field returns `blocked`.
+- [ ] Any `downloadRequested` field returns `warning` (not `blocked`).
+- [ ] Any `unknown` field returns `warning` (not `blocked`).
+- [ ] A blocked result shows the `aup-blocked-notice` notice.
+- [ ] A compliant result shows the `aup-compliant-notice` notice, which says "writes remain disabled".
+- [ ] A warning result shows the `aup-warning-notice` notice.
+
+### Safety invariants
+
+- [ ] `noChangesMade` is `true` in every attachment upload policy result.
+- [ ] `writesEnabled` is `false` in every attachment upload policy result.
+- [ ] `networkWritesAttempted` is `false` in every attachment upload policy result.
+- [ ] The policy request type has no `token` field.
+- [ ] The policy result has no `token` field.
+- [ ] The policy result contains no full filesystem path.
+- [ ] The policy result contains no full attachment URL (`dl.airtable.com`, `airtableusercontent.com`).
+- [ ] A `compliant` result does NOT enable restore writes.
+- [ ] Attachment file bytes are never uploaded by any code path in this gate.
+
+---
+
 ## Write Engine Skeleton Checklist
 
 ### Before testing

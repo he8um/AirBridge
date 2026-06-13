@@ -16,6 +16,8 @@ All restore write paths are hard-disabled. `evaluate_write_gate()` returns `Disa
 
 **Gate 4 — destructive operation policy** is implemented via the `verify_destructive_operation_policy_gate` Tauri command. It runs 5 checks (DOP-01 through DOP-05): write gate state, no delete operations, no update/overwrite operations, no attachment upload operations, and create-only classification of all remaining operations. Any declared delete, update, overwrite, or attachment-upload operation kind causes status `Blocked`. Unknown (unclassified) operation kinds cause status `Warning`. No Airtable API calls are made. No token is required. A `Compliant` result does NOT enable restore writes.
 
+**Gate 5 — attachment upload policy** is implemented via the `verify_attachment_upload_policy_gate` Tauri command. It runs 5 checks (AUP-01 through AUP-05): write gate state, no upload-requested intents, no download-requested intents (warning only), no unknown intents (warning only), and metadata-only confirmation. Any `UploadRequested` field intent causes status `Blocked`. `DownloadRequested` or `Unknown` intents cause status `Warning`. Attachment file bytes are never uploaded or downloaded. No Airtable API calls are made. No token is required. No full attachment URL appears in any result field. A `Compliant` result does NOT enable restore writes.
+
 This contract defines what must be true before `evaluate_write_gate()` is ever changed to return an enabled decision.
 
 ---

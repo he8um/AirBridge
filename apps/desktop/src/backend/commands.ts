@@ -37,6 +37,8 @@ import type {
   TargetEmptyVerificationResult,
   DestructiveOperationPolicyRequest,
   DestructiveOperationPolicyResult,
+  AttachmentUploadPolicyRequest,
+  AttachmentUploadPolicyResult,
   RunBackupCommandRequest,
   RunBackupCommandResponse,
   SandboxVerificationRequest,
@@ -423,6 +425,22 @@ export async function verifyDestructiveOperationPolicy(
   request: DestructiveOperationPolicyRequest,
 ): Promise<DestructiveOperationPolicyResult | null> {
   return safeInvoke<DestructiveOperationPolicyResult>("verify_destructive_operation_policy_gate", {
+    request,
+  });
+}
+
+/**
+ * Verifies the attachment upload policy for all declared attachment fields (Gate 5).
+ * - No Airtable API calls. No token. No full path. No full attachment URL. No network writes.
+ * - writesEnabled is always false. noChangesMade is always true.
+ * - Compliant status does NOT enable restore writes.
+ * - Attachment file bytes are never uploaded.
+ * - Returns null if Tauri IPC is unavailable.
+ */
+export async function verifyAttachmentUploadPolicy(
+  request: AttachmentUploadPolicyRequest,
+): Promise<AttachmentUploadPolicyResult | null> {
+  return safeInvoke<AttachmentUploadPolicyResult>("verify_attachment_upload_policy_gate", {
     request,
   });
 }

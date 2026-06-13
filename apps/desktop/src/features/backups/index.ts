@@ -3,6 +3,7 @@ export { RestoreConfirmationPanel } from "./RestoreConfirmationPanel";
 export { RestoreSandboxVerificationPanel } from "./RestoreSandboxVerificationPanel";
 export { RestoreTargetEmptyVerificationPanel } from "./RestoreTargetEmptyVerificationPanel";
 export { RestoreDestructiveOperationPolicyPanel } from "./RestoreDestructiveOperationPolicyPanel";
+export { RestoreAttachmentUploadPolicyPanel } from "./RestoreAttachmentUploadPolicyPanel";
 export { JobHistoryPanel } from "./JobHistoryPanel";
 export { RestoreRecordImportPlanPanel } from "./RestoreRecordImportPlanPanel";
 export { BackupConfirmationBox } from "./BackupConfirmationBox";

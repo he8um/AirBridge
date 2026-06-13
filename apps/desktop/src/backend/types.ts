@@ -1617,3 +1617,62 @@ export interface DestructiveOperationPolicyResult {
   networkWritesAttempted: boolean;
   writesEnabled: boolean;
 }
+
+// ── Attachment upload policy types (mirrors Rust restore::attachment_upload_policy) ──
+
+export type AttachmentUploadPolicyStatus = "compliant" | "warning" | "blocked";
+
+export type AttachmentUploadPolicyCheckStatus = "passed" | "warning" | "failed";
+
+export type AttachmentUploadIntent =
+  | "metadataOnly"
+  | "uploadRequested"
+  | "downloadRequested"
+  | "unknown";
+
+export interface DeclaredAttachmentField {
+  fieldName: string;
+  tableName: string;
+  intent: AttachmentUploadIntent;
+}
+
+export interface AttachmentUploadPolicyCheck {
+  checkId: string;
+  label: string;
+  status: AttachmentUploadPolicyCheckStatus;
+  message: string;
+  remediation?: string;
+}
+
+/**
+ * Request for Gate 5 attachment upload policy verification.
+ * - No token field.
+ * - No filesystem path field.
+ * - No full attachment URL field.
+ */
+export interface AttachmentUploadPolicyRequest {
+  declaredAttachmentFields: DeclaredAttachmentField[];
+  targetDisplayName?: string;
+}
+
+/**
+ * Result from verify_attachment_upload_policy_gate.
+ * - No token field.
+ * - No filesystem path field.
+ * - No full attachment URL field.
+ * - writesEnabled is always false.
+ * - noChangesMade is always true.
+ * - networkWritesAttempted is always false.
+ * - Compliant status does NOT enable restore writes.
+ * - Attachment file bytes are never uploaded.
+ */
+export interface AttachmentUploadPolicyResult {
+  status: AttachmentUploadPolicyStatus;
+  checks: AttachmentUploadPolicyCheck[];
+  message: string;
+  blockedFieldNames: string[];
+  metadataOnlyFieldCount: number;
+  noChangesMade: boolean;
+  networkWritesAttempted: boolean;
+  writesEnabled: boolean;
+}

@@ -1006,6 +1006,52 @@ These test cases cover the command contract layer: confirmation enforcement, out
 
 ---
 
+## Attachment Upload Policy (Gate 5)
+
+**TC-AUP-01: Writes-disabled notice always visible**
+
+- Preconditions: Restore page open.
+- Steps:
+  1. Scroll to the "Attachment Upload Policy (Gate 5)" section.
+- Expected result: A writes-disabled notice is shown. No execute button is shown. No token field is shown.
+
+**TC-AUP-02: Empty fields list returns compliant**
+
+- Preconditions: Restore page open. No attachment fields declared (default state).
+- Steps:
+  1. Click "Verify attachment policy".
+- Expected result: Status badge shows `compliant`. A compliant notice is shown. "Restore writes remain disabled" is visible in the compliant notice.
+
+**TC-AUP-03: Upload-requested field returns blocked**
+
+- Preconditions: Restore page open. An attachment field with `uploadRequested` intent is declared.
+- Steps:
+  1. Click "Verify attachment policy".
+- Expected result: Status badge shows `blocked`. AUP-02 check row shows `failed`. Blocked fields list shows the field name.
+
+**TC-AUP-04: Download-requested field returns warning**
+
+- Preconditions: Restore page open. An attachment field with `downloadRequested` intent is declared.
+- Steps:
+  1. Click "Verify attachment policy".
+- Expected result: Status badge shows `warning` (not `blocked`). AUP-03 check row shows `warning`.
+
+**TC-AUP-05: All metadata-only fields return compliant**
+
+- Preconditions: Restore page open. Only `metadataOnly` attachment fields declared.
+- Steps:
+  1. Click "Verify attachment policy".
+- Expected result: Status badge shows `compliant`. All check rows show `passed`. AUP-05 row shows `passed`.
+
+**TC-AUP-06: No execute button or token input**
+
+- Preconditions: Restore page open with an attachment upload policy result (any status).
+- Steps:
+  1. Inspect the Attachment Upload Policy section for buttons and input fields.
+- Expected result: No "Execute", "Run Restore", or similar button. No password or token input field.
+
+---
+
 ## Write Engine Skeleton
 
 **TC-WE-01: Write engine disabled notice is always visible**

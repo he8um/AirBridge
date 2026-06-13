@@ -48,12 +48,14 @@ If the OS keychain is not available (e.g., headless Linux without a secret servi
 
 ## Attachment Files Not Downloaded or Uploaded
 
-**Scope:** Backup content and restore  
-**Status:** Metadata only
+**Scope:** Backup content, restore, and attachment upload policy  
+**Status:** Metadata only — attachment upload blocked; metadata-only handling enforced
 
 Attachment metadata (filename, MIME type, size, and the attachment URL at time of backup) is included in the backup package under `attachments/metadata.jsonl`. Attachment file bytes are not downloaded or stored during backup.
 
 During restore planning, all attachment fields receive the `MetadataOnly` policy — the record import planner will not schedule attachment uploads. Attachments must be manually re-attached to restored records after a restore completes.
+
+The **attachment upload policy gate** (Gate 5) enforces this at check time. Any declared attachment field with `UploadRequested` intent causes the gate to return `Blocked` — no Airtable attachment upload API is called. `DownloadRequested` intent produces a warning; no download is attempted. Only `MetadataOnly` intent is fully compliant. `noChangesMade` is always `true`, `writesEnabled` is always `false`, and no full attachment URL (e.g., `dl.airtable.com` or `airtableusercontent.com`) appears in any result field.
 
 Attachment download URLs returned by the Airtable API may expire. The backed-up URL captures the state at the time of backup only.
 

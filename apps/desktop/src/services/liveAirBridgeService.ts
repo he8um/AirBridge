@@ -41,6 +41,8 @@ import type {
   TargetEmptyVerificationResult,
   DestructiveOperationPolicyRequest,
   DestructiveOperationPolicyResult,
+  AttachmentUploadPolicyRequest,
+  AttachmentUploadPolicyResult,
   RestoreWriteEngineRequest,
   RestoreWriteEngineResult,
   RunBackupCommandRequest,
@@ -517,6 +519,25 @@ async function verifyDestructiveOperationPolicy(
   return result;
 }
 
+async function verifyAttachmentUploadPolicy(
+  request: AttachmentUploadPolicyRequest,
+): Promise<AttachmentUploadPolicyResult> {
+  const result = await commands.verifyAttachmentUploadPolicy(request);
+  if (result === null) {
+    return {
+      status: "blocked",
+      checks: [],
+      message: "Attachment upload policy check is not available in this context.",
+      blockedFieldNames: [],
+      metadataOnlyFieldCount: 0,
+      noChangesMade: true,
+      networkWritesAttempted: false,
+      writesEnabled: false,
+    };
+  }
+  return result;
+}
+
 export const liveAirBridgeService: AirBridgeService = {
   listConnections,
   listWorkspaces,
@@ -552,4 +573,5 @@ export const liveAirBridgeService: AirBridgeService = {
   validateRestoreConfirmationGate,
   verifyRestoreTargetEmpty,
   verifyDestructiveOperationPolicy,
+  verifyAttachmentUploadPolicy,
 };
