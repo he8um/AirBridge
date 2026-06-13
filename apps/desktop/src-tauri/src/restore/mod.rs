@@ -1,5 +1,6 @@
 pub mod attachment_restore_policy;
 pub mod compatibility;
+pub mod destructive_operation_policy;
 pub mod dry_run;
 pub mod execution;
 pub mod execution_gate;

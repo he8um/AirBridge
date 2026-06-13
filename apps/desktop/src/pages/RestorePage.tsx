@@ -9,6 +9,7 @@ import { RestoreSchemaPlanPanel } from "../features/backups/RestoreSchemaPlanPan
 import { RestoreConfirmationPanel } from "../features/backups/RestoreConfirmationPanel";
 import { RestoreSandboxVerificationPanel } from "../features/backups/RestoreSandboxVerificationPanel";
 import { RestoreTargetEmptyVerificationPanel } from "../features/backups/RestoreTargetEmptyVerificationPanel";
+import { RestoreDestructiveOperationPolicyPanel } from "../features/backups/RestoreDestructiveOperationPolicyPanel";
 import { RestoreWriteEnginePanel } from "../features/backups/RestoreWriteEnginePanel";
 import { liveAirBridgeService } from "../services/liveAirBridgeService";
 import type { BackupPackageInspectionResult } from "../backend/types";
@@ -23,6 +24,7 @@ import type {
   RestoreWriteEngineResult,
   SandboxVerificationResult,
   TargetEmptyVerificationResult,
+  DestructiveOperationPolicyResult,
 } from "../backend/types";
 
 export function RestorePage() {
@@ -53,6 +55,8 @@ export function RestorePage() {
     null,
   );
   const [targetEmptyLoading, setTargetEmptyLoading] = useState(false);
+  const [dopResult, setDopResult] = useState<DestructiveOperationPolicyResult | null>(null);
+  const [dopLoading, setDopLoading] = useState(false);
 
   return (
     <div className="page">
@@ -300,6 +304,31 @@ export function RestorePage() {
                   })
                   .finally(() => {
                     setTargetEmptyLoading(false);
+                  });
+              }}
+            />
+
+            <div className="divider" style={{ margin: 0 }} />
+
+            {/* Destructive operation policy — Gate 4. No writes. No token. */}
+            <RestoreDestructiveOperationPolicyPanel
+              result={dopResult}
+              loading={dopLoading}
+              onVerify={() => {
+                setDopLoading(true);
+                liveAirBridgeService
+                  .verifyDestructiveOperationPolicy({
+                    declaredOperations: [],
+                    targetDisplayName: targetBaseName ?? undefined,
+                  })
+                  .then((r) => {
+                    setDopResult(r);
+                  })
+                  .catch(() => {
+                    setDopResult(null);
+                  })
+                  .finally(() => {
+                    setDopLoading(false);
                   });
               }}
             />

@@ -39,6 +39,8 @@ import type {
   RestoreConfirmationResult,
   TargetEmptyVerificationRequest,
   TargetEmptyVerificationResult,
+  DestructiveOperationPolicyRequest,
+  DestructiveOperationPolicyResult,
   RestoreWriteEngineRequest,
   RestoreWriteEngineResult,
   RunBackupCommandRequest,
@@ -235,4 +237,14 @@ export interface AirBridgeService {
   verifyRestoreTargetEmpty(
     request: TargetEmptyVerificationRequest,
   ): Promise<TargetEmptyVerificationResult>;
+  /**
+   * Verifies that no destructive operations exist in the declared restore plan (Gate 4).
+   *
+   * - No Airtable write API calls. No token. No full path. No network writes.
+   * - writesEnabled is always false. noChangesMade is always true.
+   * - Compliant status does NOT enable restore writes.
+   */
+  verifyDestructiveOperationPolicy(
+    request: DestructiveOperationPolicyRequest,
+  ): Promise<DestructiveOperationPolicyResult>;
 }

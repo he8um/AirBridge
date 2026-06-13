@@ -39,6 +39,8 @@ import type {
   RestoreConfirmationResult,
   TargetEmptyVerificationRequest,
   TargetEmptyVerificationResult,
+  DestructiveOperationPolicyRequest,
+  DestructiveOperationPolicyResult,
   RestoreWriteEngineRequest,
   RestoreWriteEngineResult,
   RunBackupCommandRequest,
@@ -497,6 +499,24 @@ async function verifyRestoreTargetEmpty(
   return result;
 }
 
+async function verifyDestructiveOperationPolicy(
+  request: DestructiveOperationPolicyRequest,
+): Promise<DestructiveOperationPolicyResult> {
+  const result = await commands.verifyDestructiveOperationPolicy(request);
+  if (result === null) {
+    return {
+      status: "blocked",
+      checks: [],
+      message: "Destructive operation policy check is not available in this context.",
+      blockedOperations: [],
+      noChangesMade: true,
+      networkWritesAttempted: false,
+      writesEnabled: false,
+    };
+  }
+  return result;
+}
+
 export const liveAirBridgeService: AirBridgeService = {
   listConnections,
   listWorkspaces,
@@ -531,4 +551,5 @@ export const liveAirBridgeService: AirBridgeService = {
   verifyRestoreSandboxEnvironment,
   validateRestoreConfirmationGate,
   verifyRestoreTargetEmpty,
+  verifyDestructiveOperationPolicy,
 };

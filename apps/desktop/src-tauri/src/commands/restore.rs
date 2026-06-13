@@ -3,6 +3,10 @@ use crate::models::restore::{
     RestoreCompatibilityWarning, RestoreMode, RestorePlanStatus, RestorePlanSummary,
     WarningSeverity,
 };
+use crate::restore::destructive_operation_policy::{
+    verify_destructive_operation_policy, DestructiveOperationPolicyRequest,
+    DestructiveOperationPolicyResult,
+};
 use crate::restore::dry_run::create_dry_run_plan;
 use crate::restore::execution::{RestoreExecutionRequest, RestoreExecutionResult};
 use crate::restore::execution_gate::validate_restore_execution_gate;
@@ -467,6 +471,23 @@ pub fn verify_restore_target_empty(
     request: TargetEmptyVerificationRequest,
 ) -> TargetEmptyVerificationResult {
     verify_target_empty(&request)
+}
+
+/// Verifies that no destructive operations exist in the declared restore plan (Gate 4).
+///
+/// Safety:
+/// - No Airtable API calls.
+/// - No token accepted or returned.
+/// - No filesystem path accepted or returned.
+/// - no_changes_made is always true.
+/// - network_writes_attempted is always false.
+/// - writes_enabled is always false.
+/// - Compliant status does NOT enable restore writes.
+#[tauri::command]
+pub fn verify_destructive_operation_policy_gate(
+    request: DestructiveOperationPolicyRequest,
+) -> DestructiveOperationPolicyResult {
+    verify_destructive_operation_policy(&request)
 }
 
 #[cfg(test)]

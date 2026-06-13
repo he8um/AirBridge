@@ -93,7 +93,28 @@ The `verify_restore_target_empty` Tauri command verifies that the target base is
 - [x] **47 frontend tests pass** for target empty verification service contract and panel rendering.
 - [ ] **Live metadata check implemented.** A future release must implement a live Airtable read call to `GET /v0/meta/bases/{baseId}/tables` to count tables and records before enabling writes.
 
-## Gate 4 — Sandbox Write Testing
+## Gate 4 — Destructive Operation Policy
+
+**Status: Implemented (declared-operation check only). Live writes still disabled.**
+
+The `verify_destructive_operation_policy_gate` Tauri command verifies that no destructive operations are declared in the restore plan. No Airtable API calls are made. No token is required. No files are written. `noChangesMade` is always `true`. `writesEnabled` is always `false`. A `Compliant` result does NOT enable restore writes.
+
+- [x] **Destructive operation policy command implemented.** `verify_destructive_operation_policy_gate` runs DOP-01 through DOP-05. Accessible from the Restore page.
+- [x] **DOP-01 write gate check.** Calls `evaluate_write_gate()` — must return `Disabled`. Always passes in this version.
+- [x] **DOP-02 no delete operations.** `deleteBase`, `deleteTable`, `deleteField`, `deleteRecord` are all blocked.
+- [x] **DOP-03 no update/overwrite operations.** `updateExistingRecord`, `overwriteField`, `overwriteTable` are all blocked.
+- [x] **DOP-04 no attachment upload.** `attachmentUpload` is blocked in this phase. Only attachment metadata preservation is allowed.
+- [x] **DOP-05 create-only classification.** All remaining declared operations must be create-only or safe; unknown operation kinds produce a `Warning`.
+- [x] **Compliant result does not enable writes.** `writesEnabled: false` always.
+- [x] **Blocked result names the offending operations.** `blockedOperations` list contains the label of every blocked operation.
+- [x] **Empty operation list is compliant.** A plan with no declared operations returns `compliant`.
+- [x] **29 Rust unit tests pass** for destructive operation policy module.
+- [x] **46 frontend tests pass** for destructive operation policy service contract and panel rendering.
+- [ ] **Policy wired to live plan.** A future release must pass the actual planned operations from the schema and record write foundations to this command before any write is attempted.
+
+---
+
+## Gate 5 — Sandbox Write Testing
 
 - [ ] **Sandbox base designated.** A dedicated empty Airtable base exists for write testing. Its base ID is in test configuration only, not in release code.
 - [ ] **Schema creation phase tested in sandbox.** CreateTable, CreateField, and DeferLinkedField operations complete successfully against the sandbox base.
@@ -102,7 +123,7 @@ The `verify_restore_target_empty` Tauri command verifies that the target base is
 - [ ] **Final validation phase tested in sandbox.** Record and table counts verified; `Succeeded` status only set after validation passes.
 - [ ] **Sandbox base deleted after test.** No production data affected.
 
-## Gate 5 — User Confirmation for Live Writes
+## Gate 6 — User Confirmation for Live Writes
 
 - [ ] **Confirmation phrase enforced at Rust level.** The Rust command rejects any confirmation that is not exactly the required phrase (see Gate 2).
 - [ ] **Partial match rejected.** Lowercase, partial, and extra-word inputs all fail the check.
@@ -112,7 +133,7 @@ The `verify_restore_target_empty` Tauri command verifies that the target base is
 
 ---
 
-## Gate 6 — Target Base Safety
+## Gate 7 — Target Base Safety
 
 - [ ] **Empty-base check implemented.** Before the first write, the Airtable schema API is called to verify the target base has zero tables.
 - [ ] **Non-empty base rejected.** If the target base contains any tables, the write engine stops with a `BlockedByTargetSafety` reason before any write is attempted.
@@ -121,7 +142,7 @@ The `verify_restore_target_empty` Tauri command verifies that the target base is
 
 ---
 
-## Gate 7 — No Destructive Operations
+## Gate 8 — No Destructive Operations
 
 - [ ] **No delete record calls.** Grep confirms no `DELETE /v0/` record endpoint is called anywhere in the write path.
 - [ ] **No delete table calls.** Grep confirms no table deletion API call exists.
@@ -131,7 +152,7 @@ The `verify_restore_target_empty` Tauri command verifies that the target base is
 
 ---
 
-## Gate 8 — Write Phase Ordering
+## Gate 9 — Write Phase Ordering
 
 - [ ] **Tables created before fields.** `CreateTable` operations all complete before any `CreateField` operation begins.
 - [ ] **Fields created before records.** `CreateField` and `DeferLinkedField` operations complete before any `CreateRecordBatch` begins.
@@ -141,7 +162,7 @@ The `verify_restore_target_empty` Tauri command verifies that the target base is
 
 ---
 
-## Gate 9 — Checkpoint Safety
+## Gate 10 — Checkpoint Safety
 
 - [ ] **Checkpoint before each batch.** A durable checkpoint is written before each `CreateRecordBatch` operation begins.
 - [ ] **Checkpoint before second pass.** A durable checkpoint records first-pass completion before `UpdateLinkedRecordBatch` begins.
@@ -150,7 +171,7 @@ The `verify_restore_target_empty` Tauri command verifies that the target base is
 
 ---
 
-## Gate 10 — Rate Limit and Backoff
+## Gate 11 — Rate Limit and Backoff
 
 - [ ] **429 triggers backoff.** A 429 response from the Airtable API pauses the write engine and waits before retrying.
 - [ ] **Initial backoff ≥ 1 000 ms.** The first retry waits at least one second.
@@ -162,7 +183,7 @@ The `verify_restore_target_empty` Tauri command verifies that the target base is
 
 ---
 
-## Gate 11 — Failure Modes
+## Gate 12 — Failure Modes
 
 - [ ] **401 stops execution.** An authentication error stops all further writes. "Token invalid" message shown. No further API calls.
 - [ ] **403 stops execution.** A permission error stops all further writes. "Permission denied" message shown.
@@ -174,7 +195,7 @@ The `verify_restore_target_empty` Tauri command verifies that the target base is
 
 ---
 
-## Gate 12 — Rollback Limitation Notice
+## Gate 13 — Rollback Limitation Notice
 
 - [ ] **Notice shown in UI before confirmation.** Before the user types `"RESTORE BACKUP"`, a notice reads: "Restore cannot be automatically rolled back. If execution fails partway through, the partially-created base must be cleaned up manually."
 - [ ] **Notice not dismissable.** The notice is always visible when the confirmation input is shown — it is not collapsible or behind a toggle.
@@ -182,7 +203,7 @@ The `verify_restore_target_empty` Tauri command verifies that the target base is
 
 ---
 
-## Gate 13 — Final Validation
+## Gate 14 — Final Validation
 
 - [ ] **`FinalValidation` phase implemented.** A `FinalValidation` phase exists in the write engine and runs after all record writes complete.
 - [ ] **Record count check.** `FinalValidation` verifies the record count in the target base matches the count in the backup manifest.
@@ -192,7 +213,7 @@ The `verify_restore_target_empty` Tauri command verifies that the target base is
 
 ---
 
-## Gate 14 — Token Safety During Live Writes
+## Gate 15 — Token Safety During Live Writes
 
 - [ ] **Token not in any write engine result.** `RestoreWriteEngineResult` has no token field. `JSON.stringify(result)` does not contain the token string.
 - [ ] **Token not in any job history item.** After a live restore, `list_job_history` response does not contain the token.
@@ -202,7 +223,7 @@ The `verify_restore_target_empty` Tauri command verifies that the target base is
 
 ---
 
-## Gate 15 — Path Safety During Live Writes
+## Gate 16 — Path Safety During Live Writes
 
 - [ ] **Full path not in any result.** `RestoreWriteEngineResult.filename` contains only the basename.
 - [ ] **`Path::file_name()` applied.** Confirmed by code review that all result filenames are derived via `Path::file_name()`.
@@ -211,7 +232,7 @@ The `verify_restore_target_empty` Tauri command verifies that the target base is
 
 ---
 
-## Gate 16 — Attachment Phase Disabled
+## Gate 17 — Attachment Phase Disabled
 
 - [ ] **`AttachmentHandling` phase remains disabled.** The phase produces a disabled-status summary with zero operations.
 - [ ] **No attachment upload API call.** Grep confirms no attachment upload endpoint (`/v0/{baseId}/{tableId}/{recordId}/files` or similar) is called.
@@ -220,7 +241,7 @@ The `verify_restore_target_empty` Tauri command verifies that the target base is
 
 ---
 
-## Gate 17 — No Prohibited Terms in Public Files
+## Gate 18 — No Prohibited Terms in Public Files
 
 - [ ] **Full prohibited terms scan passes.** `grep -RniE 'claude|anthropic|chatgpt|openai|ai-generated|ai-assisted|agent|llm|co-authored|generated with|generated by'` returns no hits in source, docs, or config files.
 
@@ -233,22 +254,23 @@ The `verify_restore_target_empty` Tauri command verifies that the target base is
 | 1 | Sandbox environment verification | ☐ |
 | 2 | Explicit user confirmation | ☐ |
 | 3 | Target empty verification | ☐ |
-| 4 | Sandbox write testing | ☐ |
-| 5 | User confirmation for live writes | ☐ |
-| 6 | Target base safety | ☐ |
-| 7 | No destructive operations | ☐ |
-| 8 | Write phase ordering | ☐ |
-| 9 | Checkpoint safety | ☐ |
-| 10 | Rate limit and backoff | ☐ |
-| 11 | Failure modes | ☐ |
-| 12 | Rollback limitation notice | ☐ |
-| 13 | Final validation | ☐ |
-| 14 | Token safety | ☐ |
-| 15 | Path safety | ☐ |
-| 16 | Attachment phase disabled | ☐ |
-| 17 | No prohibited terms | ☐ |
+| 4 | Destructive operation policy | ☐ |
+| 5 | Sandbox write testing | ☐ |
+| 6 | User confirmation for live writes | ☐ |
+| 7 | Target base safety | ☐ |
+| 8 | No destructive operations | ☐ |
+| 9 | Write phase ordering | ☐ |
+| 10 | Checkpoint safety | ☐ |
+| 11 | Rate limit and backoff | ☐ |
+| 12 | Failure modes | ☐ |
+| 13 | Rollback limitation notice | ☐ |
+| 14 | Final validation | ☐ |
+| 15 | Token safety | ☐ |
+| 16 | Path safety | ☐ |
+| 17 | Attachment phase disabled | ☐ |
+| 18 | No prohibited terms | ☐ |
 
-**Release decision:** Do not enable live writes until all 17 gates are marked Pass.
+**Release decision:** Do not enable live writes until all 18 gates are marked Pass.
 
 ---
 

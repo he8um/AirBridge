@@ -327,6 +327,55 @@ After completing a restore, perform the following manual checks in Airtable:
 
 ---
 
+## Restore Destructive Operation Policy Checklist (Gate 4)
+
+### Before testing
+
+- [ ] Confirm `verify_destructive_operation_policy_gate` is registered in the Tauri invoke handler.
+- [ ] Confirm `RestoreDestructiveOperationPolicyPanel` is rendered on the Restore page after the target empty verification section.
+- [ ] Confirm no execute button is present in the panel.
+- [ ] Confirm no token input is present in the panel.
+
+### Panel behavior
+
+- [ ] A writes-disabled notice is always shown in the destructive operation policy section.
+- [ ] A "Verify operation policy" button is shown before any result is available.
+- [ ] Clicking the button calls `verifyDestructiveOperationPolicy` and updates the panel.
+- [ ] While loading, the verify button is disabled and shows a loading label.
+- [ ] After a result is returned, the button label changes to "Re-verify".
+
+### Result display
+
+- [ ] Status badge shows `compliant`, `warning`, or `blocked` correctly.
+- [ ] The result message is shown beneath the status badge.
+- [ ] The checks table shows one row per check (DOP-01 through DOP-05).
+- [ ] Each check row shows the check ID, label, status badge, and message.
+- [ ] A safety summary showing `noChangesMade`, `writesEnabled`, and `networkWritesAttempted` is shown.
+- [ ] A "No changes have been made to Airtable" notice is shown.
+
+### Status scenarios
+
+- [ ] An empty declared operations list returns `compliant`.
+- [ ] All create-only operations return `compliant`.
+- [ ] Any `deleteTable`, `deleteField`, `deleteRecord`, or `deleteBase` operation returns `blocked`.
+- [ ] Any `updateExistingRecord`, `overwriteField`, or `overwriteTable` operation returns `blocked`.
+- [ ] Any `attachmentUpload` operation returns `blocked`.
+- [ ] A blocked result shows the `dop-blocked-notice` notice.
+- [ ] A compliant result shows the `dop-compliant-notice` notice, which says "writes remain disabled".
+- [ ] A warning result shows the `dop-warning-notice` notice.
+
+### Safety invariants
+
+- [ ] `noChangesMade` is `true` in every destructive operation policy result.
+- [ ] `writesEnabled` is `false` in every destructive operation policy result.
+- [ ] `networkWritesAttempted` is `false` in every destructive operation policy result.
+- [ ] The policy request type has no `token` field.
+- [ ] The policy result has no `token` field.
+- [ ] The policy result contains no full filesystem path.
+- [ ] A `compliant` result does NOT enable restore writes.
+
+---
+
 ## Write Engine Skeleton Checklist
 
 ### Before testing

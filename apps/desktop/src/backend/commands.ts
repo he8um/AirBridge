@@ -35,6 +35,8 @@ import type {
   RestoreConfirmationResult,
   TargetEmptyVerificationRequest,
   TargetEmptyVerificationResult,
+  DestructiveOperationPolicyRequest,
+  DestructiveOperationPolicyResult,
   RunBackupCommandRequest,
   RunBackupCommandResponse,
   SandboxVerificationRequest,
@@ -408,4 +410,19 @@ export async function verifyRestoreTargetEmpty(
   request: TargetEmptyVerificationRequest,
 ): Promise<TargetEmptyVerificationResult | null> {
   return safeInvoke<TargetEmptyVerificationResult>("verify_restore_target_empty", { request });
+}
+
+/**
+ * Verifies that no destructive operations exist in the declared restore plan (Gate 4).
+ * - No Airtable API calls. No token. No full path. No network writes.
+ * - writesEnabled is always false. noChangesMade is always true.
+ * - Compliant status does NOT enable restore writes.
+ * - Returns null if Tauri IPC is unavailable.
+ */
+export async function verifyDestructiveOperationPolicy(
+  request: DestructiveOperationPolicyRequest,
+): Promise<DestructiveOperationPolicyResult | null> {
+  return safeInvoke<DestructiveOperationPolicyResult>("verify_destructive_operation_policy_gate", {
+    request,
+  });
 }

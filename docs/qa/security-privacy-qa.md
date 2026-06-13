@@ -397,6 +397,43 @@ If AirBridge supports user-configured field redaction:
 
 ---
 
+## Restore Destructive Operation Policy Safety (Gate 4)
+
+**Goal:** Confirm that the destructive operation policy gate makes no Airtable API calls, requires no token, makes no writes, and always returns `noChangesMade: true` and `writesEnabled: false`.
+
+**DOP-01: No token accepted.**
+- The `verify_destructive_operation_policy_gate` Tauri command has no `token` parameter.
+- The `RestoreDestructiveOperationPolicyPanel` component does not render a token input field.
+- No token flows through the destructive operation policy code path.
+
+**DOP-02: No Airtable API calls.**
+- `verify_destructive_operation_policy` accepts no HTTP client or base client argument.
+- No HTTP calls are made by this command.
+- All checks run purely against the declared operations list.
+
+**DOP-03: No write operations.**
+- No Airtable record, table, field, or base is created, updated, or deleted.
+- `networkWritesAttempted` is always `false` in the result.
+
+**DOP-04: No full path in result.**
+- `DestructiveOperationPolicyResult` has no path field.
+- `DestructiveOperationPolicyRequest` has no path field.
+- Serialized result does not contain `/Users/`, `/home/`, or `:\\`.
+
+**DOP-05: `noChangesMade` always true.**
+- All code paths in `verify_destructive_operation_policy` set `no_changes_made: true`.
+- Rust unit tests assert this for every status branch.
+
+**DOP-06: No execute button.**
+- `RestoreDestructiveOperationPolicyPanel` does not render any button with execute, run, or restore semantics.
+- Panel tests assert no button with text matching `/execute/i` or `/run restore/i` is present.
+
+**DOP-07: Compliant status does not enable writes.**
+- `writesEnabled` is always `false` regardless of policy status.
+- `Compliant` is a policy check result, not an execution gate — it does not change the write engine state.
+
+---
+
 ## Restore Schema Creation Plan Safety (V0.1)
 
 **Goal:** Confirm that the schema creation planning flow makes no Airtable API calls, requires no token, creates no Airtable tables or fields, and always returns `noChangesMade: true`.

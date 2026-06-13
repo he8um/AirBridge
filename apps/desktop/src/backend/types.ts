@@ -1550,3 +1550,70 @@ export interface TargetEmptyVerificationResult {
   networkWritesAttempted: boolean;
   writesEnabled: boolean;
 }
+
+// ── Destructive operation policy types (mirrors Rust restore::destructive_operation_policy) ──
+
+export type DestructiveOperationPolicyStatus = "compliant" | "warning" | "blocked";
+
+export type DestructiveOperationCheckStatus = "passed" | "warning" | "failed";
+
+export type DestructiveOperationKind =
+  | "deleteBase"
+  | "deleteTable"
+  | "deleteField"
+  | "deleteRecord"
+  | "updateExistingRecord"
+  | "overwriteField"
+  | "overwriteTable"
+  | "attachmentUpload"
+  | "createBase"
+  | "createTable"
+  | "createField"
+  | "createRecord"
+  | "updateLinkedRecordReference"
+  | "preserveAttachmentMetadata"
+  | "checkpoint"
+  | "skipField"
+  | "manualAction"
+  | "deferLinkedField";
+
+export interface DeclaredOperation {
+  kind: DestructiveOperationKind;
+  label: string;
+}
+
+export interface DestructiveOperationCheck {
+  checkId: string;
+  label: string;
+  status: DestructiveOperationCheckStatus;
+  message: string;
+  remediation?: string;
+}
+
+/**
+ * Request for Gate 4 destructive-operation policy verification.
+ * - No token field.
+ * - No filesystem path field.
+ */
+export interface DestructiveOperationPolicyRequest {
+  declaredOperations: DeclaredOperation[];
+  targetDisplayName?: string;
+}
+
+/**
+ * Result from verify_destructive_operation_policy_gate.
+ * - No token field.
+ * - writesEnabled is always false.
+ * - noChangesMade is always true.
+ * - networkWritesAttempted is always false.
+ * - Compliant status does NOT enable restore writes.
+ */
+export interface DestructiveOperationPolicyResult {
+  status: DestructiveOperationPolicyStatus;
+  checks: DestructiveOperationCheck[];
+  message: string;
+  blockedOperations: string[];
+  noChangesMade: boolean;
+  networkWritesAttempted: boolean;
+  writesEnabled: boolean;
+}

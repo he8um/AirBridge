@@ -960,6 +960,52 @@ These test cases cover the command contract layer: confirmation enforcement, out
 
 ---
 
+## Destructive Operation Policy (Gate 4)
+
+**TC-DOP-01: Writes-disabled notice always visible**
+
+- Preconditions: Restore page open.
+- Steps:
+  1. Scroll to the "Destructive Operation Policy (Gate 4)" section.
+- Expected result: A writes-disabled notice is shown. No execute button is shown. No token field is shown.
+
+**TC-DOP-02: Empty operations list returns compliant**
+
+- Preconditions: Restore page open. No operations declared (default state).
+- Steps:
+  1. Click "Verify operation policy".
+- Expected result: Status badge shows `compliant`. A compliant notice is shown. "Restore writes remain disabled" is visible in the compliant notice.
+
+**TC-DOP-03: Delete operation returns blocked**
+
+- Preconditions: Restore page open. A delete operation is present in the declared operations list.
+- Steps:
+  1. Click "Verify operation policy".
+- Expected result: Status badge shows `blocked`. DOP-02 check row shows `failed`. Blocked operations list shows the operation label.
+
+**TC-DOP-04: Attachment upload returns blocked**
+
+- Preconditions: Restore page open. An attachment upload operation is present in the declared operations list.
+- Steps:
+  1. Click "Verify operation policy".
+- Expected result: Status badge shows `blocked`. DOP-04 check row shows `failed`.
+
+**TC-DOP-05: Create-only operations return compliant**
+
+- Preconditions: Restore page open. Only create-only operations (createTable, createField, createRecord, etc.) declared.
+- Steps:
+  1. Click "Verify operation policy".
+- Expected result: Status badge shows `compliant`. All check rows show `passed`. DOP-05 row shows `passed`.
+
+**TC-DOP-06: No execute button or token input**
+
+- Preconditions: Restore page open with a destructive operation policy result (any status).
+- Steps:
+  1. Inspect the Destructive Operation Policy section for buttons and input fields.
+- Expected result: No "Execute", "Run Restore", or similar button. No password or token input field.
+
+---
+
 ## Write Engine Skeleton
 
 **TC-WE-01: Write engine disabled notice is always visible**

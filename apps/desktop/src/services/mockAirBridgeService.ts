@@ -48,6 +48,9 @@ import type {
   TargetEmptyVerificationRequest,
   TargetEmptyVerificationResult,
   TargetEmptyVerificationStatus,
+  DestructiveOperationPolicyRequest,
+  DestructiveOperationPolicyResult,
+  DestructiveOperationPolicyStatus,
   RunBackupCommandResponse,
   RecordWriteRequestPlanRequest,
   RecordWriteRequestPlanResult,
@@ -2009,6 +2012,164 @@ function verifyRestoreTargetEmptyImpl(
   });
 }
 
+function verifyDestructiveOperationPolicyImpl(
+  request: DestructiveOperationPolicyRequest,
+): Promise<DestructiveOperationPolicyResult> {
+  const checks: DestructiveOperationPolicyResult["checks"] = [];
+
+  const BLOCKED_KINDS = new Set([
+    "deleteBase",
+    "deleteTable",
+    "deleteField",
+    "deleteRecord",
+    "updateExistingRecord",
+    "overwriteField",
+    "overwriteTable",
+    "attachmentUpload",
+  ]);
+
+  const CREATE_ONLY_KINDS = new Set([
+    "createBase",
+    "createTable",
+    "createField",
+    "createRecord",
+    "updateLinkedRecordReference",
+    "preserveAttachmentMetadata",
+    "checkpoint",
+    "skipField",
+    "manualAction",
+    "deferLinkedField",
+  ]);
+
+  // DOP-01: write gate always disabled
+  checks.push({
+    checkId: "DOP-01",
+    label: "write-gate-disabled",
+    status: "passed",
+    message:
+      "Write gate is disabled — no writes can be executed. Restore write execution is not enabled in this version.",
+  });
+
+  const deleteOps = request.declaredOperations.filter((op) =>
+    ["deleteBase", "deleteTable", "deleteField", "deleteRecord"].includes(op.kind),
+  );
+  const updateOverwriteOps = request.declaredOperations.filter((op) =>
+    ["updateExistingRecord", "overwriteField", "overwriteTable"].includes(op.kind),
+  );
+  const attachmentUploadOps = request.declaredOperations.filter(
+    (op) => op.kind === "attachmentUpload",
+  );
+
+  const blockedOperations = [...deleteOps, ...updateOverwriteOps, ...attachmentUploadOps].map(
+    (op) => op.label,
+  );
+
+  // DOP-02: no delete operations
+  if (deleteOps.length > 0) {
+    checks.push({
+      checkId: "DOP-02",
+      label: "no-delete-operations",
+      status: "failed",
+      message: `Delete operations are not permitted during restore: ${deleteOps.map((op) => op.label).join(", ")}.`,
+      remediation: "Remove all delete operations from the restore plan.",
+    });
+  } else {
+    checks.push({
+      checkId: "DOP-02",
+      label: "no-delete-operations",
+      status: "passed",
+      message: "No delete operations declared.",
+    });
+  }
+
+  // DOP-03: no update/overwrite operations
+  if (updateOverwriteOps.length > 0) {
+    checks.push({
+      checkId: "DOP-03",
+      label: "no-update-overwrite-operations",
+      status: "failed",
+      message: `Update and overwrite operations are not permitted during restore: ${updateOverwriteOps.map((op) => op.label).join(", ")}.`,
+      remediation: "Remove all update and overwrite operations from the restore plan.",
+    });
+  } else {
+    checks.push({
+      checkId: "DOP-03",
+      label: "no-update-overwrite-operations",
+      status: "passed",
+      message: "No update or overwrite operations declared.",
+    });
+  }
+
+  // DOP-04: no attachment upload operations
+  if (attachmentUploadOps.length > 0) {
+    checks.push({
+      checkId: "DOP-04",
+      label: "no-attachment-upload",
+      status: "failed",
+      message: `Attachment upload operations are not permitted in this phase: ${attachmentUploadOps.map((op) => op.label).join(", ")}.`,
+      remediation:
+        "Attachment bytes cannot be uploaded during restore in this version. Only attachment metadata is preserved.",
+    });
+  } else {
+    checks.push({
+      checkId: "DOP-04",
+      label: "no-attachment-upload",
+      status: "passed",
+      message: "No attachment upload operations declared.",
+    });
+  }
+
+  // DOP-05: all remaining ops are create-only or safe
+  const unknownOps = request.declaredOperations.filter(
+    (op) => !BLOCKED_KINDS.has(op.kind) && !CREATE_ONLY_KINDS.has(op.kind),
+  );
+  if (unknownOps.length > 0) {
+    checks.push({
+      checkId: "DOP-05",
+      label: "create-only-operations",
+      status: "warning",
+      message: `Some operations could not be classified as create-only: ${unknownOps.map((op) => op.label).join(", ")}.`,
+      remediation: "Review unclassified operations before enabling live writes.",
+    });
+  } else {
+    checks.push({
+      checkId: "DOP-05",
+      label: "create-only-operations",
+      status: "passed",
+      message: "All declared operations are create-only or safe.",
+    });
+  }
+
+  const anyHardFail =
+    deleteOps.length > 0 || updateOverwriteOps.length > 0 || attachmentUploadOps.length > 0;
+  const anyUnknown = unknownOps.length > 0;
+
+  const status: DestructiveOperationPolicyStatus = anyHardFail
+    ? "blocked"
+    : anyUnknown
+      ? "warning"
+      : "compliant";
+
+  const targetName = request.targetDisplayName ?? "the target base";
+
+  const message =
+    status === "compliant"
+      ? `All declared operations for ${targetName} are create-only. No destructive operations detected. Restore writes remain disabled.`
+      : status === "warning"
+        ? `Some operations for ${targetName} could not be classified. Manual review is required before enabling live writes.`
+        : `Blocked operations detected for ${targetName}: ${blockedOperations.join(", ")}. Remove all destructive operations before proceeding.`;
+
+  return Promise.resolve({
+    status,
+    checks,
+    message,
+    blockedOperations,
+    noChangesMade: true,
+    networkWritesAttempted: false,
+    writesEnabled: false,
+  });
+}
+
 export const mockAirBridgeService: AirBridgeService = {
   listConnections,
   listWorkspaces,
@@ -2043,4 +2204,5 @@ export const mockAirBridgeService: AirBridgeService = {
   verifyRestoreSandboxEnvironment: verifyRestoreSandboxEnvironmentImpl,
   validateRestoreConfirmationGate: validateRestoreConfirmationGateImpl,
   verifyRestoreTargetEmpty: verifyRestoreTargetEmptyImpl,
+  verifyDestructiveOperationPolicy: verifyDestructiveOperationPolicyImpl,
 };
