@@ -14,6 +14,8 @@ import type {
   BackupPlanRequest,
   BaseSchemaSummary,
   ConnectionCheckResult,
+  JobHistoryFilter,
+  JobHistoryListResult,
   OutputPathValidationResult,
   RecordsExportPlan,
   RecordsExportPlanRequest,
@@ -111,4 +113,18 @@ export interface AirBridgeService {
   createRestoreRecordImportPlan(
     request: RestoreRecordImportPlanRequest,
   ): Promise<RestoreRecordImportPlan>;
+  /**
+   * List recent job history items.
+   *
+   * - No token in request or response.
+   * - No full paths in response.
+   * - In V0.1 returns deterministic in-memory data.
+   */
+  listJobHistory(filter?: JobHistoryFilter): Promise<JobHistoryListResult>;
+  /**
+   * Clear job history.
+   *
+   * In V0.1 this is a no-op (no persistent store). Returns count cleared (0).
+   */
+  clearJobHistory(): Promise<number>;
 }

@@ -14,6 +14,8 @@ import type {
   BackupPlanRequest,
   BaseSchemaSummary,
   ConnectionCheckResult,
+  JobHistoryFilter,
+  JobHistoryListResult,
   OutputPathValidationResult,
   RecordsExportPlan,
   RecordsExportPlanRequest,
@@ -289,6 +291,18 @@ async function createRestoreRecordImportPlan(
   return result;
 }
 
+async function listJobHistory(filter?: JobHistoryFilter): Promise<JobHistoryListResult> {
+  const result = await commands.listJobHistory(filter);
+  if (result === null) {
+    return { items: [], totalCount: 0, filtered: false };
+  }
+  return result;
+}
+
+async function clearJobHistory(): Promise<number> {
+  return (await commands.clearJobHistory()) ?? 0;
+}
+
 export const liveAirBridgeService: AirBridgeService = {
   listConnections,
   listWorkspaces,
@@ -312,4 +326,6 @@ export const liveAirBridgeService: AirBridgeService = {
   runRestoreExecution,
   createRestoreSchemaPlan,
   createRestoreRecordImportPlan,
+  listJobHistory,
+  clearJobHistory,
 };

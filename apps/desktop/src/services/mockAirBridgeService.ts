@@ -14,15 +14,21 @@ import type {
   BackupPlanRequest,
   BaseSchemaSummary,
   ConnectionCheckResult,
+  JobHistoryFilter,
+  JobHistoryItem,
+  JobHistoryKind,
+  JobHistoryListResult,
+  JobHistorySource,
+  JobHistoryStatus,
   OutputPathValidationResult,
+  RecordImportFieldInput,
+  RecordImportTableInput,
   RecordsExportPlan,
   RecordsExportPlanRequest,
   RestoreDryRunPlan,
   RestoreDryRunRequest,
   RestoreExecutionRequest,
   RestoreExecutionResult,
-  RecordImportFieldInput,
-  RecordImportTableInput,
   RestoreRecordImportPlan,
   RestoreRecordImportPlanRequest,
   RestoreSchemaPlan,
@@ -1273,6 +1279,149 @@ function createRestoreRecordImportPlanImpl(
   return Promise.resolve(plan);
 }
 
+function makeMockHistoryItem(
+  id: string,
+  kind: JobHistoryKind,
+  status: JobHistoryStatus,
+  source: JobHistorySource,
+  title: string,
+  packageFilename: string | undefined,
+  baseName: string | undefined,
+  warningCount: number,
+  errorCount: number,
+  validationStatus: string | undefined,
+  finishedAt: string,
+  noChangesMade: boolean,
+): JobHistoryItem {
+  return {
+    id: { 0: id },
+    kind,
+    status,
+    source,
+    startedAt: undefined,
+    finishedAt,
+    summary: {
+      title,
+      detail: undefined,
+      packageFilename,
+      baseName,
+      warningCount,
+      errorCount,
+      validationStatus,
+    },
+    warnings: [],
+    errors: errorCount > 0 ? [{ code: "MOCK_ERROR", message: "Mock error" }] : [],
+    noChangesMade,
+  };
+}
+
+const MOCK_HISTORY_ITEMS: JobHistoryItem[] = [
+  makeMockHistoryItem(
+    "hist-001",
+    "backupExecution",
+    "succeeded",
+    "backupPage",
+    "Backup execution",
+    "my-base-2026-06-10.airbridge",
+    "My Base",
+    0,
+    0,
+    undefined,
+    "2026-06-10T09:01:12Z",
+    false,
+  ),
+  makeMockHistoryItem(
+    "hist-002",
+    "packageInspection",
+    "succeeded",
+    "restorePage",
+    "Package inspection",
+    "my-base-2026-06-10.airbridge",
+    undefined,
+    0,
+    0,
+    "valid",
+    "2026-06-10T09:05:00Z",
+    true,
+  ),
+  makeMockHistoryItem(
+    "hist-003",
+    "restoreDryRun",
+    "succeededWithWarnings",
+    "restorePage",
+    "Restore dry-run plan",
+    "my-base-2026-06-10.airbridge",
+    undefined,
+    2,
+    0,
+    undefined,
+    "2026-06-10T09:06:00Z",
+    true,
+  ),
+  makeMockHistoryItem(
+    "hist-004",
+    "restoreSchemaplan",
+    "succeeded",
+    "restorePage",
+    "Restore schema creation plan",
+    "my-base-2026-06-10.airbridge",
+    undefined,
+    0,
+    0,
+    undefined,
+    "2026-06-10T09:07:00Z",
+    true,
+  ),
+  makeMockHistoryItem(
+    "hist-005",
+    "restoreRecordImportPlan",
+    "succeededWithWarnings",
+    "restorePage",
+    "Restore record import plan",
+    "my-base-2026-06-10.airbridge",
+    undefined,
+    3,
+    0,
+    undefined,
+    "2026-06-10T09:08:00Z",
+    true,
+  ),
+  makeMockHistoryItem(
+    "hist-006",
+    "restoreExecutionAttempt",
+    "blocked",
+    "restorePage",
+    "Restore execution attempt (blocked)",
+    "my-base-2026-06-10.airbridge",
+    undefined,
+    0,
+    1,
+    undefined,
+    "2026-06-10T09:09:00Z",
+    true,
+  ),
+];
+
+function listJobHistoryImpl(filter?: JobHistoryFilter): Promise<JobHistoryListResult> {
+  let items = [...MOCK_HISTORY_ITEMS].reverse();
+  const filtered = !!(filter?.kind || filter?.status);
+  if (filter?.kind) {
+    items = items.filter((i) => i.kind === filter.kind);
+  }
+  if (filter?.status) {
+    items = items.filter((i) => i.status === filter.status);
+  }
+  const totalCount = items.length;
+  if (filter?.limit) {
+    items = items.slice(0, filter.limit);
+  }
+  return Promise.resolve({ items, totalCount, filtered });
+}
+
+function clearJobHistoryImpl(): Promise<number> {
+  return Promise.resolve(0);
+}
+
 export const mockAirBridgeService: AirBridgeService = {
   listConnections,
   listWorkspaces,
@@ -1296,4 +1445,6 @@ export const mockAirBridgeService: AirBridgeService = {
   runRestoreExecution: runRestoreExecutionImpl,
   createRestoreSchemaPlan: createRestoreSchemaPlanImpl,
   createRestoreRecordImportPlan: createRestoreRecordImportPlanImpl,
+  listJobHistory: listJobHistoryImpl,
+  clearJobHistory: clearJobHistoryImpl,
 };

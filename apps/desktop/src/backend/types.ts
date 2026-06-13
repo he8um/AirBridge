@@ -959,3 +959,75 @@ export interface RestoreRecordImportPlan {
   /** Always true — no Airtable changes were made. */
   noChangesMade: boolean;
 }
+
+// ─── Job History ──────────────────────────────────────────────────────────────
+
+export type JobHistoryKind =
+  | "connectionCheck"
+  | "backupPlan"
+  | "recordsExportPlan"
+  | "backupExecution"
+  | "packageInspection"
+  | "restoreDryRun"
+  | "restoreSchemaplan"
+  | "restoreRecordImportPlan"
+  | "restoreExecutionAttempt";
+
+export type JobHistoryStatus =
+  | "planned"
+  | "running"
+  | "succeeded"
+  | "succeededWithWarnings"
+  | "blocked"
+  | "failed"
+  | "cancelled";
+
+export type JobHistorySource = "backupPage" | "restorePage" | "connectionsPage" | "system";
+
+export interface JobHistoryWarning {
+  code: string;
+  message: string;
+}
+
+export interface JobHistoryError {
+  code: string;
+  message: string;
+}
+
+export interface JobHistorySummary {
+  title: string;
+  detail?: string;
+  /** Filename only — never a full path. */
+  packageFilename?: string;
+  baseName?: string;
+  warningCount: number;
+  errorCount: number;
+  validationStatus?: string;
+}
+
+export interface JobHistoryItem {
+  id: { 0: string };
+  kind: JobHistoryKind;
+  status: JobHistoryStatus;
+  source: JobHistorySource;
+  /** ISO-8601 UTC timestamp string. */
+  startedAt?: string;
+  finishedAt?: string;
+  summary: JobHistorySummary;
+  warnings: JobHistoryWarning[];
+  errors: JobHistoryError[];
+  /** Always true for planning/inspection operations. */
+  noChangesMade: boolean;
+}
+
+export interface JobHistoryFilter {
+  kind?: JobHistoryKind;
+  status?: JobHistoryStatus;
+  limit?: number;
+}
+
+export interface JobHistoryListResult {
+  items: JobHistoryItem[];
+  totalCount: number;
+  filtered: boolean;
+}

@@ -1,5 +1,8 @@
 import { useState } from "react";
 import { useAppState } from "../state/useAppState";
+import { JobHistoryPanel } from "../features/backups/JobHistoryPanel";
+import { liveAirBridgeService } from "../services/liveAirBridgeService";
+import type { AirBridgeService } from "../services/airBridgeService";
 import type { ReportType } from "../domain/report";
 
 type ReportTab = "backup" | "restore" | "validation";
@@ -39,7 +42,11 @@ function severityColor(severity: string): string {
   }
 }
 
-export function ReportsPage() {
+interface ReportsPageProps {
+  service?: AirBridgeService;
+}
+
+export function ReportsPage({ service = liveAirBridgeService }: ReportsPageProps) {
   const [activeTab, setActiveTab] = useState<ReportTab>("backup");
   const { recentReports } = useAppState();
 
@@ -234,6 +241,24 @@ export function ReportsPage() {
               )}
             </div>
           ))}
+        </section>
+
+        {/* Job history */}
+        <section aria-labelledby="activity-heading" style={{ marginTop: "var(--space-8)" }}>
+          <h2
+            id="activity-heading"
+            style={{
+              fontSize: "var(--text-sm)",
+              fontWeight: 600,
+              color: "var(--color-text-muted)",
+              textTransform: "uppercase",
+              letterSpacing: "0.06em",
+              marginBottom: "var(--space-4)",
+            }}
+          >
+            Activity
+          </h2>
+          <JobHistoryPanel service={service} limit={20} />
         </section>
       </div>
     </div>

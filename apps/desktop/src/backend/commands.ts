@@ -8,6 +8,8 @@ import type {
   BackupPlanRequest,
   BaseSchemaSummary,
   ConnectionCheckResult,
+  JobHistoryFilter,
+  JobHistoryListResult,
   OutputPathValidationResult,
   RecordsExportPlan,
   RecordsExportPlanRequest,
@@ -222,4 +224,27 @@ export async function createRestoreRecordImportPlan(
   request: RestoreRecordImportPlanRequest,
 ): Promise<RestoreRecordImportPlan | null> {
   return safeInvoke<RestoreRecordImportPlan>("create_restore_record_import_plan", { request });
+}
+
+/**
+ * List recent job history items.
+ *
+ * - No token in request or response.
+ * - No full paths in response.
+ * - In V0.1 returns deterministic in-memory data.
+ * - Returns null if Tauri IPC is unavailable.
+ */
+export async function listJobHistory(
+  filter?: JobHistoryFilter,
+): Promise<JobHistoryListResult | null> {
+  return safeInvoke<JobHistoryListResult>("list_job_history", { filter: filter ?? null });
+}
+
+/**
+ * Clear job history.
+ *
+ * In V0.1 this is a no-op (no persistent store). Returns 0.
+ */
+export async function clearJobHistory(): Promise<number | null> {
+  return safeInvoke<number>("clear_job_history");
 }

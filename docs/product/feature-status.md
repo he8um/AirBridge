@@ -27,7 +27,7 @@ This matrix describes the current status of each feature area. Status values:
 | Restore record import plan | Complete | Available — Restore page | No token; no Airtable calls; no writes; batch planning (size 10); field import policies; linked record second-pass; attachment metadata; checkpoint; retry policy; `noChangesMade` always true | None |
 | Restore write engine | Disabled | Not available — returns `readyButDisabled` | No Airtable writes in this version | Implement write engine, linked record remapping, post-restore verification |
 | Credential / token storage | Planned | Not available | Tokens must be entered per-operation | OS keychain integration |
-| Job history registry | Planned | Not available | — | Persistent job log |
+| Local job history | Complete | Available — Reports page | Memory-only; no tokens; no full paths; no record payloads; summary-level only | SQLite persistence deferred |
 | Streaming progress events | Planned | Not available | — | Tauri event stream |
 | Attachment file download | Planned | Not available — metadata only | Attachment URLs captured at backup time only; may expire | File download and storage engine |
 | Attachment URL preservation | Partial | Metadata and URL in package | URL valid at backup time only | Link freshness / re-fetch strategy |

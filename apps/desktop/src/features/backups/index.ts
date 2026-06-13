@@ -1,4 +1,5 @@
 export { BackupExecutionPanel } from "./BackupExecutionPanel";
+export { JobHistoryPanel } from "./JobHistoryPanel";
 export { RestoreRecordImportPlanPanel } from "./RestoreRecordImportPlanPanel";
 export { BackupConfirmationBox } from "./BackupConfirmationBox";
 export { BackupJobResultCard } from "./BackupJobResultCard";

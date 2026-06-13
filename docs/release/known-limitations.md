@@ -73,14 +73,16 @@ Automatic retry with exponential back-off is planned for a future release.
 
 ---
 
-## No Job History
+## Job History Does Not Persist Between Sessions
 
 **Scope:** Backup/restore operations  
-**Status:** Not implemented
+**Status:** Memory-only
 
-Completed backup jobs are not recorded in a persistent history. The backup report is written into the `.airbridge` package at completion, but there is no in-app job log that persists between sessions beyond the current session's log entries.
+AirBridge maintains a local activity history on the Reports page showing recent connection checks, backup and restore operations. History items contain only safe summaries: no tokens, no full paths, no record payloads, no attachment URLs.
 
-A persistent job history registry is planned for a future release.
+In v0.1.0-alpha this history is stored in memory only. It does not persist between application restarts — history is cleared each time the application is launched.
+
+SQLite-backed persistent job history is planned for a future release.
 
 ---
 

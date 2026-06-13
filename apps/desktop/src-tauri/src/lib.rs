@@ -2,6 +2,7 @@ pub mod airtable;
 pub mod backup;
 mod commands;
 mod errors;
+pub mod history;
 mod models;
 pub mod restore;
 
@@ -47,6 +48,8 @@ pub fn run() {
             commands::restore::create_restore_schema_plan,
             commands::restore::create_restore_record_import_plan,
             commands::restore::run_restore_execution,
+            commands::history::list_job_history,
+            commands::history::clear_job_history,
             commands::reports::list_reports,
             commands::logs::list_logs,
             commands::compatibility::list_compatibility_rules,

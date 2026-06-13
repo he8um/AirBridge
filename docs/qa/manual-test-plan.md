@@ -764,3 +764,57 @@ These test cases cover the command contract layer: confirmation enforcement, out
 - Steps:
   1. Search for absolute path patterns on the page.
 - Expected result: No `/Users/`, `/home/`, or `C:\` paths are visible.
+
+---
+
+## Job History (Reports Page)
+
+**TC-HISTORY-01: History panel renders on Reports page**
+
+- Preconditions: Application launched.
+- Steps:
+  1. Navigate to the Reports page.
+  2. Scroll to the "Activity" section.
+- Expected result: A list of recent activity items is visible.
+
+**TC-HISTORY-02: Items show kind, status, and timestamp**
+
+- Preconditions: Reports page open with history items visible.
+- Steps:
+  1. Read each item row.
+- Expected result: Each row shows a title, a kind label, a status badge, and a timestamp.
+
+**TC-HISTORY-03: Filename only — no full path**
+
+- Preconditions: Reports page open.
+- Steps:
+  1. Inspect any item that shows a package filename.
+- Expected result: Only the filename component is shown (e.g. `my-backup.airbridge`). No directory path is visible.
+
+**TC-HISTORY-04: No token in activity history**
+
+- Preconditions: Reports page open.
+- Steps:
+  1. Search the page for any token-like string.
+- Expected result: No API token, Bearer string, or `pat…` value appears anywhere in the history panel.
+
+**TC-HISTORY-05: Warning and error counts visible**
+
+- Preconditions: Reports page open with at least one item that has warnings.
+- Steps:
+  1. Find an item with a warning count.
+- Expected result: The warning count is displayed (e.g. "2 warnings").
+
+**TC-HISTORY-06: Validation status shown for inspection items**
+
+- Preconditions: A package inspection item is in the history.
+- Steps:
+  1. Find the package inspection history row.
+- Expected result: The validation status ("valid", "invalid", or "warning") is displayed.
+
+**TC-HISTORY-07: Persistence note is shown**
+
+- Preconditions: Reports page open.
+- Steps:
+  1. Read the note below the activity list.
+- Expected result: A note states that activity is memory-only and does not persist between sessions.
