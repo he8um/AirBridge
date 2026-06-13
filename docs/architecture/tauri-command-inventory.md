@@ -245,6 +245,110 @@ This document lists all commands registered in the Tauri invoke handler as of v0
 
 ---
 
+## Restore Write Engine Skeleton
+
+### `preview_restore_write_engine`
+
+| Property | Value |
+|----------|-------|
+| Purpose | Produces a six-phase write engine skeleton preview using counts from existing planning outputs |
+| Input sensitivity | Low — no token; accepts package filename and optional count fields from schema/record plans |
+| Writes files | No |
+| Network access | No |
+| Can change Airtable data | **No — all phases disabled. Write gate always returns `Disabled/DisabledByProductPolicy`** |
+| Safety status | **No token required or accepted.** `noChangesMade` always `true`. Result status is never `"succeeded"`. Full path never in result — filename only. No Airtable API calls |
+
+---
+
+## Write Engine Foundations (Disabled)
+
+### `preview_schema_write_request_plan`
+
+| Property | Value |
+|----------|-------|
+| Purpose | Builds a sequenced list of schema write operations (CreateTable, CreateField, DeferLinkedField, ManualAction) from a schema plan summary and passes them through the dry-run executor |
+| Input sensitivity | None — no token; accepts only count fields from the schema plan |
+| Writes files | No |
+| Network access | No |
+| Can change Airtable data | **No — write gate always returns `Disabled/DisabledByProductPolicy`. No Airtable base, table, or field is created** |
+| Safety status | **No token in request or result.** `noChangesMade` always `true`. `networkWritesAttempted` always `false`. Result status is never `"succeeded"`. No raw field payloads |
+
+### `preview_record_write_request_plan`
+
+| Property | Value |
+|----------|-------|
+| Purpose | Builds a sequenced list of record write operations (CreateRecordBatch, UpdateLinkedRecordBatch, Checkpoint, PreserveMetadataOnlyAttachment, SkipComputedField) from a record import plan summary and passes them through the dry-run executor |
+| Input sensitivity | None — no token; accepts only count fields from the record import plan |
+| Writes files | No |
+| Network access | No |
+| Can change Airtable data | **No — write gate always returns `Disabled/DisabledByProductPolicy`. No Airtable records are created, updated, or deleted** |
+| Safety status | **No token in request or result.** `noChangesMade` always `true`. `networkWritesAttempted` always `false`. Result status is never `"succeeded"`. No raw record payloads. Old-to-new record ID mapping deferred to execution |
+
+---
+
+## Credential Storage
+
+### `get_credential_storage_status`
+
+| Property | Value |
+|----------|-------|
+| Purpose | Returns the OS keychain availability and whether a saved token exists for a given credential kind |
+| Input sensitivity | Low — no token; accepts a credential kind string |
+| Writes files | No |
+| Network access | No |
+| Can change Airtable data | No |
+| Safety status | **Never returns the token value.** Returns availability status and a safe display string only. Keychain unavailable state handled safely |
+
+### `save_airtable_token_to_keychain`
+
+| Property | Value |
+|----------|-------|
+| Purpose | Saves an Airtable Personal Access Token to the OS keychain |
+| Input sensitivity | **High** — accepts a token string |
+| Writes files | No — writes to OS keychain only (not a file) |
+| Network access | No |
+| Can change Airtable data | No |
+| Safety status | **Token forwarded to keychain API only; never returned, logged, or stored in files.** `CredentialSaveRequest` derives `Deserialize` only — cannot be serialized back. Result has no token field. Does not affect `evaluate_write_gate()` |
+
+### `remove_airtable_token_from_keychain`
+
+| Property | Value |
+|----------|-------|
+| Purpose | Removes a saved Airtable token from the OS keychain |
+| Input sensitivity | Low — no token in request |
+| Writes files | No |
+| Network access | No |
+| Can change Airtable data | No |
+| Safety status | **Never returns the token value.** Returns success status only |
+
+---
+
+## Job History
+
+### `list_job_history`
+
+| Property | Value |
+|----------|-------|
+| Purpose | Returns a list of recent operation summaries (connection checks, backup jobs, restore operations) from the in-memory store |
+| Input sensitivity | Low — accepts an optional filter |
+| Writes files | No |
+| Network access | No |
+| Can change Airtable data | No |
+| Safety status | **No token, no full paths, no record payloads, no attachment URLs in results.** Summary-level metadata only. In-memory store; discarded on restart |
+
+### `clear_job_history`
+
+| Property | Value |
+|----------|-------|
+| Purpose | Clears all entries from the in-memory job history store |
+| Input sensitivity | None |
+| Writes files | No |
+| Network access | No |
+| Can change Airtable data | No |
+| Safety status | Safe; no-op in v0.1 (returns 0) |
+
+---
+
 ## Reports and Logs
 
 ### `list_reports`
@@ -305,6 +409,14 @@ This document lists all commands registered in the Tauri invoke handler as of v0
 | `create_restore_schema_plan` | No | No | No | No | None |
 | `create_restore_record_import_plan` | No | No | No | No | None |
 | `run_restore_execution` | Yes | No | No | **Disabled** | `RESTORE BACKUP` |
+| `preview_restore_write_engine` | No | No | No | **Disabled** | None |
+| `preview_schema_write_request_plan` | No | No | No | **Disabled** | None |
+| `preview_record_write_request_plan` | No | No | No | **Disabled** | None |
+| `get_credential_storage_status` | No | No | No | No | None |
+| `save_airtable_token_to_keychain` | Yes (write-only) | No | No | No | None |
+| `remove_airtable_token_from_keychain` | No | No | No | No | None |
+| `list_job_history` | No | No | No | No | None |
+| `clear_job_history` | No | No | No | No | None |
 | `list_reports` | No | No | No | No | None |
 | `list_logs` | No | No | No | No | None |
 | `list_compatibility_rules` | No | No | No | No | None |
