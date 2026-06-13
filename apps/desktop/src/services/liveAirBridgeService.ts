@@ -14,6 +14,12 @@ import type {
   BackupPlanRequest,
   BaseSchemaSummary,
   ConnectionCheckResult,
+  CredentialRemoveRequest,
+  CredentialRemoveResult,
+  CredentialSaveRequest,
+  CredentialSaveResult,
+  CredentialStatusRequest,
+  CredentialStatusResult,
   JobHistoryFilter,
   JobHistoryListResult,
   OutputPathValidationResult,
@@ -323,6 +329,55 @@ async function previewRestoreWriteEngine(
   return result;
 }
 
+async function getCredentialStorageStatus(
+  request: CredentialStatusRequest,
+): Promise<CredentialStatusResult> {
+  const result = await commands.getCredentialStorageStatus(request);
+  if (result === null) {
+    return {
+      kind: request.kind,
+      status: "unavailable",
+      availability: "unavailable",
+      hasSavedToken: false,
+      display: "OS keychain is not available in this context.",
+    };
+  }
+  return result;
+}
+
+async function saveAirtableTokenToKeychain(
+  request: CredentialSaveRequest,
+): Promise<CredentialSaveResult> {
+  // Token is forwarded to the Rust command only; not stored or logged here.
+  const result = await commands.saveAirtableTokenToKeychain(request);
+  if (result === null) {
+    return {
+      kind: request.kind,
+      success: false,
+      hasSavedToken: false,
+      display: "OS keychain is not available in this context.",
+      errorMessage: "OS keychain is not available in this context.",
+    };
+  }
+  return result;
+}
+
+async function removeAirtableTokenFromKeychain(
+  request: CredentialRemoveRequest,
+): Promise<CredentialRemoveResult> {
+  const result = await commands.removeAirtableTokenFromKeychain(request);
+  if (result === null) {
+    return {
+      kind: request.kind,
+      success: false,
+      hasSavedToken: false,
+      display: "OS keychain is not available in this context.",
+      errorMessage: "OS keychain is not available in this context.",
+    };
+  }
+  return result;
+}
+
 export const liveAirBridgeService: AirBridgeService = {
   listConnections,
   listWorkspaces,
@@ -349,4 +404,7 @@ export const liveAirBridgeService: AirBridgeService = {
   listJobHistory,
   clearJobHistory,
   previewRestoreWriteEngine,
+  getCredentialStorageStatus,
+  saveAirtableTokenToKeychain,
+  removeAirtableTokenFromKeychain,
 };

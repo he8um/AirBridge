@@ -36,9 +36,7 @@ export function RestorePage() {
   );
   const [schemaPlan, setSchemaPlan] = useState<RestoreSchemaPlan | null>(null);
   const [recordImportTables, setRecordImportTables] = useState<RecordImportTableInput[]>([]);
-  const [writeEngineResult, setWriteEngineResult] = useState<RestoreWriteEngineResult | null>(
-    null,
-  );
+  const [writeEngineResult, setWriteEngineResult] = useState<RestoreWriteEngineResult | null>(null);
 
   return (
     <div className="page">

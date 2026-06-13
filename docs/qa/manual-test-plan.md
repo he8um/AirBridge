@@ -858,3 +858,87 @@ These test cases cover the command contract layer: confirmation enforcement, out
 - Steps:
   1. Count the phase rows in the Write Engine section.
 - Expected result: Exactly six rows appear, one for each phase: validateInputs, schemaCreation, recordCreation, linkedRecordUpdates, attachmentHandling, finalValidation.
+
+---
+
+## Credential Storage (Settings Page)
+
+**TC-CRED-01: Saved Credentials section is visible in Settings**
+
+- Preconditions: Application open, Settings page navigated to.
+- Steps:
+  1. Navigate to Settings.
+  2. Locate the "Saved Credentials" section.
+- Expected result: The section is present. An explanatory notice states that saving is optional and that the token is not stored in files, history, or logs.
+
+**TC-CRED-02: Token input is type password**
+
+- Preconditions: Settings page open; keychain available.
+- Steps:
+  1. Locate the token input in the Saved Credentials section.
+  2. Click into the input and type any value.
+- Expected result: The typed characters are masked (dots or asterisks). The raw value is not visible as plain text anywhere on the page.
+
+**TC-CRED-03: Save button is disabled with empty input**
+
+- Preconditions: Settings page open; no token in the input field.
+- Steps:
+  1. Observe the Save button.
+- Expected result: The Save button is disabled.
+
+**TC-CRED-04: Save button becomes enabled after typing a token**
+
+- Preconditions: Settings page open.
+- Steps:
+  1. Type a non-empty value in the token input.
+  2. Observe the Save button.
+- Expected result: The Save button becomes enabled.
+
+**TC-CRED-05: Token input is removed from DOM after successful save**
+
+- Preconditions: Settings page open; keychain available.
+- Steps:
+  1. Type a value in the token input.
+  2. Click "Save to Keychain".
+  3. Wait for the operation to complete.
+- Expected result: The token input field is no longer visible. The status badge updates to "Saved token present". A Remove button appears.
+
+**TC-CRED-06: Saved token value is never rendered**
+
+- Preconditions: A token has been saved.
+- Steps:
+  1. Inspect all visible text on the Settings page.
+  2. Search for the token value in the DOM.
+- Expected result: The token value does not appear anywhere in the UI — not in the status badge, feedback message, or any other element.
+
+**TC-CRED-07: Remove button removes the saved token**
+
+- Preconditions: A token has been saved (TC-CRED-05 passed).
+- Steps:
+  1. Click "Remove Saved Token".
+  2. Wait for the operation to complete.
+- Expected result: The status badge updates to "No saved token". The token input reappears. The Remove button is hidden.
+
+**TC-CRED-08: Keychain unavailable shows notice**
+
+- Preconditions: The application is running on a system where the OS keychain is not available (e.g., headless Linux without a secret service daemon).
+- Steps:
+  1. Open Settings → Saved Credentials.
+- Expected result: An unavailable notice is shown. The token input and Save button are hidden. No error message contains any token value.
+
+**TC-CRED-09: No token in localStorage or sessionStorage**
+
+- Preconditions: Any state.
+- Steps:
+  1. Open browser DevTools (if available in the Tauri webview).
+  2. Inspect `localStorage` and `sessionStorage` for any key containing "token" or "credential".
+- Expected result: No such key is present. No token value appears as a stored value.
+
+**TC-CRED-10: Credential storage does not enable restore write execution**
+
+- Preconditions: A token has been saved to the keychain.
+- Steps:
+  1. Navigate to the Restore page.
+  2. Attempt a full restore gate sequence (package inspected, dry-run ready, confirmation entered).
+  3. Click "Attempt Restore".
+- Expected result: The result status is "Disabled". The write engine is not enabled. "No Airtable changes were made." is shown. Saving a token has no effect on the restore write gate.

@@ -1113,3 +1113,81 @@ export interface RestoreWriteEngineResult {
   /** Always true — no Airtable changes were made. */
   noChangesMade: boolean;
 }
+
+// ─── Credential Storage ───────────────────────────────────────────────────────
+
+/** The kind of credential being stored. */
+export type CredentialKind = "airtablePersonalAccessToken";
+
+/** Whether the OS keychain backend is available on this system. */
+export type CredentialStorageAvailability = "available" | "unavailable";
+
+/** The current storage status of a credential. */
+export type CredentialStorageStatus = "saved" | "notSaved" | "unavailable" | "failed";
+
+/** Request to check the storage status of a credential. */
+export interface CredentialStatusRequest {
+  kind: CredentialKind;
+}
+
+/**
+ * Result of a credential status check.
+ * Never contains the token value.
+ */
+export interface CredentialStatusResult {
+  kind: CredentialKind;
+  status: CredentialStorageStatus;
+  availability: CredentialStorageAvailability;
+  hasSavedToken: boolean;
+  /** Safe display string — never the token value. */
+  display: string;
+}
+
+/**
+ * Request to save a token to the OS keychain.
+ * The token is sent to the Rust command only and is never returned.
+ */
+export interface CredentialSaveRequest {
+  kind: CredentialKind;
+  /** Forwarded to the Rust keychain command only. Never returned. */
+  token: string;
+}
+
+/**
+ * Result of saving a credential.
+ * Never contains the token.
+ */
+export interface CredentialSaveResult {
+  kind: CredentialKind;
+  success: boolean;
+  hasSavedToken: boolean;
+  display: string;
+  errorMessage: string | null;
+}
+
+/** Request to remove a saved credential. */
+export interface CredentialRemoveRequest {
+  kind: CredentialKind;
+}
+
+/**
+ * Result of removing a credential.
+ * Never contains the token.
+ */
+export interface CredentialRemoveResult {
+  kind: CredentialKind;
+  success: boolean;
+  hasSavedToken: boolean;
+  display: string;
+  errorMessage: string | null;
+}
+
+/**
+ * A safe redacted summary of a stored credential for display purposes.
+ * Never contains the token value.
+ */
+export interface RedactedCredentialSummary {
+  kind: CredentialKind;
+  hasSavedToken: boolean;
+  display: string;
+}

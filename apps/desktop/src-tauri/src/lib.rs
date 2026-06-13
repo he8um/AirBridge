@@ -1,6 +1,7 @@
 pub mod airtable;
 pub mod backup;
 mod commands;
+pub mod credentials;
 mod errors;
 pub mod history;
 mod models;
@@ -49,6 +50,9 @@ pub fn run() {
             commands::restore::create_restore_record_import_plan,
             commands::restore::run_restore_execution,
             commands::restore::preview_restore_write_engine,
+            commands::credentials::get_credential_storage_status,
+            commands::credentials::save_airtable_token_to_keychain,
+            commands::credentials::remove_airtable_token_from_keychain,
             commands::history::list_job_history,
             commands::history::clear_job_history,
             commands::reports::list_reports,

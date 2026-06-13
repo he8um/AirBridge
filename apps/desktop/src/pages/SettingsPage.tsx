@@ -1,9 +1,20 @@
 import { SectionHeader } from "../components/SectionHeader";
+import { CredentialStorageCard } from "../features/connections/CredentialStorageCard";
+import { liveAirBridgeService } from "../services/liveAirBridgeService";
 
 export function SettingsPage() {
   return (
     <div className="page">
       <div className="page-content">
+        {/* Credential Storage */}
+        <section aria-labelledby="credential-storage-heading">
+          <SectionHeader title="Saved Credentials" />
+
+          <div className="card" style={{ maxWidth: 560 }}>
+            <CredentialStorageCard service={liveAirBridgeService} />
+          </div>
+        </section>
+
         {/* Local Storage */}
         <section aria-labelledby="storage-heading">
           <SectionHeader title="Local Storage" />

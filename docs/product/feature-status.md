@@ -26,7 +26,7 @@ This matrix describes the current status of each feature area. Status values:
 | Restore schema creation plan | Complete | Available — Restore page | No token; no Airtable calls; no writes; table-first ordering; field classification; dependency graph; `noChangesMade` always true | None |
 | Restore record import plan | Complete | Available — Restore page | No token; no Airtable calls; no writes; batch planning (size 10); field import policies; linked record second-pass; attachment metadata; checkpoint; retry policy; `noChangesMade` always true | None |
 | Restore write engine | Disabled (skeleton) | Skeleton preview available — Restore page | No Airtable writes; no token required; all phases disabled; `noChangesMade` always true | Enable write execution, linked record remapping, post-restore verification |
-| Credential / token storage | Planned | Not available | Tokens must be entered per-operation | OS keychain integration |
+| Credential / token storage | Partial | Optional — Settings page | Token stored in OS keychain only; never in files, history, SQLite, or localStorage; keychain unavailable state handled safely | Wire saved token to connection check |
 | Local job history | Complete | Available — Reports page | Memory-only; no tokens; no full paths; no record payloads; summary-level only | SQLite persistence deferred |
 | Streaming progress events | Planned | Not available | — | Tauri event stream |
 | Attachment file download | Planned | Not available — metadata only | Attachment URLs captured at backup time only; may expire | File download and storage engine |

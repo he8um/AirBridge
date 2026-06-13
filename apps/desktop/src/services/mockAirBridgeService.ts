@@ -32,6 +32,13 @@ import type {
   RestoreRecordImportPlan,
   RestoreRecordImportPlanRequest,
   RestoreSchemaPlan,
+  CredentialKind,
+  CredentialRemoveRequest,
+  CredentialRemoveResult,
+  CredentialSaveRequest,
+  CredentialSaveResult,
+  CredentialStatusRequest,
+  CredentialStatusResult,
   RestoreSchemaPlanRequest,
   RestoreWriteEngineRequest,
   RestoreWriteEngineResult,
@@ -1482,6 +1489,59 @@ function previewRestoreWriteEngineImpl(
   });
 }
 
+// In-memory mock state for credential storage — test-only, never persisted
+const _mockCredentialStore: Map<CredentialKind, boolean> = new Map();
+
+function getCredentialStorageStatusImpl(
+  request: CredentialStatusRequest,
+): Promise<CredentialStatusResult> {
+  const hasSaved = _mockCredentialStore.get(request.kind) === true;
+  return Promise.resolve({
+    kind: request.kind,
+    status: hasSaved ? ("saved" as const) : ("notSaved" as const),
+    availability: "available" as const,
+    hasSavedToken: hasSaved,
+    display: hasSaved ? "Saved token present" : "No saved token",
+  });
+}
+
+function saveAirtableTokenToKeychainImpl(
+  request: CredentialSaveRequest,
+): Promise<CredentialSaveResult> {
+  // Token is accepted but never stored in plaintext — only presence is recorded.
+  // In a real implementation the token goes to the OS keychain.
+  if (!request.token || request.token.trim().length === 0) {
+    return Promise.resolve({
+      kind: request.kind,
+      success: false,
+      hasSavedToken: false,
+      display: "Token must not be empty.",
+      errorMessage: "Token must not be empty.",
+    });
+  }
+  _mockCredentialStore.set(request.kind, true);
+  return Promise.resolve({
+    kind: request.kind,
+    success: true,
+    hasSavedToken: true,
+    display: "Saved token present",
+    errorMessage: null,
+  });
+}
+
+function removeAirtableTokenFromKeychainImpl(
+  request: CredentialRemoveRequest,
+): Promise<CredentialRemoveResult> {
+  _mockCredentialStore.set(request.kind, false);
+  return Promise.resolve({
+    kind: request.kind,
+    success: true,
+    hasSavedToken: false,
+    display: "No saved token",
+    errorMessage: null,
+  });
+}
+
 export const mockAirBridgeService: AirBridgeService = {
   listConnections,
   listWorkspaces,
@@ -1508,4 +1568,7 @@ export const mockAirBridgeService: AirBridgeService = {
   listJobHistory: listJobHistoryImpl,
   clearJobHistory: clearJobHistoryImpl,
   previewRestoreWriteEngine: previewRestoreWriteEngineImpl,
+  getCredentialStorageStatus: getCredentialStorageStatusImpl,
+  saveAirtableTokenToKeychain: saveAirtableTokenToKeychainImpl,
+  removeAirtableTokenFromKeychain: removeAirtableTokenFromKeychainImpl,
 };

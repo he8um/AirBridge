@@ -8,6 +8,12 @@ import type {
   BackupPlanRequest,
   BaseSchemaSummary,
   ConnectionCheckResult,
+  CredentialRemoveRequest,
+  CredentialRemoveResult,
+  CredentialSaveRequest,
+  CredentialSaveResult,
+  CredentialStatusRequest,
+  CredentialStatusResult,
   JobHistoryFilter,
   JobHistoryListResult,
   OutputPathValidationResult,
@@ -264,4 +270,42 @@ export async function previewRestoreWriteEngine(
   request: RestoreWriteEngineRequest,
 ): Promise<RestoreWriteEngineResult | null> {
   return safeInvoke<RestoreWriteEngineResult>("preview_restore_write_engine", { request });
+}
+
+/**
+ * Returns the OS keychain storage status for a credential kind.
+ *
+ * - Never returns the token value.
+ * - Returns null if Tauri IPC is unavailable.
+ */
+export async function getCredentialStorageStatus(
+  request: CredentialStatusRequest,
+): Promise<CredentialStatusResult | null> {
+  return safeInvoke<CredentialStatusResult>("get_credential_storage_status", { request });
+}
+
+/**
+ * Saves an Airtable token to the OS keychain.
+ *
+ * - Token is forwarded to the Rust command only; never returned.
+ * - Never logs the token.
+ * - Returns null if Tauri IPC is unavailable.
+ */
+export async function saveAirtableTokenToKeychain(
+  request: CredentialSaveRequest,
+): Promise<CredentialSaveResult | null> {
+  // Token is forwarded to the Rust command only. It is not stored or logged here.
+  return safeInvoke<CredentialSaveResult>("save_airtable_token_to_keychain", { request });
+}
+
+/**
+ * Removes a saved Airtable token from the OS keychain.
+ *
+ * - Never returns the token.
+ * - Returns null if Tauri IPC is unavailable.
+ */
+export async function removeAirtableTokenFromKeychain(
+  request: CredentialRemoveRequest,
+): Promise<CredentialRemoveResult | null> {
+  return safeInvoke<CredentialRemoveResult>("remove_airtable_token_from_keychain", { request });
 }

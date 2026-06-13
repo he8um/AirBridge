@@ -25,14 +25,18 @@ Restore write execution will be enabled in a future release once the write engin
 
 ---
 
-## No Credential Storage
+## Credential Storage — Saved Token Not Used Automatically
 
 **Scope:** Token handling  
-**Status:** Not implemented
+**Status:** OS keychain storage implemented; auto-fill not yet wired
 
-Tokens must be entered for each operation. AirBridge does not persist tokens between sessions. There is no OS credential store integration in v0.1.0-alpha.
+Users can optionally save their Airtable Personal Access Token to the OS keychain via Settings → Saved Credentials. The token is stored in the OS keychain only — never in files, SQLite, `localStorage`, history items, or logs. Saving is never required.
 
-Token persistence via the OS keychain is planned for a future release.
+In this version, the saved token is not automatically retrieved for connection checks or backup operations. Users who save a token will still need to paste it into the relevant field when initiating an operation.
+
+Automatic token retrieval for connection checks and backup operations is deferred to a future release.
+
+If the OS keychain is not available (e.g., headless Linux without a secret service daemon), the Saved Credentials panel shows a notice and the save/remove controls are hidden.
 
 ---
 

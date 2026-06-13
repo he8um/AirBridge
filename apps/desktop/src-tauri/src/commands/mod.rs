@@ -3,6 +3,7 @@ pub mod backup_job;
 pub mod catalog;
 pub mod compatibility;
 pub mod connection;
+pub mod credentials;
 pub mod history;
 pub mod logs;
 pub mod reports;

@@ -440,3 +440,59 @@ never echoes the full package path, and never produces a succeeded status.
 - When Tauri IPC is unavailable, `liveAirBridgeService.previewRestoreWriteEngine()` returns a
   disabled fallback with `noChangesMade: true`, empty phase summaries, and no full path.
 - Frontend tests assert the fallback result does not contain `"succeeded"`.
+
+---
+
+## Credential Storage Security (V0.1)
+
+**Goal:** Confirm that OS keychain credential storage never exposes, echoes, persists to disk, or
+logs the token value. Saving is optional; the keychain unavailable state is handled safely.
+
+**CS-01: Token never returned by commands.**
+- `get_credential_storage_status` result has no `token` or `secret` field.
+- `save_airtable_token_to_keychain` result has no `token` or `secret` field.
+- `remove_airtable_token_from_keychain` result has no `token` or `secret` field.
+- All three result structs are serialized to JSON; Rust unit tests assert no `"token"` or `"secret"` key appears.
+
+**CS-02: Token not in plaintext on disk.**
+- The token is forwarded to the OS keychain API via the `keyring` crate (`set_secret(bytes)`).
+- No file in the AirBridge application directory contains the token.
+- No SQLite database entry, `localStorage` entry, or `sessionStorage` entry contains the token.
+- The application data directory can be inspected to verify: no `.json`, `.db`, `.sqlite`, or `.log` file contains the token string.
+
+**CS-03: Token never in logs.**
+- The Rust commands pass the token from request to keychain without logging it.
+- All error paths map to `safe_message()` static strings — none contain the token value.
+- `ensure_no_token_in_message()` is applied to all display strings before they are returned.
+
+**CS-04: Token input is always masked in the UI.**
+- `CredentialStorageCard` renders the token input with `type="password"`.
+- The raw token value is never rendered outside the masked input.
+- After a successful save, the input is cleared (empty string) and removed from the DOM.
+- Frontend tests assert `screen.queryByTestId("credential-token-input") === null` after a save.
+
+**CS-05: No localStorage or sessionStorage usage.**
+- `CredentialStorageCard` does not call `localStorage.setItem` or `sessionStorage.setItem`.
+- Frontend tests spy on `Storage.prototype.setItem` and assert no call contains the token value or a credential-related key.
+
+**CS-06: `CredentialSaveRequest` is not serializable.**
+- `CredentialSaveRequest` in Rust derives `Deserialize` only — it cannot be serialized back to JSON.
+- The token cannot be included in any response, event, or log via accidental serialization.
+
+**CS-07: Keychain unavailable is handled safely.**
+- When `OsKeychainStore::availability()` returns `Unavailable`, all three commands return safe results with `hasSavedToken: false` and a static message — no token is inspected or returned.
+- The UI renders an unavailable notice and hides the token input and save button.
+- No error message contains the token value.
+
+**CS-08: Credential storage does not affect the restore write gate.**
+- `evaluate_write_gate()` returns `Disabled/DisabledByProductPolicy` regardless of whether a token is saved.
+- Rust unit test `credential_storage_does_not_affect_restore_write_gate` asserts the gate status is `Disabled` before and after a credential status check.
+- Saving a token via the mock service and then calling `previewRestoreWriteEngine` returns `status: "disabled"` — frontend tests assert this.
+
+**CS-09: Mock service stores presence only — not the token value.**
+- `_mockCredentialStore` is a `Map<CredentialKind, boolean>` — it records whether a save succeeded, not the token string.
+- `JSON.stringify(saveResult)` does not contain the test sentinel token — frontend tests assert this.
+
+**CS-10: IPC fallback results are safe.**
+- When Tauri IPC is unavailable, `liveAirBridgeService.saveAirtableTokenToKeychain()` returns a safe fallback with `success: false`, `hasSavedToken: false`, and a static unavailable message.
+- The fallback contains no token field and no token value.

@@ -14,6 +14,12 @@ import type {
   BackupPlanRequest,
   BaseSchemaSummary,
   ConnectionCheckResult,
+  CredentialRemoveRequest,
+  CredentialRemoveResult,
+  CredentialSaveRequest,
+  CredentialSaveResult,
+  CredentialStatusRequest,
+  CredentialStatusResult,
   JobHistoryFilter,
   JobHistoryListResult,
   OutputPathValidationResult,
@@ -139,4 +145,28 @@ export interface AirBridgeService {
    * - noChangesMade is always true.
    */
   previewRestoreWriteEngine(request: RestoreWriteEngineRequest): Promise<RestoreWriteEngineResult>;
+  /**
+   * Returns the OS keychain storage status for the Airtable token.
+   *
+   * - Never returns the token value.
+   * - Returns safe display string only.
+   */
+  getCredentialStorageStatus(request: CredentialStatusRequest): Promise<CredentialStatusResult>;
+  /**
+   * Saves an Airtable token to the OS keychain.
+   *
+   * - Token is forwarded to the Rust command only; never returned or stored here.
+   * - Returns success status and safe display string only.
+   * - No Airtable API calls.
+   */
+  saveAirtableTokenToKeychain(request: CredentialSaveRequest): Promise<CredentialSaveResult>;
+  /**
+   * Removes a saved Airtable token from the OS keychain.
+   *
+   * - Never returns the token.
+   * - Returns success status only.
+   */
+  removeAirtableTokenFromKeychain(
+    request: CredentialRemoveRequest,
+  ): Promise<CredentialRemoveResult>;
 }

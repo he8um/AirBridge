@@ -13,15 +13,49 @@ const DISABLED_RESULT: RestoreWriteEngineResult = {
   disabledReason: "disabledByProductPolicy",
   message: "Restore write execution is not enabled in this version. No Airtable changes are made.",
   phaseSummaries: [
-    { phase: "validateInputs", status: "disabled", noChangesMade: true, note: "Input validation completed. Write engine is disabled." },
-    { phase: "schemaCreation", status: "disabled", noChangesMade: true, note: "Schema creation disabled. Would create 3 table(s)." },
-    { phase: "recordCreation", status: "disabled", noChangesMade: true, note: "Record import disabled. 2 first-pass batch(es) planned." },
-    { phase: "linkedRecordUpdates", status: "disabled", noChangesMade: true, note: "Linked record updates disabled." },
-    { phase: "attachmentHandling", status: "disabled", noChangesMade: true, note: "Attachment handling disabled. Policy: MetadataOnly." },
-    { phase: "finalValidation", status: "disabled", noChangesMade: true, note: "Final validation not executed — write engine is disabled." },
+    {
+      phase: "validateInputs",
+      status: "disabled",
+      noChangesMade: true,
+      note: "Input validation completed. Write engine is disabled.",
+    },
+    {
+      phase: "schemaCreation",
+      status: "disabled",
+      noChangesMade: true,
+      note: "Schema creation disabled. Would create 3 table(s).",
+    },
+    {
+      phase: "recordCreation",
+      status: "disabled",
+      noChangesMade: true,
+      note: "Record import disabled. 2 first-pass batch(es) planned.",
+    },
+    {
+      phase: "linkedRecordUpdates",
+      status: "disabled",
+      noChangesMade: true,
+      note: "Linked record updates disabled.",
+    },
+    {
+      phase: "attachmentHandling",
+      status: "disabled",
+      noChangesMade: true,
+      note: "Attachment handling disabled. Policy: MetadataOnly.",
+    },
+    {
+      phase: "finalValidation",
+      status: "disabled",
+      noChangesMade: true,
+      note: "Final validation not executed — write engine is disabled.",
+    },
   ],
   events: [
-    { phase: "validateInputs", code: "WRITE_ENGINE_DISABLED", message: "Write engine is disabled by product policy." },
+    {
+      phase: "validateInputs",
+      code: "WRITE_ENGINE_DISABLED",
+      message: "Write engine is disabled by product policy.",
+    },
   ],
   noChangesMade: true,
 };
