@@ -7,13 +7,15 @@ This document lists known limitations of the current AirBridge release. Each lim
 ## Restore Write Engine Not Yet Enabled
 
 **Scope:** Restore functionality  
-**Status:** Safety gate, schema creation planning, and record import planning complete; write engine disabled
+**Status:** Safety gate, schema creation planning, record import planning, and write engine skeleton complete; write engine execution disabled
 
 The restore execution safety gate validates all preconditions (package inspection, dry-run plan, target mode, token, confirmation text) and returns `readyButDisabled`. No Airtable data is modified.
 
 The **schema creation planner** produces a full ordered plan (table steps, field steps, deferred linked fields, dependency graph) without making any Airtable API calls. No Airtable base, table, or field is created.
 
 The **record import planner** produces a complete import batch plan (per-table batch counts at batch size 10, field import policies, linked record second-pass update plans, attachment policies, old-to-new record ID mapping strategy, checkpoint plans, retry policy) without making any Airtable API calls. No Airtable records are created.
+
+The **write engine skeleton** (`preview_restore_write_engine`) produces a six-phase preview of what the write pipeline would execute — schema creation, record import, linked record updates, attachment handling, and validation — using counts from the existing planning outputs. No token is required. No Airtable calls are made. All phases are disabled. `noChangesMade` is always true.
 
 **Old-to-new record ID mapping** — The import plan describes the `MapSourceRecordIdToCreatedRecordId` strategy. Actual new record IDs are only available after first-pass record creation, which requires the write engine. ID mapping cannot be resolved at planning time.
 

@@ -33,6 +33,8 @@ import type {
   RestoreRecordImportPlanRequest,
   RestoreSchemaPlan,
   RestoreSchemaPlanRequest,
+  RestoreWriteEngineRequest,
+  RestoreWriteEngineResult,
   RunBackupCommandRequest,
   RunBackupCommandResponse,
   TableExportPlan,
@@ -1422,6 +1424,64 @@ function clearJobHistoryImpl(): Promise<number> {
   return Promise.resolve(0);
 }
 
+function previewRestoreWriteEngineImpl(
+  request: RestoreWriteEngineRequest,
+): Promise<RestoreWriteEngineResult> {
+  return Promise.resolve({
+    filename: request.packageFilename,
+    status: "disabled" as const,
+    disabledReason: "disabledByProductPolicy" as const,
+    message:
+      "Restore write execution is not enabled in this version. No Airtable changes are made.",
+    phaseSummaries: [
+      {
+        phase: "validateInputs" as const,
+        status: "disabled" as const,
+        noChangesMade: true,
+        note: "Input validation completed. Write engine is disabled.",
+      },
+      {
+        phase: "schemaCreation" as const,
+        status: "disabled" as const,
+        noChangesMade: true,
+        note: `Schema creation disabled. Would create ${request.schemaTableCount ?? 0} table(s).`,
+      },
+      {
+        phase: "recordCreation" as const,
+        status: "disabled" as const,
+        noChangesMade: true,
+        note: `Record import disabled. ${request.estimatedFirstPassBatches ?? 0} first-pass batch(es) planned.`,
+      },
+      {
+        phase: "linkedRecordUpdates" as const,
+        status: "disabled" as const,
+        noChangesMade: true,
+        note: "Linked record updates disabled.",
+      },
+      {
+        phase: "attachmentHandling" as const,
+        status: "disabled" as const,
+        noChangesMade: true,
+        note: "Attachment handling disabled. Policy: MetadataOnly.",
+      },
+      {
+        phase: "finalValidation" as const,
+        status: "disabled" as const,
+        noChangesMade: true,
+        note: "Final validation not executed — write engine is disabled.",
+      },
+    ],
+    events: [
+      {
+        phase: "validateInputs" as const,
+        code: "WRITE_ENGINE_DISABLED",
+        message: "Write engine is disabled by product policy.",
+      },
+    ],
+    noChangesMade: true,
+  });
+}
+
 export const mockAirBridgeService: AirBridgeService = {
   listConnections,
   listWorkspaces,
@@ -1447,4 +1507,5 @@ export const mockAirBridgeService: AirBridgeService = {
   createRestoreRecordImportPlan: createRestoreRecordImportPlanImpl,
   listJobHistory: listJobHistoryImpl,
   clearJobHistory: clearJobHistoryImpl,
+  previewRestoreWriteEngine: previewRestoreWriteEngineImpl,
 };

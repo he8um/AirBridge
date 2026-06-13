@@ -27,6 +27,8 @@ import type {
   RestoreRecordImportPlanRequest,
   RestoreSchemaPlan,
   RestoreSchemaPlanRequest,
+  RestoreWriteEngineRequest,
+  RestoreWriteEngineResult,
   RunBackupCommandRequest,
   RunBackupCommandResponse,
 } from "../backend/types";
@@ -303,6 +305,24 @@ async function clearJobHistory(): Promise<number> {
   return (await commands.clearJobHistory()) ?? 0;
 }
 
+async function previewRestoreWriteEngine(
+  request: RestoreWriteEngineRequest,
+): Promise<RestoreWriteEngineResult> {
+  const result = await commands.previewRestoreWriteEngine(request);
+  if (result === null) {
+    return {
+      filename: request.packageFilename,
+      status: "disabled",
+      disabledReason: "notAvailable",
+      message: "Write engine skeleton preview is unavailable in this context.",
+      phaseSummaries: [],
+      events: [],
+      noChangesMade: true,
+    };
+  }
+  return result;
+}
+
 export const liveAirBridgeService: AirBridgeService = {
   listConnections,
   listWorkspaces,
@@ -328,4 +348,5 @@ export const liveAirBridgeService: AirBridgeService = {
   createRestoreRecordImportPlan,
   listJobHistory,
   clearJobHistory,
+  previewRestoreWriteEngine,
 };

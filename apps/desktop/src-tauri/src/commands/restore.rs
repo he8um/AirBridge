@@ -11,6 +11,8 @@ use crate::restore::record_import_plan::{RestoreRecordImportPlan, RestoreRecordI
 use crate::restore::record_import_planner::create_record_import_plan;
 use crate::restore::schema_plan::{RestoreSchemaPlan, RestoreSchemaPlanRequest};
 use crate::restore::schema_planner::create_schema_plan;
+use crate::restore::write_engine::{preview_write_engine, RestoreWriteEngineRequest};
+use crate::restore::write_result::RestoreWriteEngineResult;
 
 #[tauri::command]
 pub fn list_restore_plans() -> AirBridgeResult<Vec<RestorePlanSummary>> {
@@ -92,6 +94,21 @@ pub fn create_restore_record_import_plan(
 pub fn run_restore_execution(request: RestoreExecutionRequest) -> RestoreExecutionResult {
     // Token is forwarded to the gate for presence check only; it is not stored or logged.
     validate_restore_execution_gate(&request)
+}
+
+/// Produces a write engine skeleton preview from existing planning outputs.
+///
+/// - No token field — no Airtable access required.
+/// - No Airtable API calls.
+/// - No file writes.
+/// - Never echoes the package path.
+/// - Always sets no_changes_made: true.
+/// - Status is always disabled — never succeeded.
+#[tauri::command]
+pub fn preview_restore_write_engine(
+    request: RestoreWriteEngineRequest,
+) -> RestoreWriteEngineResult {
+    preview_write_engine(&request)
 }
 
 #[cfg(test)]
@@ -575,5 +592,85 @@ mod tests {
         let plan = create_restore_record_import_plan(req);
         let json = serde_json::to_string(&plan).expect("serialize");
         assert!(json.contains("noChangesMade"));
+    }
+
+    // ── write engine command tests ─────────────────────────────────────────
+
+    use crate::restore::write_result::RestoreWriteEngineStatus;
+
+    fn write_engine_request() -> RestoreWriteEngineRequest {
+        RestoreWriteEngineRequest {
+            package_filename: "backup.airbridge".to_string(),
+            package_path: "/tmp/backup.airbridge".to_string(),
+            schema_table_count: 2,
+            schema_direct_field_count: 8,
+            schema_deferred_field_count: 1,
+            schema_manual_action_count: 0,
+            schema_unsupported_count: 0,
+            estimated_first_pass_batches: 3,
+            estimated_second_pass_batches: 1,
+            linked_record_update_count: 2,
+        }
+    }
+
+    #[test]
+    fn write_engine_command_returns_disabled() {
+        let req = write_engine_request();
+        let result = preview_restore_write_engine(req);
+        assert_eq!(result.status, RestoreWriteEngineStatus::Disabled);
+    }
+
+    #[test]
+    fn write_engine_command_no_changes_made_is_true() {
+        let req = write_engine_request();
+        let result = preview_restore_write_engine(req);
+        assert!(result.no_changes_made);
+    }
+
+    #[test]
+    fn write_engine_command_does_not_require_token() {
+        let req = write_engine_request();
+        let json = serde_json::to_string(&req).expect("serialize");
+        assert!(!json.contains("\"token\""));
+        assert!(!json.contains("\"apiKey\""));
+    }
+
+    #[test]
+    fn write_engine_command_result_has_no_token() {
+        let req = write_engine_request();
+        let result = preview_restore_write_engine(req);
+        let json = serde_json::to_string(&result).expect("serialize");
+        assert!(!json.contains("\"token\""));
+        assert!(!json.contains("\"apiKey\""));
+    }
+
+    #[test]
+    fn write_engine_command_result_has_no_absolute_path() {
+        let req = write_engine_request();
+        let result = preview_restore_write_engine(req);
+        let json = serde_json::to_string(&result).expect("serialize");
+        assert!(!json.contains("/tmp/"));
+    }
+
+    #[test]
+    fn write_engine_command_result_has_no_succeeded_status() {
+        let req = write_engine_request();
+        let result = preview_restore_write_engine(req);
+        let json = serde_json::to_string(&result).expect("serialize");
+        assert!(!json.contains("\"succeeded\""));
+        assert!(!json.contains("Succeeded"));
+    }
+
+    #[test]
+    fn write_engine_command_frontend_contract_is_safe() {
+        let req = write_engine_request();
+        let result = preview_restore_write_engine(req);
+        // status must be disabled or blocked — never succeeded
+        assert!(
+            result.status == RestoreWriteEngineStatus::Disabled
+                || result.status == RestoreWriteEngineStatus::Blocked
+        );
+        assert!(result.no_changes_made);
+        assert!(!result.filename.contains('/'));
     }
 }

@@ -6,14 +6,17 @@ import { RestoreDryRunPanel } from "../features/backups/RestoreDryRunPanel";
 import { RestoreExecutionGatePanel } from "../features/backups/RestoreExecutionGatePanel";
 import { RestoreRecordImportPlanPanel } from "../features/backups/RestoreRecordImportPlanPanel";
 import { RestoreSchemaPlanPanel } from "../features/backups/RestoreSchemaPlanPanel";
+import { RestoreWriteEnginePanel } from "../features/backups/RestoreWriteEnginePanel";
 import { liveAirBridgeService } from "../services/liveAirBridgeService";
 import type { BackupPackageInspectionResult } from "../backend/types";
 import type {
   RecordImportTableInput,
   RestoreDryRunPlan,
   RestoreRecordImportPlanStatus,
+  RestoreSchemaPlan,
   RestoreSchemaPlanRequest,
   RestoreTargetMode,
+  RestoreWriteEngineResult,
 } from "../backend/types";
 
 export function RestorePage() {
@@ -31,7 +34,11 @@ export function RestorePage() {
   const [schemaPlanStatus, setSchemaPlanStatus] = useState<RestoreRecordImportPlanStatus | null>(
     null,
   );
+  const [schemaPlan, setSchemaPlan] = useState<RestoreSchemaPlan | null>(null);
   const [recordImportTables, setRecordImportTables] = useState<RecordImportTableInput[]>([]);
+  const [writeEngineResult, setWriteEngineResult] = useState<RestoreWriteEngineResult | null>(
+    null,
+  );
 
   return (
     <div className="page">
@@ -139,6 +146,7 @@ export function RestorePage() {
                   : []
               }
               onPlanReady={(plan) => {
+                setSchemaPlan(plan);
                 setSchemaPlanStatus(plan.status as RestoreRecordImportPlanStatus);
                 setRecordImportTables(
                   dryRunPlan
@@ -157,6 +165,22 @@ export function RestorePage() {
                       }))
                     : [],
                 );
+                // Request the write engine skeleton preview using counts from the schema plan.
+                // No token required. No Airtable calls are made.
+                liveAirBridgeService
+                  .previewRestoreWriteEngine({
+                    packageFilename: plan.filename,
+                    packagePath: packagePath ?? "",
+                    schemaTableCount: plan.tableSteps.length,
+                    schemaDirectFieldCount: plan.fieldSteps.length,
+                    schemaDeferredFieldCount: plan.deferredSteps.length,
+                    schemaManualActionCount: plan.manualActionFields.length,
+                    schemaUnsupportedCount: 0,
+                  })
+                  .then(setWriteEngineResult)
+                  .catch(() => {
+                    setWriteEngineResult(null);
+                  });
               }}
             />
 
@@ -191,6 +215,11 @@ export function RestorePage() {
               targetMode={targetMode}
               targetBaseName={targetBaseName}
             />
+
+            <div className="divider" style={{ margin: 0 }} />
+
+            {/* Write engine skeleton — always shows disabled notice; shows preview when schema plan is ready */}
+            <RestoreWriteEnginePanel result={schemaPlan !== null ? writeEngineResult : null} />
 
             <div className="divider" style={{ margin: 0 }} />
 

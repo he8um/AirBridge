@@ -27,6 +27,8 @@ import type {
   RestoreRecordImportPlanRequest,
   RestoreSchemaPlan,
   RestoreSchemaPlanRequest,
+  RestoreWriteEngineRequest,
+  RestoreWriteEngineResult,
   RunBackupCommandRequest,
   RunBackupCommandResponse,
 } from "../backend/types";
@@ -127,4 +129,14 @@ export interface AirBridgeService {
    * In V0.1 this is a no-op (no persistent store). Returns count cleared (0).
    */
   clearJobHistory(): Promise<number>;
+  /**
+   * Produces a write engine skeleton preview from existing planning outputs.
+   *
+   * - No token field — no Airtable access required.
+   * - No Airtable API calls.
+   * - No file writes.
+   * - Returns disabled status — never succeeded.
+   * - noChangesMade is always true.
+   */
+  previewRestoreWriteEngine(request: RestoreWriteEngineRequest): Promise<RestoreWriteEngineResult>;
 }

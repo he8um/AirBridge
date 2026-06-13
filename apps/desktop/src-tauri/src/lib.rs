@@ -48,6 +48,7 @@ pub fn run() {
             commands::restore::create_restore_schema_plan,
             commands::restore::create_restore_record_import_plan,
             commands::restore::run_restore_execution,
+            commands::restore::preview_restore_write_engine,
             commands::history::list_job_history,
             commands::history::clear_job_history,
             commands::reports::list_reports,

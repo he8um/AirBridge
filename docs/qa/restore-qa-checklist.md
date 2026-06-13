@@ -163,6 +163,40 @@ After completing a restore, perform the following manual checks in Airtable:
 
 ---
 
+## Write Engine Skeleton Checklist
+
+### Before testing
+
+- [ ] Confirm `preview_restore_write_engine` is registered in the Tauri invoke handler.
+- [ ] Confirm `RestoreWriteEnginePanel` is rendered on the Restore page.
+- [ ] Confirm no Airtable credentials, no base ID, and no token appear in the write engine request.
+
+### Write engine disabled notice
+
+- [ ] The "Write engine" section is visible on the Restore page at all times.
+- [ ] The disabled notice reads "Restore write execution is not enabled in this version."
+- [ ] The disabled notice is always visible, regardless of whether a schema plan is ready.
+
+### Write engine preview (after schema plan is ready)
+
+- [ ] After the schema plan loads, the write engine skeleton preview appears.
+- [ ] "No Airtable changes were made." is visible.
+- [ ] Six phase rows are shown: validateInputs, schemaCreation, recordCreation, linkedRecordUpdates, attachmentHandling, finalValidation.
+- [ ] All phase rows have disabled status.
+- [ ] No execute button is shown.
+- [ ] No token input is shown.
+- [ ] No success message is shown.
+
+### Safety invariants
+
+- [ ] `noChangesMade` is `true` in every write engine result (confirmed via unit tests).
+- [ ] The write engine request contains no token field.
+- [ ] The write engine result contains no full path.
+- [ ] The write engine result status is never `"succeeded"`.
+- [ ] `evaluate_write_gate()` always returns `Disabled/DisabledByProductPolicy` (confirmed via unit tests).
+
+---
+
 ## Notes and Failures
 
 Record any failures here with a brief description and steps to reproduce.

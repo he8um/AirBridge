@@ -25,7 +25,7 @@ This matrix describes the current status of each feature area. Status values:
 | Restore execution gate | Complete | Available — Restore page | All preconditions validated; token checked for presence only; write engine disabled; `noChangesMade` always true | Enable write engine |
 | Restore schema creation plan | Complete | Available — Restore page | No token; no Airtable calls; no writes; table-first ordering; field classification; dependency graph; `noChangesMade` always true | None |
 | Restore record import plan | Complete | Available — Restore page | No token; no Airtable calls; no writes; batch planning (size 10); field import policies; linked record second-pass; attachment metadata; checkpoint; retry policy; `noChangesMade` always true | None |
-| Restore write engine | Disabled | Not available — returns `readyButDisabled` | No Airtable writes in this version | Implement write engine, linked record remapping, post-restore verification |
+| Restore write engine | Disabled (skeleton) | Skeleton preview available — Restore page | No Airtable writes; no token required; all phases disabled; `noChangesMade` always true | Enable write execution, linked record remapping, post-restore verification |
 | Credential / token storage | Planned | Not available | Tokens must be entered per-operation | OS keychain integration |
 | Local job history | Complete | Available — Reports page | Memory-only; no tokens; no full paths; no record payloads; summary-level only | SQLite persistence deferred |
 | Streaming progress events | Planned | Not available | — | Tauri event stream |

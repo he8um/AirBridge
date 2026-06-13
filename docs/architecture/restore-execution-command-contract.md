@@ -168,10 +168,27 @@ The phrase is defined as `RESTORE_CONFIRMATION_PHRASE` in Rust and re-exported a
 - This is not a dry-run. The dry-run planner is a separate subsystem (`restore/dry_run.rs`).
 - This is not a token validator. The token is checked for presence only; its validity is not verified against Airtable in this step.
 
+## Write Engine Skeleton
+
+The `preview_restore_write_engine` command complements this contract. It accepts counts from
+the existing schema and record import plans — no token required — and returns a disabled-status
+skeleton preview showing what the write engine would execute if enabled. The write engine command
+is architecturally separate from the execution gate:
+
+- The execution gate (`run_restore_execution`) validates prerequisites and returns
+  `ReadyButDisabled` or `Blocked`. It requires a token (presence-checked only, not used).
+- The write engine skeleton (`preview_restore_write_engine`) summarizes the planned pipeline
+  from existing counts. It never requires a token and never calls the Airtable API.
+
+Both commands enforce `no_changes_made: true` structurally and neither has a success status.
+
+See [Restore Write Engine Skeleton](restore-write-engine-skeleton.md) for full details.
+
 ## Related Documents
 
 - [Restore Dry-Run Planning](restore-dry-run-planning.md)
 - [Restore Engine](restore-engine.md)
+- [Restore Write Engine Skeleton](restore-write-engine-skeleton.md)
 - [Safe Backup Command Contract](safe-backup-command-contract.md)
 - [Security Architecture](security-architecture.md)
 - [Tauri Command Boundary](tauri-command-boundary.md)

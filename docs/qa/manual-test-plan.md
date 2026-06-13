@@ -818,3 +818,43 @@ These test cases cover the command contract layer: confirmation enforcement, out
 - Steps:
   1. Read the note below the activity list.
 - Expected result: A note states that activity is memory-only and does not persist between sessions.
+
+---
+
+## Write Engine Skeleton
+
+**TC-WE-01: Write engine disabled notice is always visible**
+
+- Preconditions: Restore page open; no backup file selected.
+- Steps:
+  1. Scroll to the "Write Engine" section.
+- Expected result: A notice reads "Restore write execution is not enabled in this version." No execute button is shown. No token field is shown.
+
+**TC-WE-02: Write engine preview appears after schema plan**
+
+- Preconditions: A backup file has been inspected, a dry-run plan created, and a schema creation plan generated.
+- Steps:
+  1. Wait for the schema creation plan to load.
+  2. Observe the Write Engine section.
+- Expected result: A "No Airtable changes were made." notice appears. Six phase rows appear, all with disabled status. Notes describe what each phase would do if enabled.
+
+**TC-WE-03: No execute button and no token input in write engine panel**
+
+- Preconditions: Restore page open with a schema plan loaded.
+- Steps:
+  1. Inspect the Write Engine section.
+- Expected result: No button with text like "Execute", "Run", or "Start" is visible. No password or token input field is visible.
+
+**TC-WE-04: No success message**
+
+- Preconditions: Any state.
+- Steps:
+  1. Inspect the Write Engine section and all visible text on the Restore page.
+- Expected result: No text containing "Restore complete", "Restore succeeded", "succeeded", or "success" is visible anywhere in the write engine area.
+
+**TC-WE-05: Phase rows cover all six pipeline phases**
+
+- Preconditions: Schema plan is loaded so the preview is visible.
+- Steps:
+  1. Count the phase rows in the Write Engine section.
+- Expected result: Exactly six rows appear, one for each phase: validateInputs, schemaCreation, recordCreation, linkedRecordUpdates, attachmentHandling, finalValidation.

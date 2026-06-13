@@ -1031,3 +1031,85 @@ export interface JobHistoryListResult {
   totalCount: number;
   filtered: boolean;
 }
+
+// ─── Restore Write Engine Skeleton ───────────────────────────────────────────
+
+/**
+ * Status of a write engine skeleton preview.
+ * Note: "succeeded" is intentionally absent — the write engine is not enabled.
+ */
+export type RestoreWriteEngineStatus = "disabled" | "blocked" | "notStarted";
+
+/** Pipeline phase identifiers for the write engine. */
+export type RestoreWritePhase =
+  | "validateInputs"
+  | "schemaCreation"
+  | "recordCreation"
+  | "linkedRecordUpdates"
+  | "attachmentHandling"
+  | "finalValidation";
+
+/** Why restore writes are disabled or blocked. */
+export type RestoreWriteDisabledReason =
+  | "disabledByProductPolicy"
+  | "blockedByInvalidPlan"
+  | "blockedByMissingConfirmation"
+  | "blockedByTargetSafety"
+  | "notAvailable";
+
+/** An event emitted during write engine skeleton evaluation. */
+export interface RestoreWriteEvent {
+  phase: RestoreWritePhase;
+  code: string;
+  message: string;
+}
+
+/** Per-phase status summary for one write engine phase. */
+export interface RestoreWritePhaseSummary {
+  phase: RestoreWritePhase;
+  status: RestoreWriteEngineStatus;
+  /** Always true — no changes made. */
+  noChangesMade: boolean;
+  note: string;
+}
+
+/**
+ * Input for the write engine skeleton preview command.
+ *
+ * - No token field — no Airtable access required.
+ * - Counts are derived from existing planning outputs.
+ */
+export interface RestoreWriteEngineRequest {
+  /** Filename-only identifier from the most recent package inspection. */
+  packageFilename: string;
+  /** Full path — used to derive filename; never echoed in the result. */
+  packagePath: string;
+  schemaTableCount?: number;
+  schemaDirectFieldCount?: number;
+  schemaDeferredFieldCount?: number;
+  schemaManualActionCount?: number;
+  schemaUnsupportedCount?: number;
+  estimatedFirstPassBatches?: number;
+  estimatedSecondPassBatches?: number;
+  linkedRecordUpdateCount?: number;
+}
+
+/**
+ * Result of the write engine skeleton preview.
+ *
+ * - No token.
+ * - No absolute path — filename only.
+ * - noChangesMade is always true.
+ * - status is always disabled or blocked — never succeeded.
+ */
+export interface RestoreWriteEngineResult {
+  /** Filename only — never the full path. */
+  filename: string;
+  status: RestoreWriteEngineStatus;
+  disabledReason: RestoreWriteDisabledReason;
+  message: string;
+  phaseSummaries: RestoreWritePhaseSummary[];
+  events: RestoreWriteEvent[];
+  /** Always true — no Airtable changes were made. */
+  noChangesMade: boolean;
+}

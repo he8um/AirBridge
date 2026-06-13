@@ -21,6 +21,8 @@ import type {
   RestoreRecordImportPlanRequest,
   RestoreSchemaPlan,
   RestoreSchemaPlanRequest,
+  RestoreWriteEngineRequest,
+  RestoreWriteEngineResult,
   RunBackupCommandRequest,
   RunBackupCommandResponse,
 } from "./types";
@@ -247,4 +249,19 @@ export async function listJobHistory(
  */
 export async function clearJobHistory(): Promise<number | null> {
   return safeInvoke<number>("clear_job_history");
+}
+
+/**
+ * Produces a write engine skeleton preview from existing planning outputs.
+ *
+ * - No token field — no Airtable access required.
+ * - No Airtable API calls.
+ * - No file writes.
+ * - Returns disabled status — never succeeded.
+ * - Returns null if Tauri IPC is unavailable.
+ */
+export async function previewRestoreWriteEngine(
+  request: RestoreWriteEngineRequest,
+): Promise<RestoreWriteEngineResult | null> {
+  return safeInvoke<RestoreWriteEngineResult>("preview_restore_write_engine", { request });
 }
