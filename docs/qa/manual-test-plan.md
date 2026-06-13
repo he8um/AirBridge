@@ -1019,3 +1019,49 @@ These test cases cover the command contract layer: confirmation enforcement, out
 - Steps:
   1. Call `liveAirBridgeService.previewRecordWriteRequestPlan(request)` in a jsdom context.
 - Expected result: Returns `status: "disabled"`, all op counts 0, `noChangesMade: true`, `networkWritesAttempted: false`. No token in the result.
+
+---
+
+## Live Write Safety Contract Non-Regression
+
+**TC-LW-01: Write gate still disabled**
+
+- Preconditions: Release build.
+- Steps:
+  1. Run `cargo test -- write_safety_contract` in the Rust test suite.
+- Expected result: All 20 tests pass. `contract_01_write_gate_always_disabled` passes.
+
+**TC-LW-02: No Succeeded status in serialized output**
+
+- Preconditions: Any state.
+- Steps:
+  1. Run `cargo test -- contract_02` in the Rust test suite.
+- Expected result: All three `contract_02_*` tests pass. No serialized status value contains `"succeeded"`.
+
+**TC-LW-03: noChangesMade invariant across all write types**
+
+- Preconditions: Any state.
+- Steps:
+  1. Run `cargo test -- contract_03` in the Rust test suite.
+- Expected result: All three `contract_03_*` tests pass. Safety report, schema dry-run, and record dry-run all set `noChangesMade: true`.
+
+**TC-LW-04: No token or full path in any write result**
+
+- Preconditions: Any state.
+- Steps:
+  1. Run `cargo test -- contract_12 contract_15` in the Rust test suite.
+- Expected result: All `contract_12_*` and `contract_15_*` tests pass. No serialized result contains `"token"`, `"apiKey"`, `/Users/`, `/home/`, or `/tmp/`.
+
+**TC-LW-05: Attachment phase still produces zero ops with no attachment fields**
+
+- Preconditions: Any state.
+- Steps:
+  1. Run `cargo test -- contract_16` in the Rust test suite.
+- Expected result: Both `contract_16_*` tests pass. `writes_enabled` is `false`. Empty attachment field count produces `attachment_op_count: 0`.
+
+**TC-LW-06: No write endpoint reachable from any restore planning path**
+
+- Preconditions: Source code.
+- Steps:
+  1. `grep -r "create_records\|update_records\|delete_records\|create_table\|create_field" apps/desktop/src-tauri/src/restore/`
+- Expected result: Zero matches. No Airtable write endpoint is called from any file in the restore module.

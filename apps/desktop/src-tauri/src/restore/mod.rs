@@ -29,3 +29,4 @@ pub mod write_engine;
 pub mod write_gate;
 pub mod write_result;
 pub mod write_safety;
+pub mod write_safety_contract;

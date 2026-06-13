@@ -1,0 +1,188 @@
+# Live Restore Write Safety Checklist
+
+Use this checklist to verify that all safety gates defined in the live restore write safety contract are satisfied before any live Airtable write path is enabled. Every item must be marked Pass (P) before `evaluate_write_gate()` may return an enabled decision.
+
+**Review date:** ___________  
+**Reviewer:** ___________  
+**Build version:** ___________  
+**Target scope:** ___________  
+
+---
+
+## Gate 1 — Current State Verification (Must Pass Before Any Other Gate)
+
+- [ ] **Write gate still disabled.** `evaluate_write_gate()` returns `Disabled/DisabledByProductPolicy`. No branch exists that returns an enabled decision.
+- [ ] **No `Succeeded` status.** `RestoreWriteEngineStatus` has no `Succeeded` variant. Confirm by grepping the Rust source: `grep -r "Succeeded" apps/desktop/src-tauri/src/restore/` returns no results in `write_result.rs`.
+- [ ] **`noChangesMade` always true.** All write engine result types set `no_changes_made: true`. Rust tests confirm this for every code path.
+- [ ] **`networkWritesAttempted` always false.** Schema and record write foundation result types set `network_writes_attempted: false`. Rust tests confirm this.
+- [ ] **887+ Rust unit tests pass.** `cargo test --lib` exits 0 with no failures.
+- [ ] **542+ frontend tests pass.** `vitest run` exits 0 with no failures.
+
+---
+
+## Gate 2 — Sandbox Testing
+
+- [ ] **Sandbox base designated.** A dedicated empty Airtable base exists for write testing. Its base ID is in test configuration only, not in release code.
+- [ ] **Schema creation phase tested in sandbox.** CreateTable, CreateField, and DeferLinkedField operations complete successfully against the sandbox base.
+- [ ] **Record creation phase tested in sandbox.** CreateRecordBatch operations complete with correct field values. Record count in target matches expected count.
+- [ ] **Linked second-pass tested in sandbox.** UpdateLinkedRecordBatch operations complete after first-pass records exist. Linked field values point to new record IDs, not source IDs.
+- [ ] **Final validation phase tested in sandbox.** Record and table counts verified; `Succeeded` status only set after validation passes.
+- [ ] **Sandbox base deleted after test.** No production data affected.
+
+---
+
+## Gate 3 — User Confirmation
+
+- [ ] **Confirmation phrase enforced at Rust level.** The Rust command rejects any confirmation that is not exactly `"RESTORE BACKUP"`.
+- [ ] **Partial match rejected.** `"restore backup"` (lowercase), `"RESTORE"`, `"BACKUP"`, `" RESTORE BACKUP "` (extra spaces) all fail the check.
+- [ ] **Confirmation phrase shown in UI.** The user sees the phrase they must type before the input field is rendered.
+- [ ] **No auto-fill.** The confirmation input is never pre-filled programmatically.
+- [ ] **Confirmation constant shared.** A single Rust constant and a single TypeScript constant both hold `"RESTORE BACKUP"`. Tests use these constants, not inline strings.
+
+---
+
+## Gate 4 — Target Base Safety
+
+- [ ] **Empty-base check implemented.** Before the first write, the Airtable schema API is called to verify the target base has zero tables.
+- [ ] **Non-empty base rejected.** If the target base contains any tables, the write engine stops with a `BlockedByTargetSafety` reason before any write is attempted.
+- [ ] **New-base creation verified.** If target mode is "new base", the created base ID is confirmed before the schema phase begins.
+- [ ] **Target base ID not in public result.** The target base ID does not appear in any result, log line, or job history item.
+
+---
+
+## Gate 5 — No Destructive Operations
+
+- [ ] **No delete record calls.** Grep confirms no `DELETE /v0/` record endpoint is called anywhere in the write path.
+- [ ] **No delete table calls.** Grep confirms no table deletion API call exists.
+- [ ] **No delete field calls.** Grep confirms no field deletion API call exists.
+- [ ] **No PATCH/PUT on existing records outside second pass.** The only PATCH calls are in the `UpdateLinkedRecordBatch` phase.
+- [ ] **No record creation in non-target base.** The base ID used for every write call matches the confirmed target base ID.
+
+---
+
+## Gate 6 — Write Phase Ordering
+
+- [ ] **Tables created before fields.** `CreateTable` operations all complete before any `CreateField` operation begins.
+- [ ] **Fields created before records.** `CreateField` and `DeferLinkedField` operations complete before any `CreateRecordBatch` begins.
+- [ ] **Records created before linked second pass.** All `CreateRecordBatch` first-pass operations complete before any `UpdateLinkedRecordBatch` begins.
+- [ ] **ID mapping complete before second pass.** The old-to-new record ID mapping is fully populated for all tables with linked fields before `UpdateLinkedRecordBatch` operations issue any PATCH call.
+- [ ] **Phase ordering enforced in code.** The write engine does not proceed to the next phase if the current phase contains a non-retryable failure.
+
+---
+
+## Gate 7 — Checkpoint Safety
+
+- [ ] **Checkpoint before each batch.** A durable checkpoint is written before each `CreateRecordBatch` operation begins.
+- [ ] **Checkpoint before second pass.** A durable checkpoint records first-pass completion before `UpdateLinkedRecordBatch` begins.
+- [ ] **Resumption tested.** Simulate an interrupted write at batch 2 of 5. Confirm that re-running the write engine resumes from batch 2, not from batch 1.
+- [ ] **No duplicate records on resume.** Records created before the interruption are not re-created on resume.
+
+---
+
+## Gate 8 — Rate Limit and Backoff
+
+- [ ] **429 triggers backoff.** A 429 response from the Airtable API pauses the write engine and waits before retrying.
+- [ ] **Initial backoff ≥ 1 000 ms.** The first retry waits at least one second.
+- [ ] **Backoff multiplier ≥ 2×.** Subsequent retries wait progressively longer.
+- [ ] **Maximum retries ≥ 5.** After 5 retries on the same batch, the operation fails permanently.
+- [ ] **Retry policy from record import planner.** The `RestoreRetryPolicy` values from the record import plan are used — not new hardcoded values.
+- [ ] **Rate-limit event in restore report.** When a 429 is encountered, a rate-limit event appears in the restore report.
+- [ ] **No write during backoff.** The Airtable API is not called during the backoff wait period.
+
+---
+
+## Gate 9 — Failure Modes
+
+- [ ] **401 stops execution.** An authentication error stops all further writes. "Token invalid" message shown. No further API calls.
+- [ ] **403 stops execution.** A permission error stops all further writes. "Permission denied" message shown.
+- [ ] **Base/table 404 stops phase.** A 404 on the target base or table stops the affected phase. Other phases are not attempted.
+- [ ] **Schema conflict (422) handled.** A 422 on field creation adds the field to the manual-action list and continues to the next field.
+- [ ] **5xx retried, then failed permanently.** After max retries on a 5xx, the operation is marked failed. Partial failure is reported.
+- [ ] **Checkpoint failure stops execution.** If a checkpoint cannot be written (disk full, permission denied), the write engine stops and does not attempt the next batch.
+- [ ] **Partial failure report is accurate.** The restore report identifies every table, batch, and field that succeeded or failed.
+
+---
+
+## Gate 10 — Rollback Limitation Notice
+
+- [ ] **Notice shown in UI before confirmation.** Before the user types `"RESTORE BACKUP"`, a notice reads: "Restore cannot be automatically rolled back. If execution fails partway through, the partially-created base must be cleaned up manually."
+- [ ] **Notice not dismissable.** The notice is always visible when the confirmation input is shown — it is not collapsible or behind a toggle.
+- [ ] **Report identifies partial state.** After a partial failure, the restore report shows exactly which tables and record batches were written before the failure.
+
+---
+
+## Gate 11 — Final Validation
+
+- [ ] **`FinalValidation` phase implemented.** A `FinalValidation` phase exists in the write engine and runs after all record writes complete.
+- [ ] **Record count check.** `FinalValidation` verifies the record count in the target base matches the count in the backup manifest.
+- [ ] **Table presence check.** `FinalValidation` verifies all tables from the manifest are present in the target base.
+- [ ] **`Succeeded` only after validation passes.** The write engine result is only allowed to carry `Succeeded` status when `FinalValidation` completes without error.
+- [ ] **`Succeeded` status added only when this gate is complete.** The `RestoreWriteEngineStatus::Succeeded` variant is not added until `FinalValidation` is implemented and this checklist item is marked Pass.
+
+---
+
+## Gate 12 — Token Safety During Live Writes
+
+- [ ] **Token not in any write engine result.** `RestoreWriteEngineResult` has no token field. `JSON.stringify(result)` does not contain the token string.
+- [ ] **Token not in any job history item.** After a live restore, `list_job_history` response does not contain the token.
+- [ ] **Token not in any log line.** Log file does not contain the token string after a live restore.
+- [ ] **Token cleared after execution.** In-memory token state in the UI is cleared after the write completes (success, failure, or partial).
+- [ ] **`RestoreExecutionRequest` still non-serializable.** The struct derives `Deserialize` only. `serde_json::to_string(&request)` must fail to compile.
+
+---
+
+## Gate 13 — Path Safety During Live Writes
+
+- [ ] **Full path not in any result.** `RestoreWriteEngineResult.filename` contains only the basename.
+- [ ] **`Path::file_name()` applied.** Confirmed by code review that all result filenames are derived via `Path::file_name()`.
+- [ ] **Full path not in any event.** `RestoreWriteEvent.message` does not contain absolute path components.
+- [ ] **Full path not in any log line.** Log file does not contain `/Users/`, `/home/`, or `:\\` after a live restore.
+
+---
+
+## Gate 14 — Attachment Phase Disabled
+
+- [ ] **`AttachmentHandling` phase remains disabled.** The phase produces a disabled-status summary with zero operations.
+- [ ] **No attachment upload API call.** Grep confirms no attachment upload endpoint (`/v0/{baseId}/{tableId}/{recordId}/files` or similar) is called.
+- [ ] **All attachment fields use `MetadataOnly` policy.** The record import plan continues to assign `MetadataOnly` to all attachment fields.
+- [ ] **Restore report notes manual re-attachment.** The report explicitly states that attachment fields require manual re-attachment after restore.
+
+---
+
+## Gate 15 — No Prohibited Terms in Public Files
+
+- [ ] **Full prohibited terms scan passes.** `grep -RniE 'claude|anthropic|chatgpt|openai|ai-generated|ai-assisted|agent|llm|co-authored|generated with|generated by'` returns no hits in source, docs, or config files.
+
+---
+
+## Summary
+
+| Gate | Description | Status |
+|------|-------------|--------|
+| 1 | Current state verification | ☐ |
+| 2 | Sandbox testing | ☐ |
+| 3 | User confirmation | ☐ |
+| 4 | Target base safety | ☐ |
+| 5 | No destructive operations | ☐ |
+| 6 | Write phase ordering | ☐ |
+| 7 | Checkpoint safety | ☐ |
+| 8 | Rate limit and backoff | ☐ |
+| 9 | Failure modes | ☐ |
+| 10 | Rollback limitation notice | ☐ |
+| 11 | Final validation | ☐ |
+| 12 | Token safety | ☐ |
+| 13 | Path safety | ☐ |
+| 14 | Attachment phase disabled | ☐ |
+| 15 | No prohibited terms | ☐ |
+
+**Release decision:** Do not enable live writes until all 15 gates are marked Pass.
+
+---
+
+## Related Documents
+
+- [Live Restore Write Safety Contract](../architecture/live-restore-write-safety-contract.md)
+- [Restore Write Engine Skeleton](../architecture/restore-write-engine-skeleton.md)
+- [Restore QA Checklist](./restore-qa-checklist.md)
+- [Security and Privacy QA](./security-privacy-qa.md)
+- [Known Limitations](../release/known-limitations.md)

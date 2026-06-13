@@ -25,7 +25,7 @@ The **record write engine foundation** (`preview_record_write_request_plan`) bui
 
 **Linked record second-pass updates** — The import plan identifies which fields require a second update pass (after all records are created and ID mapping is resolved). The second pass itself requires the write engine and is not executed in this version.
 
-Restore write execution will be enabled in a future release once the write engine, linked record remapping, post-restore verification, and schema/record execution flows are complete and tested.
+Restore write execution will be enabled in a future release once all gates in the live restore write safety contract are satisfied. The contract defines the full set of requirements: sandbox testing, explicit confirmation, empty-target verification, no destructive writes, write phase ordering, checkpoint durability, rate-limit backoff, failure stop conditions, rollback limitation disclosure, and final validation. See `docs/architecture/live-restore-write-safety-contract.md` and `docs/qa/live-restore-write-safety-checklist.md`.
 
 ---
 

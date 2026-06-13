@@ -262,6 +262,18 @@ After completing a restore, perform the following manual checks in Airtable:
 
 ---
 
+## Live Write Safety Contract (Pre-Enable Gate)
+
+Before any live Airtable write path is enabled, complete the separate checklist:
+
+- [ ] See [live-restore-write-safety-checklist.md](./live-restore-write-safety-checklist.md) — all 15 gates must pass.
+- [ ] Confirm `write_safety_contract.rs` tests still pass (`cargo test -- write_safety_contract`).
+- [ ] Confirm write gate still returns `Disabled/DisabledByProductPolicy`.
+- [ ] Confirm `Succeeded` status does not exist in any write engine status type.
+- [ ] Confirm `noChangesMade` is still always `true` across all write result types.
+
+---
+
 ## Notes and Failures
 
 Record any failures here with a brief description and steps to reproduce.

@@ -604,3 +604,50 @@ logs the token value. Saving is optional; the keychain unavailable state is hand
 **RW-11: Record write plan does not affect other write gates.**
 - Calling `previewRecordWriteRequestPlan` does not change the outcome of `previewRestoreWriteEngine` or `previewSchemaWriteRequestPlan`.
 - Frontend tests assert both gates still return `status: "disabled"` after a record write plan is previewed.
+
+---
+
+## Live Write Safety Contract Non-Regression (V0.1)
+
+**Goal:** Confirm that no live write path has become reachable and that all contract invariants still hold.
+
+**LW-01: Write gate still returns disabled.**
+- `evaluate_write_gate()` returns `Disabled/DisabledByProductPolicy`.
+- Rust unit tests in `write_gate.rs` and `write_safety_contract.rs` (CONTRACT-01) assert this.
+
+**LW-02: No Succeeded status in any write type.**
+- `RestoreWriteEngineStatus`, `SchemaWriteOperationStatus`, and `RecordWriteOperationStatus` all lack a `Succeeded` variant.
+- Rust tests in `write_safety_contract.rs` (CONTRACT-02) confirm serialized values never contain `"succeeded"`.
+
+**LW-03: noChangesMade always true across all write foundations.**
+- Write safety report, schema write dry-run result, and record write dry-run result all set `no_changes_made: true`.
+- Rust tests in `write_safety_contract.rs` (CONTRACT-03) assert this across all three code paths.
+
+**LW-04: networkWritesAttempted always false across all write foundations.**
+- Schema and record write plan results both set `network_writes_attempted: false`.
+- Rust tests in `write_safety_contract.rs` (CONTRACT-04) assert this.
+
+**LW-05: restore_success_possible always false.**
+- `RestoreWriteSafetyReport.restore_success_possible` is hard-coded `false`.
+- Rust test CONTRACT-05 asserts this.
+
+**LW-06: No token in any write result.**
+- Write gate message, safety report, schema write plan result, and record write plan result contain no `"token"` or `"apiKey"` key.
+- Rust tests in `write_safety_contract.rs` (CONTRACT-12) assert this for all four result types.
+
+**LW-07: No full path in any write result.**
+- Write gate message and safety report contain no `/Users/`, `/home/`, or `/tmp/` string.
+- Rust tests in `write_safety_contract.rs` (CONTRACT-15) assert this.
+
+**LW-08: Attachment phase still disabled.**
+- `RestoreWriteSafetyReport.writes_enabled` is `false`.
+- Record write plan with empty attachment fields produces `attachment_op_count: 0`.
+- Rust test CONTRACT-16 asserts both.
+
+**LW-09: No Airtable write endpoint reachable.**
+- No `create_records`, `update_records`, `create_table`, `create_field`, or equivalent Airtable write function is callable from any restore write planning code path.
+- Verified by the absence of any such call in `write_gate.rs`, `write_safety.rs`, `write_engine.rs`, `schema_write_executor.rs`, and `record_write_executor.rs`.
+
+**LW-10: Safety contract tests in `write_safety_contract.rs`.**
+- 20 tests in `restore::write_safety_contract::tests` all pass.
+- Each test is named with its `CONTRACT-XX` identifier for traceability to the written contract.
