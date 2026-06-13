@@ -942,3 +942,80 @@ These test cases cover the command contract layer: confirmation enforcement, out
   2. Attempt a full restore gate sequence (package inspected, dry-run ready, confirmation entered).
   3. Click "Attempt Restore".
 - Expected result: The result status is "Disabled". The write engine is not enabled. "No Airtable changes were made." is shown. Saving a token has no effect on the restore write gate.
+
+---
+
+## Record Write Engine Foundation
+
+**TC-RWE-01: Record write plan — disabled result for ready import plan**
+
+- Preconditions: A restore package is inspected, dry-run plan is ready, schema plan is ready, record import plan is ready.
+- Steps:
+  1. Navigate to the Restore page and complete the restore planning flow through the record import plan step.
+  2. Observe any "Record Write Plan" section (or invoke via the mock service in a test context).
+- Expected result: The result has `status: "disabled"`. No success or execution message is shown. "No Airtable changes were made." is visible.
+
+**TC-RWE-02: Record write plan — blocked for blocked import plan**
+
+- Preconditions: Record import plan status is `"blocked"`.
+- Steps:
+  1. Invoke `previewRecordWriteRequestPlan` (mock or Tauri) with `recordImportPlanStatus: "blocked"`.
+- Expected result: The result has `status: "blocked"` and `blockedReason: "recordImportPlanNotReady"`. `noChangesMade` is `true`.
+
+**TC-RWE-03: Record write plan — blocked for zero tables**
+
+- Preconditions: `tableCount: 0`.
+- Steps:
+  1. Invoke `previewRecordWriteRequestPlan` with `tableCount: 0`.
+- Expected result: The result has `status: "blocked"` and `blockedReason: "noTablesInPlan"`. `noChangesMade` is `true`.
+
+**TC-RWE-04: No token in request or result**
+
+- Preconditions: Any state.
+- Steps:
+  1. Invoke `previewRecordWriteRequestPlan` with a valid request.
+  2. Inspect `JSON.stringify(request)` and `JSON.stringify(result)`.
+- Expected result: Neither string contains `"token"`, `"apiKey"`, or any API credential. The request struct has no token field.
+
+**TC-RWE-05: No raw record payloads in result**
+
+- Preconditions: A ready plan with `totalFirstPassBatches > 0`.
+- Steps:
+  1. Invoke `previewRecordWriteRequestPlan` and stringify the result.
+- Expected result: No `"records":` array, no `"payload":` field, and no `"newRecordId"` field in the JSON.
+
+**TC-RWE-06: `noChangesMade` and `networkWritesAttempted` invariants**
+
+- Preconditions: Any state (ready, blocked, or zero-tables).
+- Steps:
+  1. Invoke `previewRecordWriteRequestPlan` for each case.
+- Expected result: `noChangesMade` is `true` and `networkWritesAttempted` is `false` in every result, regardless of status.
+
+**TC-RWE-07: No execute button and no token input**
+
+- Preconditions: Any state.
+- Steps:
+  1. Observe any UI surface that shows record write plan output.
+- Expected result: No "Execute", "Run", "Start", or "Apply" button is rendered. No token input field is rendered.
+
+**TC-RWE-08: Result status is never succeeded**
+
+- Preconditions: Any state.
+- Steps:
+  1. Invoke `previewRecordWriteRequestPlan` and inspect `result.status`.
+  2. Also check `JSON.stringify(result)` for the string `"succeeded"`.
+- Expected result: `result.status` is `"disabled"` or `"blocked"`. `"succeeded"` does not appear anywhere in the serialized result.
+
+**TC-RWE-09: Op counts are consistent**
+
+- Preconditions: A ready request with known counts.
+- Steps:
+  1. Invoke `previewRecordWriteRequestPlan` with `tableCount: 2, totalFirstPassBatches: 4, totalSecondPassBatches: 2, attachmentFieldCount: 1, skippedFieldCount: 2`.
+- Expected result: `createBatchOpCount = 4`, `linkedUpdateOpCount = 2`, `checkpointOpCount = 2`, `attachmentOpCount = 1`, `skippedFieldOpCount = 2`, `totalOpCount = 11`.
+
+**TC-RWE-10: IPC fallback is safe**
+
+- Preconditions: Tauri IPC is unavailable (test environment without Tauri runtime).
+- Steps:
+  1. Call `liveAirBridgeService.previewRecordWriteRequestPlan(request)` in a jsdom context.
+- Expected result: Returns `status: "disabled"`, all op counts 0, `noChangesMade: true`, `networkWritesAttempted: false`. No token in the result.

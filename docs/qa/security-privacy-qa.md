@@ -545,3 +545,62 @@ logs the token value. Saving is optional; the keychain unavailable state is hand
 **CS-10: IPC fallback results are safe.**
 - When Tauri IPC is unavailable, `liveAirBridgeService.saveAirtableTokenToKeychain()` returns a safe fallback with `success: false`, `hasSavedToken: false`, and a static unavailable message.
 - The fallback contains no token field and no token value.
+
+---
+
+## Record Write Engine Foundation Security (V0.1)
+
+**Goal:** Confirm that the record write request plan builder makes no Airtable API calls, accepts no token, never creates or modifies any Airtable records, contains no raw record payloads, and always returns `noChangesMade: true`.
+
+**RW-01: No token in request or result.**
+- `RecordWriteRequestPlanRequest` has no `token` field (Rust struct and TypeScript interface).
+- `RecordWriteRequestPlanResult` has no `token` field.
+- The serialized JSON request and result do not contain `"token"` or `"apiKey"` keys.
+- Rust and frontend tests assert `JSON.stringify()` contains neither key.
+
+**RW-02: No Airtable API calls.**
+- `execute_record_write_dry_run` calls only `evaluate_write_gate()` — no HTTP client is constructed.
+- No `AirtableClient`, no `reqwest` call, and no network socket is opened during the command.
+- Network monitoring during a record write plan operation shows zero connections to `api.airtable.com`.
+
+**RW-03: No records created, updated, or deleted.**
+- The request plan builder (`build_record_write_request_plan`) produces a read-only ordered plan.
+- There is no `create_records` / `update_records` / `delete_records` call reachable from this code path.
+- The write gate (`evaluate_write_gate`) has one outcome: `Disabled/DisabledByProductPolicy`.
+
+**RW-04: No raw record payloads in result.**
+- `RecordWriteRequestPlanResult` contains only counts and operation metadata.
+- No field values, record IDs, or record contents appear in the result.
+- Frontend tests assert `JSON.stringify(result)` does not contain `"records":`, `"payload":`, or `"newRecordId"`.
+
+**RW-05: No `succeeded` status.**
+- `RecordWriteOperationStatus` has three variants: `Planned`, `Blocked`, `Disabled`.
+- There is no `Succeeded` variant — it was intentionally omitted.
+- The serialized JSON result never contains `"succeeded"` as a status value.
+- Rust and frontend tests assert this property.
+
+**RW-06: `noChangesMade` always true.**
+- `RecordWriteRequestPlan.no_changes_made` and `RecordWriteDryRunResult.no_changes_made` are hard-coded `true` at every code path.
+- Rust and frontend tests assert this property for both disabled and blocked result paths.
+
+**RW-07: `networkWritesAttempted` always false.**
+- `RecordWriteRequestPlan.network_writes_attempted` and `RecordWriteDryRunResult.network_writes_attempted` are hard-coded `false` at every code path.
+- Rust and frontend tests assert this property.
+
+**RW-08: Write gate always disabled for record write plan.**
+- `evaluate_write_gate()` returns `Disabled/DisabledByProductPolicy` regardless of plan content.
+- Rust unit tests assert always-disabled, always-product-policy behavior.
+- The record write engine cannot advance past disabled — there is no enabled branch.
+
+**RW-09: Old-to-new record ID mapping deferred to execution.**
+- `UpdateLinkedRecordBatch` operations note explicitly: "ID mapping unavailable until execution".
+- No actual Airtable record IDs (`rec…`) appear in the plan result.
+- The plan faithfully represents `RestoreRecordMappingStrategy::UnavailableUntilExecution`.
+
+**RW-10: IPC fallback is safe.**
+- When Tauri IPC is unavailable, `liveAirBridgeService.previewRecordWriteRequestPlan()` returns a disabled fallback with `noChangesMade: true`, `networkWritesAttempted: false`, zero op counts, and no token field.
+- Frontend tests assert the fallback result does not contain `"succeeded"`.
+
+**RW-11: Record write plan does not affect other write gates.**
+- Calling `previewRecordWriteRequestPlan` does not change the outcome of `previewRestoreWriteEngine` or `previewSchemaWriteRequestPlan`.
+- Frontend tests assert both gates still return `status: "disabled"` after a record write plan is previewed.

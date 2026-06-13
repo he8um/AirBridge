@@ -17,6 +17,8 @@ import type {
   JobHistoryFilter,
   JobHistoryListResult,
   OutputPathValidationResult,
+  RecordWriteRequestPlanRequest,
+  RecordWriteRequestPlanResult,
   RecordsExportPlan,
   RecordsExportPlanRequest,
   RestoreDryRunPlan,
@@ -327,6 +329,26 @@ export async function previewSchemaWriteRequestPlan(
   request: SchemaWriteRequestPlanRequest,
 ): Promise<SchemaWriteRequestPlanResult | null> {
   return safeInvoke<SchemaWriteRequestPlanResult>("preview_schema_write_request_plan", {
+    request,
+  });
+}
+
+/**
+ * Previews a record write request plan built from an existing record import plan summary.
+ *
+ * - No token accepted or returned.
+ * - No Airtable API calls are made.
+ * - No records are created, updated, or deleted.
+ * - All operations in the result are disabled.
+ * - noChangesMade is always true.
+ * - networkWritesAttempted is always false.
+ * - No raw record payloads in result.
+ * - Returns null if Tauri IPC is unavailable.
+ */
+export async function previewRecordWriteRequestPlan(
+  request: RecordWriteRequestPlanRequest,
+): Promise<RecordWriteRequestPlanResult | null> {
+  return safeInvoke<RecordWriteRequestPlanResult>("preview_record_write_request_plan", {
     request,
   });
 }

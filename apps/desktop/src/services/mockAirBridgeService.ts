@@ -44,6 +44,8 @@ import type {
   RestoreWriteEngineResult,
   RunBackupCommandRequest,
   RunBackupCommandResponse,
+  RecordWriteRequestPlanRequest,
+  RecordWriteRequestPlanResult,
   SchemaWriteRequestPlanRequest,
   SchemaWriteRequestPlanResult,
   TableExportPlan,
@@ -1606,6 +1608,83 @@ function previewSchemaWriteRequestPlanImpl(
   });
 }
 
+function previewRecordWriteRequestPlanImpl(
+  request: RecordWriteRequestPlanRequest,
+): Promise<RecordWriteRequestPlanResult> {
+  const filename = request.packageFilename;
+
+  if (request.recordImportPlanStatus === "blocked") {
+    return Promise.resolve({
+      filename,
+      status: "blocked" as const,
+      blockedReason: "recordImportPlanNotReady" as const,
+      message: "Record import plan is not ready — cannot build record write request plan.",
+      createBatchOpCount: 0,
+      linkedUpdateOpCount: 0,
+      checkpointOpCount: 0,
+      attachmentOpCount: 0,
+      skippedFieldOpCount: 0,
+      totalOpCount: 0,
+      totalFirstPassBatches: 0,
+      totalSecondPassBatches: 0,
+      warnings: [],
+      noChangesMade: true,
+      networkWritesAttempted: false,
+    });
+  }
+
+  if (request.tableCount === 0) {
+    return Promise.resolve({
+      filename,
+      status: "blocked" as const,
+      blockedReason: "noTablesInPlan" as const,
+      message: "No tables in record import plan — nothing to write.",
+      createBatchOpCount: 0,
+      linkedUpdateOpCount: 0,
+      checkpointOpCount: 0,
+      attachmentOpCount: 0,
+      skippedFieldOpCount: 0,
+      totalOpCount: 0,
+      totalFirstPassBatches: 0,
+      totalSecondPassBatches: 0,
+      warnings: [],
+      noChangesMade: true,
+      networkWritesAttempted: false,
+    });
+  }
+
+  const createBatchOpCount = request.totalFirstPassBatches;
+  const linkedUpdateOpCount = request.totalSecondPassBatches;
+  const checkpointOpCount = request.tableCount;
+  const attachmentOpCount = request.attachmentFieldCount;
+  const skippedFieldOpCount = request.skippedFieldCount;
+  const totalOpCount =
+    createBatchOpCount +
+    linkedUpdateOpCount +
+    checkpointOpCount +
+    attachmentOpCount +
+    skippedFieldOpCount;
+
+  return Promise.resolve({
+    filename,
+    status: "disabled" as const,
+    disabledReason: "disabledByProductPolicy",
+    message:
+      "Restore write execution is not enabled in this version. Record import is a planning-only operation. No Airtable changes are made.",
+    createBatchOpCount,
+    linkedUpdateOpCount,
+    checkpointOpCount,
+    attachmentOpCount,
+    skippedFieldOpCount,
+    totalOpCount,
+    totalFirstPassBatches: request.totalFirstPassBatches,
+    totalSecondPassBatches: request.totalSecondPassBatches,
+    warnings: [],
+    noChangesMade: true,
+    networkWritesAttempted: false,
+  });
+}
+
 export const mockAirBridgeService: AirBridgeService = {
   listConnections,
   listWorkspaces,
@@ -1636,4 +1715,5 @@ export const mockAirBridgeService: AirBridgeService = {
   saveAirtableTokenToKeychain: saveAirtableTokenToKeychainImpl,
   removeAirtableTokenFromKeychain: removeAirtableTokenFromKeychainImpl,
   previewSchemaWriteRequestPlan: previewSchemaWriteRequestPlanImpl,
+  previewRecordWriteRequestPlan: previewRecordWriteRequestPlanImpl,
 };

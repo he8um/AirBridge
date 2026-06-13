@@ -228,6 +228,40 @@ After completing a restore, perform the following manual checks in Airtable:
 
 ---
 
+## Record Write Engine Foundation Checklist
+
+### Before testing
+
+- [ ] Confirm `preview_record_write_request_plan` is registered in the Tauri invoke handler.
+- [ ] Confirm `RecordWriteRequestPlanRequest` has no `token` field in the TypeScript type definition.
+- [ ] Confirm `RecordWriteRequestPlanResult` has no `token` field, no `"succeeded"` status value, and no raw record payload fields.
+
+### Request plan builder
+
+- [ ] A request with `recordImportPlanStatus: "ready"` and `tableCount > 0` returns a result with `status: "disabled"`.
+- [ ] A request with `recordImportPlanStatus: "blocked"` returns `status: "blocked"` with `blockedReason: "recordImportPlanNotReady"`.
+- [ ] A request with `tableCount: 0` returns `status: "blocked"` with `blockedReason: "noTablesInPlan"`.
+- [ ] `createBatchOpCount` matches the `totalFirstPassBatches` in the request.
+- [ ] `linkedUpdateOpCount` matches the `totalSecondPassBatches` in the request.
+- [ ] `checkpointOpCount` matches the `tableCount` in the request.
+- [ ] `attachmentOpCount` matches the `attachmentFieldCount` in the request.
+- [ ] `skippedFieldOpCount` matches the `skippedFieldCount` in the request.
+- [ ] `totalOpCount` equals the sum of all five op count fields.
+
+### Safety invariants
+
+- [ ] `noChangesMade` is `true` in every record write plan result (confirmed via unit tests).
+- [ ] `networkWritesAttempted` is `false` in every record write plan result (confirmed via unit tests).
+- [ ] The request contains no `token` field — confirmed via `JSON.stringify(request)`.
+- [ ] The result contains no `token` field — confirmed via `JSON.stringify(result)`.
+- [ ] The result contains no raw record payloads — confirmed via `JSON.stringify(result)` scan.
+- [ ] The result status is never `"succeeded"`.
+- [ ] `evaluate_write_gate()` always returns `Disabled/DisabledByProductPolicy` (confirmed via unit tests).
+- [ ] No Airtable records are created, updated, or deleted at any point during plan generation.
+- [ ] `UpdateLinkedRecordBatch` operation notes state "ID mapping unavailable until execution".
+
+---
+
 ## Notes and Failures
 
 Record any failures here with a brief description and steps to reproduce.

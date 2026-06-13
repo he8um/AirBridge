@@ -23,6 +23,8 @@ import type {
   JobHistoryFilter,
   JobHistoryListResult,
   OutputPathValidationResult,
+  RecordWriteRequestPlanRequest,
+  RecordWriteRequestPlanResult,
   RecordsExportPlan,
   RecordsExportPlanRequest,
   RestoreDryRunPlan,
@@ -183,4 +185,18 @@ export interface AirBridgeService {
   previewSchemaWriteRequestPlan(
     request: SchemaWriteRequestPlanRequest,
   ): Promise<SchemaWriteRequestPlanResult>;
+
+  /**
+   * Previews a record write request plan built from a record import plan summary.
+   *
+   * - No token accepted or returned.
+   * - No Airtable API calls are made. No records are created, updated, or deleted.
+   * - All operations are disabled — the write gate blocks execution.
+   * - noChangesMade is always true. networkWritesAttempted is always false.
+   * - No raw record payloads in result.
+   * - Old-to-new record ID mapping is execution-time only — not resolved here.
+   */
+  previewRecordWriteRequestPlan(
+    request: RecordWriteRequestPlanRequest,
+  ): Promise<RecordWriteRequestPlanResult>;
 }

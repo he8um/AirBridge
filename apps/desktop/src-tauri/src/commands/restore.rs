@@ -9,6 +9,11 @@ use crate::restore::execution_gate::validate_restore_execution_gate;
 use crate::restore::plan::{RestoreDryRunPlan, RestoreDryRunRequest};
 use crate::restore::record_import_plan::{RestoreRecordImportPlan, RestoreRecordImportPlanRequest};
 use crate::restore::record_import_planner::create_record_import_plan;
+use crate::restore::record_write_executor::execute_record_write_dry_run;
+use crate::restore::record_write_requests::build_record_write_request_plan;
+use crate::restore::record_write_result::{
+    RecordWriteRequestPlanRequest, RecordWriteRequestPlanResult,
+};
 use crate::restore::schema_plan::{RestoreSchemaPlan, RestoreSchemaPlanRequest};
 use crate::restore::schema_planner::create_schema_plan;
 use crate::restore::schema_write_executor::execute_schema_write_dry_run;
@@ -238,6 +243,165 @@ pub fn preview_schema_write_request_plan(
         deferred_op_count: request_plan.deferred_op_count,
         manual_action_count: request_plan.manual_action_count,
         total_op_count: request_plan.total_op_count,
+        warnings: request_plan.warnings,
+        no_changes_made: true,
+        network_writes_attempted: false,
+    }
+}
+
+/// Builds a record write request plan from a summary of an existing record import plan.
+///
+/// No token is accepted. No Airtable calls are made. No records are created, updated, or deleted.
+/// All operations in the result are `disabled` — the write gate blocks execution.
+/// `no_changes_made` is always `true`. `network_writes_attempted` is always `false`.
+/// Raw record payloads are never included — only counts and summaries.
+/// Old-to-new record ID mapping is execution-time only and is not resolved here.
+#[tauri::command]
+pub fn preview_record_write_request_plan(
+    request: RecordWriteRequestPlanRequest,
+) -> RecordWriteRequestPlanResult {
+    use crate::restore::record_write_requests::RecordWriteBlockedReason;
+
+    let filename = request.package_filename.clone();
+
+    // Gate: record import plan must be ready
+    if request.record_import_plan_status == "blocked" {
+        return RecordWriteRequestPlanResult::blocked(
+            filename,
+            RecordWriteBlockedReason::RecordImportPlanNotReady,
+            "Record import plan is not ready — cannot build record write request plan.".to_string(),
+        );
+    }
+
+    // Gate: must have tables
+    if request.table_count == 0 {
+        return RecordWriteRequestPlanResult::blocked(
+            filename,
+            RecordWriteBlockedReason::NoTablesInPlan,
+            "No tables in record import plan — nothing to write.".to_string(),
+        );
+    }
+
+    // Build a synthetic record import plan from the counts in the request, then run
+    // both the request plan builder and the executor skeleton.
+    use crate::restore::plan::RestoreTargetMode;
+    use crate::restore::record_import_batches::{
+        build_checkpoint_plan, build_first_pass_batches, build_second_pass_batches,
+        AIRTABLE_WRITE_BATCH_SIZE,
+    };
+    use crate::restore::record_import_plan::RestoreRecordImportPlanRequest;
+    use crate::restore::record_import_plan::{
+        RecordImportFieldInput, RecordImportTableInput, RestoreRecordImportPlan,
+        RestoreRecordImportPlanStatus, RestoreRetryPolicy,
+    };
+    use crate::restore::record_import_planner::create_record_import_plan;
+
+    // Synthesise a minimal per-table batch distribution from the counts.
+    // Distribute first-pass batches evenly across tables; remaining go to last.
+    let batches_per_table = request.total_first_pass_batches / request.table_count.max(1);
+    let remainder = request.total_first_pass_batches % request.table_count.max(1);
+
+    let tables: Vec<RecordImportTableInput> = (0..request.table_count)
+        .map(|i| {
+            let table_batches = batches_per_table
+                + if i + 1 == request.table_count {
+                    remainder
+                } else {
+                    0
+                };
+            // Derive a representative record count from the planned batch count
+            let record_count = if table_batches > 0 {
+                Some(table_batches * AIRTABLE_WRITE_BATCH_SIZE)
+            } else {
+                None
+            };
+            // Add synthetic linked field for tables that would have second-pass batches
+            let second_pass_per_table =
+                request.total_second_pass_batches / request.table_count.max(1);
+            let has_linked = second_pass_per_table > 0;
+
+            let mut fields = vec![RecordImportFieldInput {
+                field_id: format!("fld_name_{i:03}"),
+                field_name: "Name".to_string(),
+                field_type: "singleLineText".to_string(),
+                linked_table_id: None,
+            }];
+            if has_linked {
+                fields.push(RecordImportFieldInput {
+                    field_id: format!("fld_link_{i:03}"),
+                    field_name: "Linked".to_string(),
+                    field_type: "multipleRecordLinks".to_string(),
+                    linked_table_id: Some(format!("tbl_linked_{i:03}")),
+                });
+            }
+            // Spread attachment and skipped fields across tables
+            if i == 0 {
+                for j in 0..request.attachment_field_count {
+                    fields.push(RecordImportFieldInput {
+                        field_id: format!("fld_att_{j:03}"),
+                        field_name: format!("Attachment {}", j + 1),
+                        field_type: "multipleAttachments".to_string(),
+                        linked_table_id: None,
+                    });
+                }
+                for j in 0..request.skipped_field_count {
+                    fields.push(RecordImportFieldInput {
+                        field_id: format!("fld_skip_{j:03}"),
+                        field_name: format!("Computed {}", j + 1),
+                        field_type: "formula".to_string(),
+                        linked_table_id: None,
+                    });
+                }
+            }
+
+            RecordImportTableInput {
+                table_id: format!("tbl{i:03}"),
+                table_name: format!("Table {}", i + 1),
+                record_count,
+                fields,
+            }
+        })
+        .collect();
+
+    let synthetic_request = RestoreRecordImportPlanRequest {
+        package_filename: filename.clone(),
+        dry_run_status: "ready".to_string(),
+        schema_plan_status: "ready".to_string(),
+        target_mode: RestoreTargetMode::NewBase,
+        target_base_name: None,
+        tables,
+    };
+
+    let import_plan = create_record_import_plan(&synthetic_request);
+    let request_plan = build_record_write_request_plan(&import_plan);
+    let dry_run = execute_record_write_dry_run(&request_plan);
+
+    // Always disabled — gate enforces this
+    let gate = evaluate_write_gate();
+
+    use crate::restore::write_result::RestoreWriteEngineStatus;
+    let result_status = if dry_run.status == RestoreWriteEngineStatus::Blocked {
+        crate::restore::record_write_requests::RecordWriteOperationStatus::Blocked
+    } else {
+        crate::restore::record_write_requests::RecordWriteOperationStatus::Disabled
+    };
+
+    RecordWriteRequestPlanResult {
+        filename,
+        status: result_status,
+        blocked_reason: None,
+        disabled_reason: Some(
+            crate::restore::write_result::RestoreWriteDisabledReason::DisabledByProductPolicy,
+        ),
+        message: gate.message,
+        create_batch_op_count: request_plan.create_batch_op_count,
+        linked_update_op_count: request_plan.linked_update_op_count,
+        checkpoint_op_count: request_plan.checkpoint_op_count,
+        attachment_op_count: request_plan.attachment_op_count,
+        skipped_field_op_count: request_plan.skipped_field_op_count,
+        total_op_count: request_plan.total_op_count,
+        total_first_pass_batches: request_plan.total_first_pass_batches,
+        total_second_pass_batches: request_plan.total_second_pass_batches,
         warnings: request_plan.warnings,
         no_changes_made: true,
         network_writes_attempted: false,
@@ -921,6 +1085,148 @@ mod tests {
         let gate_before = evaluate_write_gate();
         let req = schema_write_request();
         let _result = preview_schema_write_request_plan(req);
+        let gate_after = evaluate_write_gate();
+        assert!(matches!(
+            gate_before.status,
+            RestoreWriteEngineStatus::Disabled
+        ));
+        assert!(matches!(
+            gate_after.status,
+            RestoreWriteEngineStatus::Disabled
+        ));
+    }
+
+    // ── record write request plan command tests ────────────────────────────
+
+    use crate::restore::record_write_result::RecordWriteRequestPlanRequest;
+
+    fn record_write_request() -> RecordWriteRequestPlanRequest {
+        RecordWriteRequestPlanRequest {
+            package_filename: "backup.airbridge".to_string(),
+            record_import_plan_status: "ready".to_string(),
+            table_count: 2,
+            total_first_pass_batches: 4,
+            total_second_pass_batches: 2,
+            attachment_field_count: 1,
+            skipped_field_count: 2,
+        }
+    }
+
+    #[test]
+    fn record_write_command_returns_disabled() {
+        use crate::restore::record_write_requests::RecordWriteOperationStatus;
+        let req = record_write_request();
+        let result = preview_record_write_request_plan(req);
+        assert_eq!(result.status, RecordWriteOperationStatus::Disabled);
+    }
+
+    #[test]
+    fn record_write_command_no_changes_made_true() {
+        let req = record_write_request();
+        let result = preview_record_write_request_plan(req);
+        assert!(result.no_changes_made);
+    }
+
+    #[test]
+    fn record_write_command_network_writes_attempted_false() {
+        let req = record_write_request();
+        let result = preview_record_write_request_plan(req);
+        assert!(!result.network_writes_attempted);
+    }
+
+    #[test]
+    fn record_write_command_no_token_in_result() {
+        let req = record_write_request();
+        let result = preview_record_write_request_plan(req);
+        let json = serde_json::to_string(&result).expect("serialize");
+        assert!(!json.contains("\"token\""));
+        assert!(!json.contains("\"apiKey\""));
+    }
+
+    #[test]
+    fn record_write_command_no_succeeded_status() {
+        let req = record_write_request();
+        let result = preview_record_write_request_plan(req);
+        let json = serde_json::to_string(&result).expect("serialize");
+        assert!(!json.contains("\"succeeded\""));
+        assert!(!json.contains("Succeeded"));
+    }
+
+    #[test]
+    fn record_write_command_filename_basename_only() {
+        let req = record_write_request();
+        let result = preview_record_write_request_plan(req);
+        assert_eq!(result.filename, "backup.airbridge");
+        assert!(!result.filename.contains('/'));
+    }
+
+    #[test]
+    fn record_write_command_blocked_when_import_plan_blocked() {
+        use crate::restore::record_write_requests::RecordWriteOperationStatus;
+        let req = RecordWriteRequestPlanRequest {
+            package_filename: "backup.airbridge".to_string(),
+            record_import_plan_status: "blocked".to_string(),
+            table_count: 2,
+            total_first_pass_batches: 4,
+            total_second_pass_batches: 0,
+            attachment_field_count: 0,
+            skipped_field_count: 0,
+        };
+        let result = preview_record_write_request_plan(req);
+        assert_eq!(result.status, RecordWriteOperationStatus::Blocked);
+        assert!(result.no_changes_made);
+        assert!(!result.network_writes_attempted);
+    }
+
+    #[test]
+    fn record_write_command_blocked_when_no_tables() {
+        use crate::restore::record_write_requests::{
+            RecordWriteBlockedReason, RecordWriteOperationStatus,
+        };
+        let req = RecordWriteRequestPlanRequest {
+            package_filename: "backup.airbridge".to_string(),
+            record_import_plan_status: "ready".to_string(),
+            table_count: 0,
+            total_first_pass_batches: 0,
+            total_second_pass_batches: 0,
+            attachment_field_count: 0,
+            skipped_field_count: 0,
+        };
+        let result = preview_record_write_request_plan(req);
+        assert_eq!(result.status, RecordWriteOperationStatus::Blocked);
+        assert_eq!(
+            result.blocked_reason,
+            Some(RecordWriteBlockedReason::NoTablesInPlan)
+        );
+        assert!(result.no_changes_made);
+    }
+
+    #[test]
+    fn record_write_command_op_counts_are_non_zero_for_valid_request() {
+        let req = record_write_request();
+        let result = preview_record_write_request_plan(req);
+        assert!(result.total_op_count > 0, "must have ops");
+        assert!(
+            result.create_batch_op_count > 0,
+            "must have create batch ops"
+        );
+    }
+
+    #[test]
+    fn record_write_command_no_absolute_path_in_result() {
+        let req = record_write_request();
+        let result = preview_record_write_request_plan(req);
+        let json = serde_json::to_string(&result).expect("serialize");
+        assert!(!json.contains("/Users/"));
+        assert!(!json.contains("/tmp/"));
+        assert!(!json.contains("/home/"));
+    }
+
+    #[test]
+    fn record_write_command_does_not_affect_restore_write_gate() {
+        let gate_before = evaluate_write_gate();
+        let req = record_write_request();
+        let _result = preview_record_write_request_plan(req);
         let gate_after = evaluate_write_gate();
         assert!(matches!(
             gate_before.status,

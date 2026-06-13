@@ -1304,3 +1304,86 @@ export interface SchemaWriteRequestPlanResult {
   noChangesMade: boolean;
   networkWritesAttempted: boolean;
 }
+
+// ── Record Write Engine Foundation ─────────────────────────────────────────────
+
+export type RecordWriteOperationKind =
+  | "createRecordBatch"
+  | "updateLinkedRecordBatch"
+  | "checkpoint"
+  | "preserveMetadataOnlyAttachment"
+  | "skipComputedField"
+  | "manualAction";
+
+/** Planning-time status. success/succeeded/completed/executed intentionally absent. */
+export type RecordWriteOperationStatus = "planned" | "blocked" | "disabled";
+
+export type RecordWriteBlockedReason =
+  | "disabledByProductPolicy"
+  | "recordImportPlanNotReady"
+  | "noTablesInPlan";
+
+export interface RecordWriteOperation {
+  index: number;
+  kind: RecordWriteOperationKind;
+  status: RecordWriteOperationStatus;
+  tableId: string;
+  tableName: string;
+  batchIndex?: number;
+  /** Number of records planned for this batch. Absent if record count is unknown. */
+  plannedRecordCount?: number;
+  linkedFieldCount?: number;
+  attachmentPolicy?: string;
+  skippedFieldName?: string;
+  skippedFieldType?: string;
+  note: string;
+  noChangesMade: boolean;
+}
+
+export interface RecordWriteRequestPlan {
+  filename: string;
+  status: RecordWriteOperationStatus;
+  blockedReason?: RecordWriteBlockedReason;
+  operations: RecordWriteOperation[];
+  createBatchOpCount: number;
+  linkedUpdateOpCount: number;
+  checkpointOpCount: number;
+  attachmentOpCount: number;
+  skippedFieldOpCount: number;
+  totalOpCount: number;
+  totalFirstPassBatches: number;
+  totalSecondPassBatches: number;
+  warnings: string[];
+  noChangesMade: boolean;
+  networkWritesAttempted: boolean;
+}
+
+/** No token field — record write planning requires no Airtable access. */
+export interface RecordWriteRequestPlanRequest {
+  packageFilename: string;
+  recordImportPlanStatus: string;
+  tableCount: number;
+  totalFirstPassBatches: number;
+  totalSecondPassBatches: number;
+  attachmentFieldCount: number;
+  skippedFieldCount: number;
+}
+
+export interface RecordWriteRequestPlanResult {
+  filename: string;
+  status: RecordWriteOperationStatus;
+  blockedReason?: RecordWriteBlockedReason;
+  disabledReason?: string;
+  message: string;
+  createBatchOpCount: number;
+  linkedUpdateOpCount: number;
+  checkpointOpCount: number;
+  attachmentOpCount: number;
+  skippedFieldOpCount: number;
+  totalOpCount: number;
+  totalFirstPassBatches: number;
+  totalSecondPassBatches: number;
+  warnings: string[];
+  noChangesMade: boolean;
+  networkWritesAttempted: boolean;
+}

@@ -23,6 +23,8 @@ import type {
   JobHistoryFilter,
   JobHistoryListResult,
   OutputPathValidationResult,
+  RecordWriteRequestPlanRequest,
+  RecordWriteRequestPlanResult,
   RecordsExportPlan,
   RecordsExportPlanRequest,
   RestoreDryRunPlan,
@@ -403,6 +405,32 @@ async function previewSchemaWriteRequestPlan(
   return result;
 }
 
+async function previewRecordWriteRequestPlan(
+  request: RecordWriteRequestPlanRequest,
+): Promise<RecordWriteRequestPlanResult> {
+  const result = await commands.previewRecordWriteRequestPlan(request);
+  if (result === null) {
+    return {
+      filename: request.packageFilename,
+      status: "disabled",
+      disabledReason: "disabledByProductPolicy",
+      message: "Record write planning is not available in this context.",
+      createBatchOpCount: 0,
+      linkedUpdateOpCount: 0,
+      checkpointOpCount: 0,
+      attachmentOpCount: 0,
+      skippedFieldOpCount: 0,
+      totalOpCount: 0,
+      totalFirstPassBatches: 0,
+      totalSecondPassBatches: 0,
+      warnings: [],
+      noChangesMade: true,
+      networkWritesAttempted: false,
+    };
+  }
+  return result;
+}
+
 export const liveAirBridgeService: AirBridgeService = {
   listConnections,
   listWorkspaces,
@@ -433,4 +461,5 @@ export const liveAirBridgeService: AirBridgeService = {
   saveAirtableTokenToKeychain,
   removeAirtableTokenFromKeychain,
   previewSchemaWriteRequestPlan,
+  previewRecordWriteRequestPlan,
 };

@@ -27,6 +27,7 @@ This matrix describes the current status of each feature area. Status values:
 | Restore record import plan | Complete | Available — Restore page | No token; no Airtable calls; no writes; batch planning (size 10); field import policies; linked record second-pass; attachment metadata; checkpoint; retry policy; `noChangesMade` always true | None |
 | Restore write engine | Disabled (skeleton) | Skeleton preview available — Restore page | No Airtable writes; no token required; all phases disabled; `noChangesMade` always true | Enable write execution, linked record remapping, post-restore verification |
 | Schema write engine foundation | Disabled | Request plan builder available — internal only | No Airtable writes; no token required; request builders exist; write gate always disabled; `noChangesMade` always true; `networkWritesAttempted` always false | Enable live schema writes when write engine is ready |
+| Record write engine foundation | Disabled | Request plan builder available — internal only | No Airtable writes; no token required; request builders exist; write gate always disabled; `noChangesMade` always true; `networkWritesAttempted` always false; no raw record payloads; old-to-new ID mapping deferred to execution | Enable live record writes when write engine is ready |
 | Credential / token storage | Partial | Optional — Settings page | Token stored in OS keychain only; never in files, history, SQLite, or localStorage; keychain unavailable state handled safely | Wire saved token to connection check |
 | Local job history | Complete | Available — Reports page | Memory-only; no tokens; no full paths; no record payloads; summary-level only | SQLite persistence deferred |
 | Streaming progress events | Planned | Not available | — | Tauri event stream |
@@ -82,6 +83,16 @@ The schema write engine foundation (`preview_schema_write_request_plan`) builds 
 The request plan builder produces operations in four ordered phases: `CreateTable`, `CreateField` (directly creatable fields only), `DeferLinkedField`, and `ManualAction`. The write gate always returns `Disabled/DisabledByProductPolicy` — there is no enabled branch.
 
 `noChangesMade` is always `true`. `networkWritesAttempted` is always `false`. The result status is never `"succeeded"`.
+
+### Record Write Engine Foundation
+
+The record write engine foundation (`preview_record_write_request_plan`) builds a sequenced list of record write operations from a record import plan summary and passes them through the dry-run executor skeleton. No token is accepted or returned. No Airtable API calls are made. No Airtable records are created, updated, or deleted.
+
+The request plan builder produces operations in five ordered phases: `CreateRecordBatch` (first-pass batch creation), `UpdateLinkedRecordBatch` (second-pass linked field updates), `Checkpoint` (per-table), `PreserveMetadataOnlyAttachment`, and `SkipComputedField`. The write gate always returns `Disabled/DisabledByProductPolicy` — there is no enabled branch.
+
+Old-to-new record ID mapping is `UnavailableUntilExecution` — linked record update operations note this explicitly. No actual record IDs are present in the plan.
+
+`noChangesMade` is always `true`. `networkWritesAttempted` is always `false`. The result contains no raw record payloads. The result status is never `"succeeded"`.
 
 ---
 
