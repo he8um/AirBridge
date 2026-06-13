@@ -197,6 +197,37 @@ After completing a restore, perform the following manual checks in Airtable:
 
 ---
 
+## Schema Write Engine Foundation Checklist
+
+### Before testing
+
+- [ ] Confirm `preview_schema_write_request_plan` is registered in the Tauri invoke handler.
+- [ ] Confirm `SchemaWriteRequestPlanRequest` has no `token` field in the TypeScript type definition.
+- [ ] Confirm `SchemaWriteRequestPlanResult` has no `token` field and no `"succeeded"` status value.
+
+### Request plan builder
+
+- [ ] A request with `schemaPlanStatus: "ready"` and `tableCount > 0` returns a result with `status: "disabled"`.
+- [ ] A request with `schemaPlanStatus: "blocked"` returns `status: "blocked"` with `blockedReason: "schemaPlanNotReady"`.
+- [ ] A request with `tableCount: 0` returns `status: "blocked"` with `blockedReason: "noTablesInPlan"`.
+- [ ] `tableOpCount` matches the `tableCount` in the request.
+- [ ] `fieldOpCount` matches the `directFieldCount` in the request.
+- [ ] `deferredOpCount` matches the `deferredFieldCount` in the request.
+- [ ] `manualActionCount` matches the `manualActionCount` in the request.
+- [ ] `totalOpCount` equals the sum of all four op count fields.
+
+### Safety invariants
+
+- [ ] `noChangesMade` is `true` in every schema write plan result (confirmed via unit tests).
+- [ ] `networkWritesAttempted` is `false` in every schema write plan result (confirmed via unit tests).
+- [ ] The request contains no `token` field — confirmed via `JSON.stringify(request)`.
+- [ ] The result contains no `token` field — confirmed via `JSON.stringify(result)`.
+- [ ] The result status is never `"succeeded"`.
+- [ ] `evaluate_write_gate()` always returns `Disabled/DisabledByProductPolicy` (confirmed via unit tests).
+- [ ] No Airtable table, field, or base is created at any point during plan generation.
+
+---
+
 ## Notes and Failures
 
 Record any failures here with a brief description and steps to reproduce.

@@ -17,6 +17,8 @@ The **record import planner** produces a complete import batch plan (per-table b
 
 The **write engine skeleton** (`preview_restore_write_engine`) produces a six-phase preview of what the write pipeline would execute — schema creation, record import, linked record updates, attachment handling, and validation — using counts from the existing planning outputs. No token is required. No Airtable calls are made. All phases are disabled. `noChangesMade` is always true.
 
+The **schema write engine foundation** (`preview_schema_write_request_plan`) builds a sequenced list of schema write operations from a schema plan summary and passes them through the dry-run executor. Operations are produced in four ordered phases (CreateTable → CreateField → DeferLinkedField → ManualAction). The request plan builder is complete; however, live execution remains disabled — the write gate always returns `Disabled/DisabledByProductPolicy`. No token is accepted. No Airtable API calls are made. No Airtable base, table, or field is created. `noChangesMade` is always `true`. `networkWritesAttempted` is always `false`.
+
 **Old-to-new record ID mapping** — The import plan describes the `MapSourceRecordIdToCreatedRecordId` strategy. Actual new record IDs are only available after first-pass record creation, which requires the write engine. ID mapping cannot be resolved at planning time.
 
 **Linked record second-pass updates** — The import plan identifies which fields require a second update pass (after all records are created and ID mapping is resolved). The second pass itself requires the write engine and is not executed in this version.

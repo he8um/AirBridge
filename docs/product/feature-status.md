@@ -1,7 +1,7 @@
 # Feature Status Matrix
 
 **Version:** 0.1.0-alpha  
-**Updated:** 2026-06-13
+**Updated:** 2026-06-14
 
 This matrix describes the current status of each feature area. Status values:
 
@@ -26,6 +26,7 @@ This matrix describes the current status of each feature area. Status values:
 | Restore schema creation plan | Complete | Available — Restore page | No token; no Airtable calls; no writes; table-first ordering; field classification; dependency graph; `noChangesMade` always true | None |
 | Restore record import plan | Complete | Available — Restore page | No token; no Airtable calls; no writes; batch planning (size 10); field import policies; linked record second-pass; attachment metadata; checkpoint; retry policy; `noChangesMade` always true | None |
 | Restore write engine | Disabled (skeleton) | Skeleton preview available — Restore page | No Airtable writes; no token required; all phases disabled; `noChangesMade` always true | Enable write execution, linked record remapping, post-restore verification |
+| Schema write engine foundation | Disabled | Request plan builder available — internal only | No Airtable writes; no token required; request builders exist; write gate always disabled; `noChangesMade` always true; `networkWritesAttempted` always false | Enable live schema writes when write engine is ready |
 | Credential / token storage | Partial | Optional — Settings page | Token stored in OS keychain only; never in files, history, SQLite, or localStorage; keychain unavailable state handled safely | Wire saved token to connection check |
 | Local job history | Complete | Available — Reports page | Memory-only; no tokens; no full paths; no record payloads; summary-level only | SQLite persistence deferred |
 | Streaming progress events | Planned | Not available | — | Tauri event stream |
@@ -73,6 +74,14 @@ Package inspection (`inspect_backup_package`) is fully read-only. No token is re
 ### Restore Dry-Run
 
 Restore dry-run planning (`create_restore_dry_run_plan`) reads the inspected package, applies the compatibility engine, and returns a plan preview. No Airtable API calls are made. No token is required. The full path is not included in the result.
+
+### Schema Write Engine Foundation
+
+The schema write engine foundation (`preview_schema_write_request_plan`) builds a sequenced list of schema write operations from a schema plan summary and passes them through the dry-run executor skeleton. No token is accepted or returned. No Airtable API calls are made. No Airtable base, table, or field is created.
+
+The request plan builder produces operations in four ordered phases: `CreateTable`, `CreateField` (directly creatable fields only), `DeferLinkedField`, and `ManualAction`. The write gate always returns `Disabled/DisabledByProductPolicy` — there is no enabled branch.
+
+`noChangesMade` is always `true`. `networkWritesAttempted` is always `false`. The result status is never `"succeeded"`.
 
 ---
 

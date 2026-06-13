@@ -31,6 +31,8 @@ import type {
   RestoreWriteEngineResult,
   RunBackupCommandRequest,
   RunBackupCommandResponse,
+  SchemaWriteRequestPlanRequest,
+  SchemaWriteRequestPlanResult,
 } from "./types";
 import type { AirtableWorkspace, AirtableBaseSummary } from "../domain/airtable";
 import type { BackupPackageSummary } from "../domain/backup";
@@ -308,4 +310,23 @@ export async function removeAirtableTokenFromKeychain(
   request: CredentialRemoveRequest,
 ): Promise<CredentialRemoveResult | null> {
   return safeInvoke<CredentialRemoveResult>("remove_airtable_token_from_keychain", { request });
+}
+
+/**
+ * Previews a schema write request plan built from an existing schema plan summary.
+ *
+ * - No token accepted or returned.
+ * - No Airtable API calls are made.
+ * - No schema is written.
+ * - All operations in the result are disabled.
+ * - noChangesMade is always true.
+ * - networkWritesAttempted is always false.
+ * - Returns null if Tauri IPC is unavailable.
+ */
+export async function previewSchemaWriteRequestPlan(
+  request: SchemaWriteRequestPlanRequest,
+): Promise<SchemaWriteRequestPlanResult | null> {
+  return safeInvoke<SchemaWriteRequestPlanResult>("preview_schema_write_request_plan", {
+    request,
+  });
 }

@@ -37,6 +37,8 @@ import type {
   RestoreWriteEngineResult,
   RunBackupCommandRequest,
   RunBackupCommandResponse,
+  SchemaWriteRequestPlanRequest,
+  SchemaWriteRequestPlanResult,
 } from "../backend/types";
 import type { AirBridgeService } from "./airBridgeService";
 import * as commands from "../backend/commands";
@@ -378,6 +380,29 @@ async function removeAirtableTokenFromKeychain(
   return result;
 }
 
+async function previewSchemaWriteRequestPlan(
+  request: SchemaWriteRequestPlanRequest,
+): Promise<SchemaWriteRequestPlanResult> {
+  const result = await commands.previewSchemaWriteRequestPlan(request);
+  if (result === null) {
+    return {
+      filename: request.packageFilename,
+      status: "disabled",
+      disabledReason: "disabledByProductPolicy",
+      message: "Schema write planning is not available in this context.",
+      tableOpCount: 0,
+      fieldOpCount: 0,
+      deferredOpCount: 0,
+      manualActionCount: 0,
+      totalOpCount: 0,
+      warnings: [],
+      noChangesMade: true,
+      networkWritesAttempted: false,
+    };
+  }
+  return result;
+}
+
 export const liveAirBridgeService: AirBridgeService = {
   listConnections,
   listWorkspaces,
@@ -407,4 +432,5 @@ export const liveAirBridgeService: AirBridgeService = {
   getCredentialStorageStatus,
   saveAirtableTokenToKeychain,
   removeAirtableTokenFromKeychain,
+  previewSchemaWriteRequestPlan,
 };

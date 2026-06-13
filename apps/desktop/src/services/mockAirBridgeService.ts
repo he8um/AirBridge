@@ -44,6 +44,8 @@ import type {
   RestoreWriteEngineResult,
   RunBackupCommandRequest,
   RunBackupCommandResponse,
+  SchemaWriteRequestPlanRequest,
+  SchemaWriteRequestPlanResult,
   TableExportPlan,
 } from "../backend/types";
 import type { AirBridgeService } from "./airBridgeService";
@@ -1542,6 +1544,68 @@ function removeAirtableTokenFromKeychainImpl(
   });
 }
 
+function previewSchemaWriteRequestPlanImpl(
+  request: SchemaWriteRequestPlanRequest,
+): Promise<SchemaWriteRequestPlanResult> {
+  const filename = request.packageFilename;
+
+  if (request.schemaPlanStatus === "blocked") {
+    return Promise.resolve({
+      filename,
+      status: "blocked" as const,
+      blockedReason: "schemaPlanNotReady" as const,
+      message: "Schema plan is not ready — cannot build write request plan.",
+      tableOpCount: 0,
+      fieldOpCount: 0,
+      deferredOpCount: 0,
+      manualActionCount: 0,
+      totalOpCount: 0,
+      warnings: [],
+      noChangesMade: true,
+      networkWritesAttempted: false,
+    });
+  }
+
+  if (request.tableCount === 0) {
+    return Promise.resolve({
+      filename,
+      status: "blocked" as const,
+      blockedReason: "noTablesInPlan" as const,
+      message: "No tables in schema plan — nothing to write.",
+      tableOpCount: 0,
+      fieldOpCount: 0,
+      deferredOpCount: 0,
+      manualActionCount: 0,
+      totalOpCount: 0,
+      warnings: [],
+      noChangesMade: true,
+      networkWritesAttempted: false,
+    });
+  }
+
+  const tableOpCount = request.tableCount;
+  const fieldOpCount = request.directFieldCount;
+  const deferredOpCount = request.deferredFieldCount;
+  const manualActionCount = request.manualActionCount;
+  const totalOpCount = tableOpCount + fieldOpCount + deferredOpCount + manualActionCount;
+
+  return Promise.resolve({
+    filename,
+    status: "disabled" as const,
+    disabledReason: "disabledByProductPolicy",
+    message:
+      "Restore write execution is not enabled in this version. Schema creation and record import are planning-only operations. No Airtable changes are made.",
+    tableOpCount,
+    fieldOpCount,
+    deferredOpCount,
+    manualActionCount,
+    totalOpCount,
+    warnings: [],
+    noChangesMade: true,
+    networkWritesAttempted: false,
+  });
+}
+
 export const mockAirBridgeService: AirBridgeService = {
   listConnections,
   listWorkspaces,
@@ -1571,4 +1635,5 @@ export const mockAirBridgeService: AirBridgeService = {
   getCredentialStorageStatus: getCredentialStorageStatusImpl,
   saveAirtableTokenToKeychain: saveAirtableTokenToKeychainImpl,
   removeAirtableTokenFromKeychain: removeAirtableTokenFromKeychainImpl,
+  previewSchemaWriteRequestPlan: previewSchemaWriteRequestPlanImpl,
 };

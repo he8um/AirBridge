@@ -443,6 +443,55 @@ never echoes the full package path, and never produces a succeeded status.
 
 ---
 
+## Schema Write Engine Foundation Security (V0.1)
+
+**Goal:** Confirm that the schema write request plan builder makes no Airtable API calls, accepts no token, never creates any Airtable schema objects, and always returns `noChangesMade: true`.
+
+**SW-01: No token in request or result.**
+- `SchemaWriteRequestPlanRequest` has no `token` field (Rust struct and TypeScript interface).
+- `SchemaWriteRequestPlanResult` has no `token` field.
+- The serialized JSON request and result do not contain `"token"` or `"apiKey"` keys.
+- Rust and frontend tests assert `JSON.stringify()` contains neither key.
+
+**SW-02: No Airtable API calls.**
+- `execute_schema_write_dry_run` calls only `evaluate_write_gate()` — no HTTP client is constructed.
+- No `AirtableClient`, no `reqwest` call, and no network socket is opened during the command.
+- Network monitoring during a schema write plan operation shows zero connections to `api.airtable.com`.
+
+**SW-03: No Airtable schema created.**
+- The request plan builder (`build_schema_write_request_plan`) produces a read-only ordered plan.
+- There is no `create_table` / `create_field` / `create_base` call reachable from this code path.
+- The write gate (`evaluate_write_gate`) has one outcome: `Disabled/DisabledByProductPolicy`.
+
+**SW-04: No `succeeded` status.**
+- `SchemaWriteOperationStatus` has three variants: `Planned`, `Blocked`, `Disabled`.
+- There is no `Succeeded` variant — it was intentionally omitted.
+- The serialized JSON result never contains `"succeeded"` as a status value.
+- Rust and frontend tests assert this property.
+
+**SW-05: `noChangesMade` always true.**
+- `SchemaWriteRequestPlan.no_changes_made` and `SchemaWriteDryRunResult.no_changes_made` are hard-coded `true` at every code path.
+- Rust and frontend tests assert this property for both disabled and blocked result paths.
+
+**SW-06: `networkWritesAttempted` always false.**
+- `SchemaWriteRequestPlan.network_writes_attempted` and `SchemaWriteDryRunResult.network_writes_attempted` are hard-coded `false` at every code path.
+- Rust and frontend tests assert this property.
+
+**SW-07: Write gate always disabled for schema write plan.**
+- `evaluate_write_gate()` returns `Disabled/DisabledByProductPolicy` regardless of plan content.
+- Rust unit tests assert always-disabled, always-product-policy behavior.
+- The schema write engine cannot advance past disabled — there is no enabled branch.
+
+**SW-08: IPC fallback is safe.**
+- When Tauri IPC is unavailable, `liveAirBridgeService.previewSchemaWriteRequestPlan()` returns a disabled fallback with `noChangesMade: true`, `networkWritesAttempted: false`, zero op counts, and no token field.
+- Frontend tests assert the fallback result does not contain `"succeeded"`.
+
+**SW-09: Schema write plan does not affect restore write gate.**
+- Calling `previewSchemaWriteRequestPlan` does not change the outcome of `previewRestoreWriteEngine`.
+- Frontend tests assert that `previewRestoreWriteEngine` still returns `status: "disabled"` after a schema write plan is previewed.
+
+---
+
 ## Credential Storage Security (V0.1)
 
 **Goal:** Confirm that OS keychain credential storage never exposes, echoes, persists to disk, or

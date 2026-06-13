@@ -11,7 +11,13 @@ use crate::restore::record_import_plan::{RestoreRecordImportPlan, RestoreRecordI
 use crate::restore::record_import_planner::create_record_import_plan;
 use crate::restore::schema_plan::{RestoreSchemaPlan, RestoreSchemaPlanRequest};
 use crate::restore::schema_planner::create_schema_plan;
+use crate::restore::schema_write_executor::execute_schema_write_dry_run;
+use crate::restore::schema_write_requests::build_schema_write_request_plan;
+use crate::restore::schema_write_result::{
+    SchemaWriteRequestPlanRequest, SchemaWriteRequestPlanResult,
+};
 use crate::restore::write_engine::{preview_write_engine, RestoreWriteEngineRequest};
+use crate::restore::write_gate::evaluate_write_gate;
 use crate::restore::write_result::RestoreWriteEngineResult;
 
 #[tauri::command]
@@ -109,6 +115,133 @@ pub fn preview_restore_write_engine(
     request: RestoreWriteEngineRequest,
 ) -> RestoreWriteEngineResult {
     preview_write_engine(&request)
+}
+
+/// Builds a schema write request plan from a summary of an existing schema plan.
+///
+/// No token is accepted. No Airtable calls are made. No schema is written.
+/// All operations in the result are `disabled` — the write gate blocks execution.
+/// `no_changes_made` is always `true`. `network_writes_attempted` is always `false`.
+#[tauri::command]
+pub fn preview_schema_write_request_plan(
+    request: SchemaWriteRequestPlanRequest,
+) -> SchemaWriteRequestPlanResult {
+    use crate::restore::schema_write_requests::{
+        SchemaWriteBlockedReason, SchemaWriteOperationStatus,
+    };
+    use crate::restore::schema_write_result::SchemaWriteRequestPlanResult;
+
+    let filename = request.package_filename.clone();
+
+    // Gate: schema plan must be ready
+    if request.schema_plan_status == "blocked" {
+        return SchemaWriteRequestPlanResult::blocked(
+            filename,
+            SchemaWriteBlockedReason::SchemaPlanNotReady,
+            "Schema plan is not ready — cannot build write request plan.".to_string(),
+        );
+    }
+
+    // Gate: must have tables
+    if request.table_count == 0 {
+        return SchemaWriteRequestPlanResult::blocked(
+            filename,
+            SchemaWriteBlockedReason::NoTablesInPlan,
+            "No tables in schema plan — nothing to write.".to_string(),
+        );
+    }
+
+    // Build a synthetic schema plan from the counts in the request, then run
+    // both the request plan builder and the executor skeleton.
+    use crate::restore::plan::RestoreTargetMode;
+    use crate::restore::schema_plan::{
+        RestoreFieldCreationStep, RestoreSchemaDependencyGraph, RestoreSchemaPlan,
+        RestoreSchemaPlanStatus, RestoreTableCreationStep,
+    };
+    use crate::restore::schema_steps::classify_field_for_schema;
+
+    // Synthesise a minimal schema plan from the counts so the builder can
+    // produce accurate per-operation details without needing full field data.
+    let table_steps: Vec<RestoreTableCreationStep> = (0..request.table_count)
+        .map(|i| RestoreTableCreationStep {
+            table_id: format!("tbl{i:03}"),
+            table_name: format!("Table {}", i + 1),
+            step_index: i,
+            field_count: request.direct_field_count + request.deferred_field_count,
+            direct_field_count: request.direct_field_count,
+            deferred_field_count: request.deferred_field_count,
+            manual_action_count: request.manual_action_count,
+            unsupported_count: 0,
+            note: format!("Planned table {} of {}.", i + 1, request.table_count),
+        })
+        .collect();
+
+    // Produce direct field steps (one representative per table for planning purposes)
+    let field_steps: Vec<RestoreFieldCreationStep> = if request.direct_field_count > 0 {
+        (0..request.direct_field_count)
+            .map(|j| RestoreFieldCreationStep {
+                field_id: format!("fld_direct_{j:03}"),
+                field_name: format!("Field {}", j + 1),
+                field_type: "singleLineText".to_string(),
+                table_id: "tbl000".to_string(),
+                table_name: "Table 1".to_string(),
+                classification: classify_field_for_schema("singleLineText"),
+                note: "Direct field (planned).".to_string(),
+            })
+            .collect()
+    } else {
+        vec![]
+    };
+
+    let synthetic_plan = RestoreSchemaPlan {
+        filename: filename.clone(),
+        status: RestoreSchemaPlanStatus::Ready,
+        target_mode: RestoreTargetMode::NewBase,
+        target_base_name: None,
+        table_steps,
+        field_steps,
+        deferred_steps: vec![],
+        manual_action_fields: vec![],
+        dependency_graph: RestoreSchemaDependencyGraph {
+            edges: vec![],
+            has_circular_dependency: false,
+            resolution_note: String::new(),
+        },
+        warnings: vec![],
+        errors: vec![],
+        no_changes_made: true,
+    };
+
+    let request_plan = build_schema_write_request_plan(&synthetic_plan);
+    let dry_run = execute_schema_write_dry_run(&request_plan);
+
+    // Always disabled — gate enforces this
+    let gate = evaluate_write_gate();
+
+    let result_status =
+        if dry_run.status == crate::restore::write_result::RestoreWriteEngineStatus::Blocked {
+            SchemaWriteOperationStatus::Blocked
+        } else {
+            SchemaWriteOperationStatus::Disabled
+        };
+
+    SchemaWriteRequestPlanResult {
+        filename,
+        status: result_status,
+        blocked_reason: None,
+        disabled_reason: Some(
+            crate::restore::write_result::RestoreWriteDisabledReason::DisabledByProductPolicy,
+        ),
+        message: gate.message,
+        table_op_count: request_plan.table_op_count,
+        field_op_count: request_plan.field_op_count,
+        deferred_op_count: request_plan.deferred_op_count,
+        manual_action_count: request_plan.manual_action_count,
+        total_op_count: request_plan.total_op_count,
+        warnings: request_plan.warnings,
+        no_changes_made: true,
+        network_writes_attempted: false,
+    }
 }
 
 #[cfg(test)]
@@ -672,5 +805,130 @@ mod tests {
         );
         assert!(result.no_changes_made);
         assert!(!result.filename.contains('/'));
+    }
+
+    // ── schema write request plan command tests ────────────────────────────
+
+    fn schema_write_request() -> SchemaWriteRequestPlanRequest {
+        SchemaWriteRequestPlanRequest {
+            package_filename: "backup.airbridge".to_string(),
+            schema_plan_status: "ready".to_string(),
+            table_count: 3,
+            direct_field_count: 6,
+            deferred_field_count: 1,
+            manual_action_count: 1,
+        }
+    }
+
+    #[test]
+    fn schema_write_command_returns_disabled() {
+        use crate::restore::schema_write_requests::SchemaWriteOperationStatus;
+        let req = schema_write_request();
+        let result = preview_schema_write_request_plan(req);
+        assert_eq!(result.status, SchemaWriteOperationStatus::Disabled);
+    }
+
+    #[test]
+    fn schema_write_command_no_changes_made_true() {
+        let req = schema_write_request();
+        let result = preview_schema_write_request_plan(req);
+        assert!(result.no_changes_made);
+    }
+
+    #[test]
+    fn schema_write_command_network_writes_attempted_false() {
+        let req = schema_write_request();
+        let result = preview_schema_write_request_plan(req);
+        assert!(!result.network_writes_attempted);
+    }
+
+    #[test]
+    fn schema_write_command_no_token_in_result() {
+        let req = schema_write_request();
+        let result = preview_schema_write_request_plan(req);
+        let json = serde_json::to_string(&result).expect("serialize");
+        assert!(!json.contains("\"token\""));
+        assert!(!json.contains("\"apiKey\""));
+    }
+
+    #[test]
+    fn schema_write_command_no_succeeded_status() {
+        let req = schema_write_request();
+        let result = preview_schema_write_request_plan(req);
+        let json = serde_json::to_string(&result).expect("serialize");
+        assert!(!json.contains("\"succeeded\""));
+        assert!(!json.contains("Succeeded"));
+    }
+
+    #[test]
+    fn schema_write_command_filename_basename_only() {
+        let req = schema_write_request();
+        let result = preview_schema_write_request_plan(req);
+        assert_eq!(result.filename, "backup.airbridge");
+        assert!(!result.filename.contains('/'));
+    }
+
+    #[test]
+    fn schema_write_command_blocked_when_schema_blocked() {
+        use crate::restore::schema_write_requests::SchemaWriteOperationStatus;
+        let req = SchemaWriteRequestPlanRequest {
+            package_filename: "backup.airbridge".to_string(),
+            schema_plan_status: "blocked".to_string(),
+            table_count: 2,
+            direct_field_count: 4,
+            deferred_field_count: 0,
+            manual_action_count: 0,
+        };
+        let result = preview_schema_write_request_plan(req);
+        assert_eq!(result.status, SchemaWriteOperationStatus::Blocked);
+        assert!(result.no_changes_made);
+        assert!(!result.network_writes_attempted);
+    }
+
+    #[test]
+    fn schema_write_command_blocked_when_no_tables() {
+        use crate::restore::schema_write_requests::{
+            SchemaWriteBlockedReason, SchemaWriteOperationStatus,
+        };
+        let req = SchemaWriteRequestPlanRequest {
+            package_filename: "backup.airbridge".to_string(),
+            schema_plan_status: "ready".to_string(),
+            table_count: 0,
+            direct_field_count: 0,
+            deferred_field_count: 0,
+            manual_action_count: 0,
+        };
+        let result = preview_schema_write_request_plan(req);
+        assert_eq!(result.status, SchemaWriteOperationStatus::Blocked);
+        assert_eq!(
+            result.blocked_reason,
+            Some(SchemaWriteBlockedReason::NoTablesInPlan)
+        );
+        assert!(result.no_changes_made);
+    }
+
+    #[test]
+    fn schema_write_command_op_counts_are_non_zero_for_valid_request() {
+        let req = schema_write_request();
+        let result = preview_schema_write_request_plan(req);
+        assert!(result.table_op_count > 0, "must have table ops");
+        assert!(result.total_op_count >= result.table_op_count);
+    }
+
+    #[test]
+    fn schema_write_command_does_not_affect_restore_write_gate() {
+        // Running the schema write command must leave the write gate unchanged.
+        let gate_before = evaluate_write_gate();
+        let req = schema_write_request();
+        let _result = preview_schema_write_request_plan(req);
+        let gate_after = evaluate_write_gate();
+        assert!(matches!(
+            gate_before.status,
+            RestoreWriteEngineStatus::Disabled
+        ));
+        assert!(matches!(
+            gate_after.status,
+            RestoreWriteEngineStatus::Disabled
+        ));
     }
 }

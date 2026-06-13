@@ -1191,3 +1191,116 @@ export interface RedactedCredentialSummary {
   hasSavedToken: boolean;
   display: string;
 }
+
+// ── Schema write engine foundation ─────────────────────────────────────────────
+
+/**
+ * What kind of schema write operation is planned.
+ * Operations are never executed in this version.
+ */
+export type SchemaWriteOperationKind =
+  | "createBase"
+  | "createTable"
+  | "createField"
+  | "deferLinkedField"
+  | "manualAction";
+
+/**
+ * Planning-time status for a schema write operation.
+ * "succeeded" is intentionally absent — no operations are executed.
+ */
+export type SchemaWriteOperationStatus = "planned" | "blocked" | "disabled";
+
+/** Why a schema write plan is blocked or disabled. */
+export type SchemaWriteBlockedReason =
+  | "disabledByProductPolicy"
+  | "schemaPlanNotReady"
+  | "noTablesInPlan";
+
+/**
+ * A single planned schema write operation.
+ *
+ * Safety properties:
+ * - No token field.
+ * - source_table_id / source_field_id come from the backup package, not from
+ *   a live Airtable response.
+ * - status is never "succeeded".
+ * - no_changes_made is always true.
+ */
+export interface SchemaWriteOperation {
+  index: number;
+  kind: SchemaWriteOperationKind;
+  status: SchemaWriteOperationStatus;
+  sourceTableId: string;
+  tableName: string;
+  sourceFieldId?: string;
+  fieldName?: string;
+  fieldType?: string;
+  linkedSourceTableId?: string;
+  note: string;
+  noChangesMade: boolean;
+}
+
+/**
+ * A full schema write request plan.
+ *
+ * Safety properties:
+ * - No token field.
+ * - filename is basename only.
+ * - noChangesMade is always true.
+ * - networkWritesAttempted is always false.
+ * - status is never "succeeded".
+ */
+export interface SchemaWriteRequestPlan {
+  filename: string;
+  status: SchemaWriteOperationStatus;
+  blockedReason?: SchemaWriteBlockedReason;
+  operations: SchemaWriteOperation[];
+  tableOpCount: number;
+  fieldOpCount: number;
+  deferredOpCount: number;
+  manualActionCount: number;
+  totalOpCount: number;
+  warnings: string[];
+  noChangesMade: boolean;
+  networkWritesAttempted: boolean;
+}
+
+/**
+ * Request for the schema write request plan preview command.
+ * No token field.
+ */
+export interface SchemaWriteRequestPlanRequest {
+  packageFilename: string;
+  schemaPlanStatus: string;
+  tableCount: number;
+  directFieldCount: number;
+  deferredFieldCount: number;
+  manualActionCount: number;
+}
+
+/**
+ * Result of the schema write request plan preview command.
+ *
+ * Safety properties:
+ * - No token field.
+ * - filename is basename only.
+ * - noChangesMade is always true.
+ * - networkWritesAttempted is always false.
+ * - status is never "succeeded".
+ */
+export interface SchemaWriteRequestPlanResult {
+  filename: string;
+  status: SchemaWriteOperationStatus;
+  blockedReason?: SchemaWriteBlockedReason;
+  disabledReason?: string;
+  message: string;
+  tableOpCount: number;
+  fieldOpCount: number;
+  deferredOpCount: number;
+  manualActionCount: number;
+  totalOpCount: number;
+  warnings: string[];
+  noChangesMade: boolean;
+  networkWritesAttempted: boolean;
+}

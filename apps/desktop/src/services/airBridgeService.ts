@@ -37,6 +37,8 @@ import type {
   RestoreWriteEngineResult,
   RunBackupCommandRequest,
   RunBackupCommandResponse,
+  SchemaWriteRequestPlanRequest,
+  SchemaWriteRequestPlanResult,
 } from "../backend/types";
 
 export interface AirBridgeService {
@@ -169,4 +171,16 @@ export interface AirBridgeService {
   removeAirtableTokenFromKeychain(
     request: CredentialRemoveRequest,
   ): Promise<CredentialRemoveResult>;
+
+  /**
+   * Previews a schema write request plan built from a schema plan summary.
+   *
+   * - No token accepted or returned.
+   * - No Airtable API calls are made. No schema is written.
+   * - All operations are disabled — the write gate blocks execution.
+   * - noChangesMade is always true. networkWritesAttempted is always false.
+   */
+  previewSchemaWriteRequestPlan(
+    request: SchemaWriteRequestPlanRequest,
+  ): Promise<SchemaWriteRequestPlanResult>;
 }
