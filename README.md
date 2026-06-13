@@ -146,9 +146,11 @@ AirBridge is under active development. The current alpha build supports:
 - Backup package creation (requires explicit file selection and confirmation text).
 - Package inspection and validation.
 - Restore dry-run planning (read-only, no token required).
+- Restore schema creation planning — generates an ordered schema creation plan (table steps, field steps, deferred linked fields, dependency graph) from a dry-run result. Read-only; no token required; no Airtable tables or fields are created.
+- Restore record import planning — generates a complete record import batch plan (batch counts at size 10, field import policies, linked record second-pass plans, attachment policies, checkpoint plans, retry policy) from a dry-run result and schema plan. Read-only; no token required; no Airtable records are created.
 - Restore execution safety gate (all preconditions validated; write engine not yet enabled).
 
-**Restore write execution is disabled in this version.** The safety gate validates all preconditions and returns a `readyButDisabled` result. No Airtable base, table, or record is created by restore operations.
+**Restore write execution is disabled in this version.** The safety gate validates all preconditions and returns a `readyButDisabled` result. No Airtable base, table, field, or record is created by restore operations.
 
 **Token persistence is not implemented.** Tokens must be entered for each operation.
 

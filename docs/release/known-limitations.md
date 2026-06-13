@@ -7,11 +7,19 @@ This document lists known limitations of the current AirBridge release. Each lim
 ## Restore Write Engine Not Yet Enabled
 
 **Scope:** Restore functionality  
-**Status:** Safety gate and schema creation planning complete; write engine disabled
+**Status:** Safety gate, schema creation planning, and record import planning complete; write engine disabled
 
-The restore execution safety gate validates all preconditions (package inspection, dry-run plan, target mode, token, confirmation text) and returns `readyButDisabled`. The schema creation planner produces a full ordered plan (table steps, field steps, deferred linked fields, dependency graph) without making any Airtable API calls. No Airtable base, table, field, or record is created.
+The restore execution safety gate validates all preconditions (package inspection, dry-run plan, target mode, token, confirmation text) and returns `readyButDisabled`. No Airtable data is modified.
 
-Restore write execution will be enabled in a future release once the write engine, linked record remapping, post-restore verification, and schema creation execution flows are complete and tested.
+The **schema creation planner** produces a full ordered plan (table steps, field steps, deferred linked fields, dependency graph) without making any Airtable API calls. No Airtable base, table, or field is created.
+
+The **record import planner** produces a complete import batch plan (per-table batch counts at batch size 10, field import policies, linked record second-pass update plans, attachment policies, old-to-new record ID mapping strategy, checkpoint plans, retry policy) without making any Airtable API calls. No Airtable records are created.
+
+**Old-to-new record ID mapping** — The import plan describes the `MapSourceRecordIdToCreatedRecordId` strategy. Actual new record IDs are only available after first-pass record creation, which requires the write engine. ID mapping cannot be resolved at planning time.
+
+**Linked record second-pass updates** — The import plan identifies which fields require a second update pass (after all records are created and ID mapping is resolved). The second pass itself requires the write engine and is not executed in this version.
+
+Restore write execution will be enabled in a future release once the write engine, linked record remapping, post-restore verification, and schema/record execution flows are complete and tested.
 
 ---
 
@@ -26,16 +34,18 @@ Token persistence via the OS keychain is planned for a future release.
 
 ---
 
-## Attachment Files Not Downloaded
+## Attachment Files Not Downloaded or Uploaded
 
-**Scope:** Backup content  
+**Scope:** Backup content and restore  
 **Status:** Metadata only
 
-Attachment metadata (filename, MIME type, size, and the attachment URL at time of backup) is included in the backup package under `attachments/metadata.jsonl`. Attachment file bytes are not downloaded or stored.
+Attachment metadata (filename, MIME type, size, and the attachment URL at time of backup) is included in the backup package under `attachments/metadata.jsonl`. Attachment file bytes are not downloaded or stored during backup.
+
+During restore planning, all attachment fields receive the `MetadataOnly` policy — the record import planner will not schedule attachment uploads. Attachments must be manually re-attached to restored records after a restore completes.
 
 Attachment download URLs returned by the Airtable API may expire. The backed-up URL captures the state at the time of backup only.
 
-Full attachment file download and storage is deferred to a future release.
+Full attachment file download and re-upload is deferred to a future release.
 
 ---
 

@@ -277,3 +277,81 @@ If AirBridge supports user-configured field redaction:
 **RX-08: UI button requires exact confirmation.**
 - The "Attempt Restore" button is `disabled` unless `confirmationText === "RESTORE BACKUP"` exactly.
 - Lowercase, partial, or empty confirmation text does not enable the button.
+
+---
+
+## Restore Schema Creation Plan Safety (V0.1)
+
+**Goal:** Confirm that the schema creation planning flow makes no Airtable API calls, requires no token, creates no Airtable tables or fields, and always returns `noChangesMade: true`.
+
+**SC-01: No token requested.**
+- The `create_restore_schema_plan` Tauri command has no `token` parameter.
+- The `RestoreSchemaPlanPanel` component does not render a token input field.
+- No token flows through the schema plan code path.
+
+**SC-02: No Airtable API calls.**
+- The schema creation planner reads only from in-memory input (dry-run result tables).
+- No HTTP client is constructed or called during schema plan generation.
+- Network monitoring during a schema plan operation shows zero connections to `api.airtable.com`.
+
+**SC-03: No Airtable tables or fields created.**
+- The planner produces a read-only ordered plan. It makes no writes to any Airtable base.
+- There is no write engine code path reachable from `create_restore_schema_plan`.
+
+**SC-04: Full path not in result.**
+- `RestoreSchemaPlan.filename` is populated with `Path::file_name()` — directory components are stripped.
+- The serialized result does not contain `/Users/`, `/home/`, or `:\\`.
+
+**SC-05: `noChangesMade` always true.**
+- Every code path in `create_schema_creation_plan` sets `no_changes_made: true`.
+- Rust unit tests assert this property.
+- The UI always shows "No Airtable changes were made." when a plan result is rendered.
+
+**SC-06: No execute button.**
+- `RestoreSchemaPlanPanel` does not render a "Create Tables", "Execute Schema", or similar button.
+- The panel renders only plan inspection content and a "Preview Schema Creation Plan" button.
+
+---
+
+## Restore Record Import Plan Safety (V0.1)
+
+**Goal:** Confirm that the record import planning flow makes no Airtable API calls, requires no token, creates no Airtable records, never resolves actual record IDs, and always returns `noChangesMade: true`.
+
+**RI-01: No token requested.**
+- The `create_restore_record_import_plan` Tauri command has no `token` parameter.
+- `RestoreRecordImportPlanRequest` has no `token` field in its Rust struct definition.
+- The `RestoreRecordImportPlanPanel` component does not render a token input field.
+- No token flows through the record import plan code path.
+
+**RI-02: No Airtable API calls.**
+- The record import planner reads only from in-memory input (package filename, dry-run status, schema plan status, table metadata).
+- No HTTP client is constructed or called during import plan generation.
+- Network monitoring during a record import plan operation shows zero connections to `api.airtable.com`.
+
+**RI-03: No Airtable records created.**
+- The planner produces a read-only batch plan. It makes no writes to any Airtable base.
+- There is no write engine code path reachable from `create_restore_record_import_plan`.
+
+**RI-04: Old-to-new record ID mapping is planning-only.**
+- The import plan describes the `MapSourceRecordIdToCreatedRecordId` strategy.
+- No actual new record IDs are present in the plan — IDs are only available after first-pass execution.
+- The plan contains no Airtable record ID values (`rec…`).
+
+**RI-05: Full path not in result.**
+- `RestoreRecordImportPlan.filename` uses the basename from the request — no directory path components.
+- The serialized result does not contain `/Users/`, `/home/`, or `:\\`.
+
+**RI-06: `noChangesMade` always true.**
+- Every code path in `create_record_import_plan` and `blocked_plan` sets `no_changes_made: true`.
+- Rust unit tests in `commands/restore.rs` assert this property for both ready and blocked paths.
+- The UI always shows "No Airtable records were created or modified." when a plan result is rendered.
+
+**RI-07: No execute button.**
+- `RestoreRecordImportPlanPanel` does not render an "Import Records", "Execute Import", or similar button.
+- The panel renders only plan inspection content and a "Preview Record Import Plan" button.
+
+**RI-08: Gates require dry-run and schema plan readiness.**
+- The command returns a `Blocked` plan if `dry_run_status` is not `"ready"` or `"readyWithWarnings"` (`DRY_RUN_BLOCKED`).
+- The command returns a `Blocked` plan if `schema_plan_status` is not `"ready"` or `"readyWithWarnings"` (`SCHEMA_PLAN_BLOCKED`).
+- The command returns a `Blocked` plan if `tables` is empty (`NO_TABLES`).
+- All three gate paths are covered by Rust unit tests.
