@@ -433,7 +433,13 @@ export function RestorePage() {
               loading={lwcLoading}
               requiredText={
                 lwcResult?.requiredText ??
-                `LIVE RESTORE ${(targetBaseName ?? "TARGET").replace(/[^a-zA-Z0-9\-_. ]/g, "").trim().slice(0, 64).toUpperCase() || "TARGET"} — WRITES REMAIN DISABLED`
+                `LIVE RESTORE ${
+                  (targetBaseName ?? "TARGET")
+                    .replace(/[^a-zA-Z0-9\-_. ]/g, "")
+                    .trim()
+                    .slice(0, 64)
+                    .toUpperCase() || "TARGET"
+                } — WRITES REMAIN DISABLED`
               }
               onVerify={(enteredText) => {
                 setLwcLoading(true);

@@ -1771,11 +1771,7 @@ export interface SandboxWriteTestingPolicyResult {
 
 // ── Gate 8: Live write confirmation policy ────────────────────────────────────
 
-export type LiveWriteConfirmationPolicyStatus =
-  | "confirmed"
-  | "warning"
-  | "blocked"
-  | "rejected";
+export type LiveWriteConfirmationPolicyStatus = "confirmed" | "warning" | "blocked" | "rejected";
 export type LiveWriteConfirmationCheckStatus = "passed" | "warning" | "failed";
 
 /**

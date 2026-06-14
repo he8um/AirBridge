@@ -2735,8 +2735,7 @@ function verifyLiveWriteConfirmationPolicyImpl(
       checkId: "LWC-03",
       label: "sandbox-write-testing-not-blocked",
       status: "warning",
-      message:
-        "Sandbox write testing policy (Gate 7) has warnings. Review evidence completeness.",
+      message: "Sandbox write testing policy (Gate 7) has warnings. Review evidence completeness.",
       remediation:
         "Complete all required sandbox test evidence fields before confirming live writes.",
     });

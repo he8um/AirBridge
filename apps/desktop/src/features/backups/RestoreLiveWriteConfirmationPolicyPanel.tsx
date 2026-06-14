@@ -39,8 +39,8 @@ export function RestoreLiveWriteConfirmationPolicyPanel({
     <div data-testid="restore-lwc-panel">
       <div data-testid="lwc-writes-disabled-notice" className="alert alert-warning mb-4">
         <span>
-          Live restore writes are disabled. Confirming this phrase does not enable writes or
-          start any restore operation.
+          Live restore writes are disabled. Confirming this phrase does not enable writes or start
+          any restore operation.
         </span>
       </div>
 
