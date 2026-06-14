@@ -535,6 +535,58 @@ After completing a restore, perform the following manual checks in Airtable:
 
 ---
 
+## Restore Live Write Confirmation Policy Checklist (Gate 8)
+
+### Before testing
+
+- [ ] Confirm `verify_live_write_confirmation_policy_gate` is registered in the Tauri invoke handler.
+- [ ] Confirm `RestoreLiveWriteConfirmationPolicyPanel` is rendered on the Restore page after the sandbox write testing policy section.
+- [ ] Confirm no execute button is present in the panel.
+- [ ] Confirm no token input field (`type="password"` or `name="token"`) is present.
+
+### Panel behavior
+
+- [ ] A writes-disabled notice is always shown in the live write confirmation policy section.
+- [ ] The required confirmation phrase is shown before the input field.
+- [ ] The verify button is disabled when the input is empty.
+- [ ] Clicking the button with a non-empty input calls `verifyLiveWriteConfirmationPolicy` and updates the panel.
+- [ ] While loading, the verify button is disabled and shows a loading label.
+
+### Result display
+
+- [ ] Status badge shows `confirmed`, `warning`, `blocked`, or `rejected` correctly.
+- [ ] The result message is shown beside the status badge.
+- [ ] The checks table shows one row per check (LWC-01 through LWC-05).
+- [ ] Each check row shows the check ID, label, status badge, and message.
+- [ ] A safety summary showing `noChangesMade`, `writesEnabled`, and `networkWritesAttempted` is shown.
+- [ ] A "No changes made." notice is shown.
+
+### Status scenarios
+
+- [ ] Exact phrase match with all prior gates ok returns `confirmed`.
+- [ ] Wrong text returns `rejected`.
+- [ ] Lowercase version of correct phrase returns `rejected`.
+- [ ] Extra words appended to correct phrase return `rejected`.
+- [ ] A blocked prior gate (Gate 1–6) with correct text returns `blocked`.
+- [ ] A blocked Gate 7 result with correct text returns `blocked`.
+- [ ] A warning prior gate with correct text returns `warning`.
+- [ ] A `confirmed` result shows the `lwc-confirmed-notice`, which says "writes remain disabled".
+- [ ] A `blocked` result shows the `lwc-blocked-notice`.
+- [ ] A `rejected` result shows the `lwc-rejected-notice`.
+
+### Safety invariants
+
+- [ ] `noChangesMade` is `true` in every live write confirmation policy result.
+- [ ] `writesEnabled` is `false` in every live write confirmation policy result — including `confirmed`.
+- [ ] `networkWritesAttempted` is `false` in every live write confirmation policy result.
+- [ ] The policy request type has no `token` field.
+- [ ] The policy result has no `token` field.
+- [ ] The policy result contains no full filesystem path.
+- [ ] The policy result contains no record payload field.
+- [ ] A `confirmed` result does NOT enable restore writes.
+
+---
+
 ## Write Engine Skeleton Checklist
 
 ### Before testing

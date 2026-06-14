@@ -245,6 +245,98 @@ This document lists all commands registered in the Tauri invoke handler as of v0
 
 ---
 
+## Restore Write Safety Gates (Gates 1–8)
+
+### `verify_restore_sandbox_environment`
+
+| Property | Value |
+|----------|-------|
+| Purpose | Gate 1 — Verifies the sandbox environment before any live write path is enabled |
+| Input sensitivity | Low — no token; accepts sandbox classification flags |
+| Writes files | No |
+| Network access | No |
+| Can change Airtable data | **No — write gate always returns `Disabled`. `writesEnabled` always `false`** |
+| Safety status | **No token in request or result.** `noChangesMade` always `true`. `networkWritesAttempted` always `false`. CHK-10 always skipped |
+
+### `validate_restore_confirmation_gate`
+
+| Property | Value |
+|----------|-------|
+| Purpose | Gate 2 — Validates exact user confirmation phrase before any live write is enabled |
+| Input sensitivity | Low — no token; accepts entered confirmation text and optional target label |
+| Writes files | No |
+| Network access | No |
+| Can change Airtable data | **No — `Confirmed` does NOT enable writes. `writesEnabled` always `false`** |
+| Safety status | **No token.** Case-sensitive exact match only. `noChangesMade` always `true` |
+
+### `verify_restore_target_empty`
+
+| Property | Value |
+|----------|-------|
+| Purpose | Gate 3 — Checks that the restore target base is empty before any writes |
+| Input sensitivity | Low — no token; accepts target mode and optional table/record counts |
+| Writes files | No |
+| Network access | No |
+| Can change Airtable data | **No — `Verified` does NOT enable writes. `writesEnabled` always `false`** |
+| Safety status | **No token.** `noChangesMade` always `true`. `networkWritesAttempted` always `false` |
+
+### `verify_destructive_operation_policy_gate`
+
+| Property | Value |
+|----------|-------|
+| Purpose | Gate 4 — Blocks any declared delete, update, or overwrite operations in the planned write set |
+| Input sensitivity | Low — no token; accepts list of declared operation kinds |
+| Writes files | No |
+| Network access | No |
+| Can change Airtable data | **No — `Compliant` does NOT enable writes. `writesEnabled` always `false`** |
+| Safety status | **No token.** No record payload. `noChangesMade` always `true` |
+
+### `verify_attachment_upload_policy_gate`
+
+| Property | Value |
+|----------|-------|
+| Purpose | Gate 5 — Blocks any attachment upload intents in the planned write set |
+| Input sensitivity | Low — no token; accepts list of declared attachment field intents |
+| Writes files | No |
+| Network access | No |
+| Can change Airtable data | **No — `Compliant` does NOT enable writes. `writesEnabled` always `false`** |
+| Safety status | **No token. No full attachment URL.** Attachment file bytes never transferred. `noChangesMade` always `true` |
+
+### `verify_schema_record_order_policy_gate`
+
+| Property | Value |
+|----------|-------|
+| Purpose | Gate 6 — Verifies that schema creation precedes record insertion and records precede linked-record updates |
+| Input sensitivity | Low — no token; accepts declared phase order flags |
+| Writes files | No |
+| Network access | No |
+| Can change Airtable data | **No — `Compliant` does NOT enable writes. `writesEnabled` always `false`** |
+| Safety status | **No token. No record payload.** `noChangesMade` always `true` |
+
+### `verify_sandbox_write_testing_policy_gate`
+
+| Property | Value |
+|----------|-------|
+| Purpose | Gate 7 — Verifies that sandbox write testing has been performed with complete evidence before any live write |
+| Input sensitivity | Low — no token; accepts target classification, sandbox verification flag, and evidence struct |
+| Writes files | No |
+| Network access | No |
+| Can change Airtable data | **No — `Compliant` does NOT enable writes. `writesEnabled` always `false`** |
+| Safety status | **No token. No record payload.** Evidence filename is basename only. `noChangesMade` always `true` |
+
+### `verify_live_write_confirmation_policy_gate`
+
+| Property | Value |
+|----------|-------|
+| Purpose | Gate 8 — Validates the live-write-specific user confirmation phrase and checks all prior gate prerequisites |
+| Input sensitivity | Low — no token; accepts entered confirmation text, optional target label, and optional prior gate statuses |
+| Writes files | No |
+| Network access | No |
+| Can change Airtable data | **No — `Confirmed` does NOT enable writes. `writesEnabled` always `false`** |
+| Safety status | **No token field in request or result. No filesystem path field. No record payload.** Case-sensitive exact match. Prior blocked gates cause `Blocked`. `noChangesMade` always `true`. `networkWritesAttempted` always `false` |
+
+---
+
 ## Restore Write Engine Skeleton
 
 ### `preview_restore_write_engine`
@@ -419,6 +511,14 @@ This document lists all commands registered in the Tauri invoke handler as of v0
 | `clear_job_history` | No | No | No | No | None |
 | `list_reports` | No | No | No | No | None |
 | `list_logs` | No | No | No | No | None |
+| `verify_restore_sandbox_environment` | No | No | No | **Disabled** | Gate 1 |
+| `validate_restore_confirmation_gate` | No | No | No | **Disabled** | Gate 2 — exact phrase |
+| `verify_restore_target_empty` | No | No | No | **Disabled** | Gate 3 |
+| `verify_destructive_operation_policy_gate` | No | No | No | **Disabled** | Gate 4 |
+| `verify_attachment_upload_policy_gate` | No | No | No | **Disabled** | Gate 5 |
+| `verify_schema_record_order_policy_gate` | No | No | No | **Disabled** | Gate 6 |
+| `verify_sandbox_write_testing_policy_gate` | No | No | No | **Disabled** | Gate 7 |
+| `verify_live_write_confirmation_policy_gate` | No | No | No | **Disabled** | Gate 8 — exact phrase |
 | `list_compatibility_rules` | No | No | No | No | None |
 
 ---

@@ -47,6 +47,8 @@ import type {
   SchemaRecordOrderPolicyResult,
   SandboxWriteTestingPolicyRequest,
   SandboxWriteTestingPolicyResult,
+  LiveWriteConfirmationPolicyRequest,
+  LiveWriteConfirmationPolicyResult,
   RestoreWriteEngineRequest,
   RestoreWriteEngineResult,
   RunBackupCommandRequest,
@@ -284,4 +286,15 @@ export interface AirBridgeService {
   verifySandboxWriteTestingPolicy(
     request: SandboxWriteTestingPolicyRequest,
   ): Promise<SandboxWriteTestingPolicyResult>;
+  /**
+   * Gate 8: Live-write-specific user confirmation policy.
+   * - No Airtable API calls.
+   * - No token required.
+   * - No record payload.
+   * - writesEnabled is always false.
+   * - Confirmed does NOT enable restore writes.
+   */
+  verifyLiveWriteConfirmationPolicy(
+    request: LiveWriteConfirmationPolicyRequest,
+  ): Promise<LiveWriteConfirmationPolicyResult>;
 }

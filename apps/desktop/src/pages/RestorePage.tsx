@@ -13,6 +13,7 @@ import { RestoreDestructiveOperationPolicyPanel } from "../features/backups/Rest
 import { RestoreAttachmentUploadPolicyPanel } from "../features/backups/RestoreAttachmentUploadPolicyPanel";
 import { RestoreSchemaRecordOrderPolicyPanel } from "../features/backups/RestoreSchemaRecordOrderPolicyPanel";
 import { RestoreSandboxWriteTestingPolicyPanel } from "../features/backups/RestoreSandboxWriteTestingPolicyPanel";
+import { RestoreLiveWriteConfirmationPolicyPanel } from "../features/backups/RestoreLiveWriteConfirmationPolicyPanel";
 import { RestoreWriteEnginePanel } from "../features/backups/RestoreWriteEnginePanel";
 import { liveAirBridgeService } from "../services/liveAirBridgeService";
 import type { BackupPackageInspectionResult } from "../backend/types";
@@ -31,6 +32,7 @@ import type {
   AttachmentUploadPolicyResult,
   SchemaRecordOrderPolicyResult,
   SandboxWriteTestingPolicyResult,
+  LiveWriteConfirmationPolicyResult,
 } from "../backend/types";
 
 export function RestorePage() {
@@ -69,6 +71,8 @@ export function RestorePage() {
   const [sroLoading, setSroLoading] = useState(false);
   const [swtResult, setSwtResult] = useState<SandboxWriteTestingPolicyResult | null>(null);
   const [swtLoading, setSwtLoading] = useState(false);
+  const [lwcResult, setLwcResult] = useState<LiveWriteConfirmationPolicyResult | null>(null);
+  const [lwcLoading, setLwcLoading] = useState(false);
 
   return (
     <div className="page">
@@ -417,6 +421,39 @@ export function RestorePage() {
                   })
                   .finally(() => {
                     setSwtLoading(false);
+                  });
+              }}
+            />
+
+            <div className="divider" style={{ margin: 0 }} />
+
+            {/* Live write confirmation policy — Gate 8. No writes. No token. No record payload. */}
+            <RestoreLiveWriteConfirmationPolicyPanel
+              result={lwcResult}
+              loading={lwcLoading}
+              requiredText={
+                lwcResult?.requiredText ??
+                `LIVE RESTORE ${(targetBaseName ?? "TARGET").replace(/[^a-zA-Z0-9\-_. ]/g, "").trim().slice(0, 64).toUpperCase() || "TARGET"} — WRITES REMAIN DISABLED`
+              }
+              onVerify={(enteredText) => {
+                setLwcLoading(true);
+                liveAirBridgeService
+                  .verifyLiveWriteConfirmationPolicy({
+                    enteredText,
+                    targetLabel: targetBaseName ?? undefined,
+                    priorGateStatuses: {
+                      sandboxVerificationStatus: sandboxResult?.status ?? undefined,
+                      sandboxWriteTestingPolicyStatus: swtResult?.status ?? undefined,
+                    },
+                  })
+                  .then((r) => {
+                    setLwcResult(r);
+                  })
+                  .catch(() => {
+                    setLwcResult(null);
+                  })
+                  .finally(() => {
+                    setLwcLoading(false);
                   });
               }}
             />

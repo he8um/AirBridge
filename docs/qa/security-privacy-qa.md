@@ -570,6 +570,55 @@ If AirBridge supports user-configured field redaction:
 
 ---
 
+## Restore Live Write Confirmation Policy Safety (Gate 8)
+
+**Goal:** Confirm that the live write confirmation policy gate makes no Airtable API calls, requires no token, makes no writes, contains no record payload, never enables writes even when confirmed, and always returns `noChangesMade: true` and `writesEnabled: false`.
+
+**LWC-SEC-01: No token accepted.**
+- The `verify_live_write_confirmation_policy_gate` Tauri command has no `token` parameter.
+- `LiveWriteConfirmationPolicyRequest` contains no token field.
+- `LiveWriteConfirmationPolicyResult` contains no token field.
+- `RestoreLiveWriteConfirmationPolicyPanel` does not render a token input (`type="password"` or `name="token"`).
+- Rust serialization tests assert no `pat_` prefix or `"token"` key in any result JSON.
+
+**LWC-SEC-02: No Airtable API calls.**
+- `verify_live_write_confirmation_policy` accepts no HTTP client or base client argument.
+- No HTTP calls are made by this command.
+- All checks run against the declared request fields only.
+
+**LWC-SEC-03: No write operations.**
+- No Airtable record, table, field, or base is created, updated, or deleted.
+- `networkWritesAttempted` is always `false` in all result branches.
+
+**LWC-SEC-04: No record payload in any result field.**
+- `LiveWriteConfirmationPolicyResult` contains no raw record data, no record IDs, and no field values.
+- Rust serialization tests assert no `"fields"` or `"recordId"` key in the result JSON.
+
+**LWC-SEC-05: No full path in any field.**
+- `LiveWriteConfirmationPolicyResult` has no path field.
+- Serialized result does not contain `/Users/`, `/home/`, or `:\\`.
+- Target label is sanitised before appearing in the required phrase (path separators stripped).
+
+**LWC-SEC-06: `noChangesMade` always true.**
+- All code paths in `verify_live_write_confirmation_policy` set `no_changes_made: true`.
+- Rust unit tests assert this for every status branch (confirmed, warning, blocked, rejected).
+
+**LWC-SEC-07: No execute button.**
+- `RestoreLiveWriteConfirmationPolicyPanel` does not render any button with execute, run, or restore semantics.
+- Panel tests assert no "succeeded" language is present.
+
+**LWC-SEC-08: Confirmed status does not enable writes.**
+- `writesEnabled` is always `false` regardless of policy status.
+- `Confirmed` validates the confirmation contract only — it does not change the write engine state.
+- Rust unit tests assert `writesEnabled: false` in every result branch including `Confirmed`.
+
+**LWC-SEC-09: Blocked prior gate prevents confirmation.**
+- Any prior gate with `blocked` status causes `Blocked` policy status even if the text matches.
+- Gate 7 (sandbox write testing) blocked status also causes `Blocked`.
+- Rust unit tests cover every prior gate blocked scenario.
+
+---
+
 ## Restore Schema Creation Plan Safety (V0.1)
 
 **Goal:** Confirm that the schema creation planning flow makes no Airtable API calls, requires no token, creates no Airtable tables or fields, and always returns `noChangesMade: true`.

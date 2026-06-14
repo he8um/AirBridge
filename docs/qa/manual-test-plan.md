@@ -1144,6 +1144,64 @@ These test cases cover the command contract layer: confirmation enforcement, out
 
 ---
 
+## Live Write Confirmation Policy (Gate 8)
+
+**TC-LWC-01: Writes-disabled notice always visible**
+
+- Preconditions: Restore page open.
+- Steps:
+  1. Scroll to the "Live Write Confirmation" section.
+- Expected result: A notice reads "Live restore writes are disabled." The notice is visible before any verification has been run.
+
+**TC-LWC-02: Required phrase shown before input**
+
+- Preconditions: Restore page open with a target base name set.
+- Steps:
+  1. Scroll to the "Live Write Confirmation" section.
+- Expected result: The required confirmation phrase (e.g., `LIVE RESTORE MY BASE — WRITES REMAIN DISABLED`) is shown in a code block before the input field.
+
+**TC-LWC-03: Wrong text returns rejected**
+
+- Preconditions: Restore page open; all prior gates completed without blocked status.
+- Steps:
+  1. Type "wrong text" in the confirmation input.
+  2. Click "Verify".
+- Expected result: Status badge shows `rejected`. LWC-04 check shows `failed`. A rejected notice is shown.
+
+**TC-LWC-04: Correct phrase (exact, case-sensitive) returns confirmed**
+
+- Preconditions: Restore page open; all prior gates completed without blocked status.
+- Steps:
+  1. Copy the required phrase shown in the panel.
+  2. Paste it exactly into the confirmation input.
+  3. Click "Verify".
+- Expected result: Status badge shows `confirmed`. LWC-04 check shows `passed`. A confirmed notice is shown saying "writes remain disabled".
+
+**TC-LWC-05: Lowercased phrase returns rejected**
+
+- Preconditions: Restore page open; all prior gates completed without blocked status.
+- Steps:
+  1. Type the required phrase in lowercase.
+  2. Click "Verify".
+- Expected result: Status badge shows `rejected`.
+
+**TC-LWC-06: Prior blocked gate returns blocked even with correct phrase**
+
+- Preconditions: Restore page open; Gate 7 (sandbox write testing) has a `blocked` status.
+- Steps:
+  1. Type the correct required phrase.
+  2. Click "Verify".
+- Expected result: Status badge shows `blocked`. A blocked notice is shown.
+
+**TC-LWC-07: No execute button or token input**
+
+- Preconditions: Restore page open with a live write confirmation policy result (any status).
+- Steps:
+  1. Inspect the Live Write Confirmation Policy section for buttons and input fields.
+- Expected result: No "Execute", "Run Restore", or similar button. No password or token input field (`type="password"` or `name="token"`).
+
+---
+
 ## Write Engine Skeleton
 
 **TC-WE-01: Write engine disabled notice is always visible**

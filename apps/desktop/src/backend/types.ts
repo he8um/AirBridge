@@ -1768,3 +1768,64 @@ export interface SandboxWriteTestingPolicyResult {
   networkWritesAttempted: boolean;
   writesEnabled: boolean;
 }
+
+// ── Gate 8: Live write confirmation policy ────────────────────────────────────
+
+export type LiveWriteConfirmationPolicyStatus =
+  | "confirmed"
+  | "warning"
+  | "blocked"
+  | "rejected";
+export type LiveWriteConfirmationCheckStatus = "passed" | "warning" | "failed";
+
+/**
+ * Prior gate status summary for the live-write confirmation policy check.
+ * All fields are safe display strings — no token, no path, no record payload.
+ */
+export interface PriorGateStatuses {
+  sandboxVerificationStatus?: string;
+  destructiveOperationPolicyStatus?: string;
+  attachmentUploadPolicyStatus?: string;
+  schemaRecordOrderPolicyStatus?: string;
+  sandboxWriteTestingPolicyStatus?: string;
+}
+
+/**
+ * Input to the live-write confirmation policy gate.
+ * - No token field.
+ * - No filesystem path field.
+ * - No record payload field.
+ */
+export interface LiveWriteConfirmationPolicyRequest {
+  enteredText: string;
+  targetLabel?: string;
+  priorGateStatuses?: PriorGateStatuses;
+}
+
+export interface LiveWriteConfirmationCheck {
+  checkId: string;
+  label: string;
+  status: LiveWriteConfirmationCheckStatus;
+  message: string;
+  remediation?: string;
+}
+
+/**
+ * Result from verify_live_write_confirmation_policy_gate.
+ * - No token field.
+ * - No filesystem path field.
+ * - No record payload field.
+ * - writesEnabled is always false.
+ * - noChangesMade is always true.
+ * - networkWritesAttempted is always false.
+ * - Confirmed status does NOT enable restore writes.
+ */
+export interface LiveWriteConfirmationPolicyResult {
+  status: LiveWriteConfirmationPolicyStatus;
+  checks: LiveWriteConfirmationCheck[];
+  requiredText: string;
+  message: string;
+  noChangesMade: boolean;
+  networkWritesAttempted: boolean;
+  writesEnabled: boolean;
+}

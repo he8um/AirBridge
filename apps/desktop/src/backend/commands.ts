@@ -43,6 +43,8 @@ import type {
   SchemaRecordOrderPolicyResult,
   SandboxWriteTestingPolicyRequest,
   SandboxWriteTestingPolicyResult,
+  LiveWriteConfirmationPolicyRequest,
+  LiveWriteConfirmationPolicyResult,
   RunBackupCommandRequest,
   RunBackupCommandResponse,
   SandboxVerificationRequest,
@@ -470,4 +472,13 @@ export async function verifySandboxWriteTestingPolicy(
   return safeInvoke<SandboxWriteTestingPolicyResult>("verify_sandbox_write_testing_policy_gate", {
     request,
   });
+}
+
+export async function verifyLiveWriteConfirmationPolicy(
+  request: LiveWriteConfirmationPolicyRequest,
+): Promise<LiveWriteConfirmationPolicyResult | null> {
+  return safeInvoke<LiveWriteConfirmationPolicyResult>(
+    "verify_live_write_confirmation_policy_gate",
+    { request },
+  );
 }

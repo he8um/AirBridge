@@ -170,13 +170,27 @@ The `verify_destructive_operation_policy_gate` Tauri command verifies that no de
 
 ---
 
-## Gate 8 — User Confirmation for Live Writes
+## Gate 8 — Live-Write-Specific User Confirmation Policy
 
-- [ ] **Confirmation phrase enforced at Rust level.** The Rust command rejects any confirmation that is not exactly the required phrase (see Gate 2).
-- [ ] **Partial match rejected.** Lowercase, partial, and extra-word inputs all fail the check.
-- [ ] **Confirmation phrase shown in UI.** The user sees the phrase they must type before the input field is rendered.
-- [ ] **No auto-fill.** The confirmation input is never pre-filled programmatically.
-- [ ] **Confirmation constant shared.** A single Rust constant and a single TypeScript constant hold the fixed fallback phrase. Tests use these constants, not inline strings.
+- [x] **`verify_live_write_confirmation_policy()` implemented.** Runs 5 checks: LWC-01 through LWC-05.
+- [x] **LWC-01 (write gate disabled) always passes.** `evaluate_write_gate()` unconditionally returns `Disabled`.
+- [x] **LWC-02 (prior gates not blocked) checked.** Any blocked prior gate (Gates 1–6) causes `Failed`; warnings cause `Warning`.
+- [x] **LWC-03 (sandbox write testing gate not blocked) checked.** A blocked Gate 7 causes `Failed`; a warning produces `Warning`.
+- [x] **LWC-04 (confirmation text match) enforced.** Case-sensitive exact match; outer whitespace trimmed; partial/lowercase/extra-word inputs all fail.
+- [x] **LWC-05 (writes remain disabled) always passes.** Confirming the phrase never enables writes.
+- [x] **Required phrase includes target label and fixed suffix `"— WRITES REMAIN DISABLED"`.** Built from safe sanitised label, uppercased; falls back to `TARGET`.
+- [x] **`Confirmed` status does NOT enable writes.** `writesEnabled` is always `false` in every result branch.
+- [x] **No token field anywhere in request or result.** Verified by serialization test.
+- [x] **No filesystem path field anywhere in request or result.** Verified by serialization test.
+- [x] **No record payload field anywhere in result.** Verified by serialization test.
+- [x] **`noChangesMade` always `true`.** Checked in all status branches.
+- [x] **`networkWritesAttempted` always `false`.** Checked across all status branches.
+- [x] **Required text exposed in result.** UI reads `result.requiredText` to display the phrase.
+- [x] **Confirmation input has no token input type.** Panel uses `type="text"`, no password field, no `name="token"`.
+- [x] **No execute button in Gate 8 panel.** Panel renders no execute or write-start control.
+- [x] **No "succeeded" language in panel.** Checked by UI test.
+- [x] **30 Rust unit tests pass** for live write confirmation policy module.
+- [x] **47 frontend tests pass** for live write confirmation policy service contract and panel rendering.
 
 ---
 

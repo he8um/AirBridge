@@ -47,6 +47,8 @@ import type {
   SchemaRecordOrderPolicyResult,
   SandboxWriteTestingPolicyRequest,
   SandboxWriteTestingPolicyResult,
+  LiveWriteConfirmationPolicyRequest,
+  LiveWriteConfirmationPolicyResult,
   RestoreWriteEngineRequest,
   RestoreWriteEngineResult,
   RunBackupCommandRequest,
@@ -577,6 +579,24 @@ async function verifySandboxWriteTestingPolicy(
   return result;
 }
 
+async function verifyLiveWriteConfirmationPolicy(
+  request: LiveWriteConfirmationPolicyRequest,
+): Promise<LiveWriteConfirmationPolicyResult> {
+  const result = await commands.verifyLiveWriteConfirmationPolicy(request);
+  if (result === null) {
+    return {
+      status: "blocked",
+      checks: [],
+      requiredText: "",
+      message: "Live write confirmation policy check is not available in this context.",
+      noChangesMade: true,
+      networkWritesAttempted: false,
+      writesEnabled: false,
+    };
+  }
+  return result;
+}
+
 export const liveAirBridgeService: AirBridgeService = {
   listConnections,
   listWorkspaces,
@@ -615,4 +635,5 @@ export const liveAirBridgeService: AirBridgeService = {
   verifyAttachmentUploadPolicy,
   verifySchemaRecordOrderPolicy,
   verifySandboxWriteTestingPolicy,
+  verifyLiveWriteConfirmationPolicy,
 };

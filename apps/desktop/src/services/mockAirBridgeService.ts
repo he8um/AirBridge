@@ -60,6 +60,9 @@ import type {
   SandboxWriteTestingPolicyRequest,
   SandboxWriteTestingPolicyResult,
   SandboxWriteTestingPolicyStatus,
+  LiveWriteConfirmationPolicyRequest,
+  LiveWriteConfirmationPolicyResult,
+  LiveWriteConfirmationPolicyStatus,
   RunBackupCommandResponse,
   RecordWriteRequestPlanRequest,
   RecordWriteRequestPlanResult,
@@ -2647,6 +2650,170 @@ function verifySandboxWriteTestingPolicyImpl(
   });
 }
 
+function buildLiveWriteConfirmationText(targetLabel: string | undefined): string {
+  const safeTarget = targetLabel
+    ? targetLabel
+        .replace(/[^a-zA-Z0-9\-_. ]/g, "")
+        .trim()
+        .slice(0, 64)
+        .toUpperCase() || "TARGET"
+    : "TARGET";
+  return `LIVE RESTORE ${safeTarget} — WRITES REMAIN DISABLED`;
+}
+
+function verifyLiveWriteConfirmationPolicyImpl(
+  request: LiveWriteConfirmationPolicyRequest,
+): Promise<LiveWriteConfirmationPolicyResult> {
+  const requiredText = buildLiveWriteConfirmationText(request.targetLabel);
+  const checks: LiveWriteConfirmationPolicyResult["checks"] = [];
+
+  // LWC-01: Write gate disabled (always passes in mock)
+  checks.push({
+    checkId: "LWC-01",
+    label: "write-gate-disabled",
+    status: "passed",
+    message: "Restore write gate is disabled. No live writes are possible.",
+  });
+
+  // LWC-02: Prior safety gates not blocked
+  const gates = request.priorGateStatuses;
+  const gateFlag = (s: string | undefined): { blocked: boolean; warning: boolean } => ({
+    blocked: s === "blocked",
+    warning: s === "warning",
+  });
+  const sandboxF = gateFlag(gates?.sandboxVerificationStatus);
+  const dopF = gateFlag(gates?.destructiveOperationPolicyStatus);
+  const aupF = gateFlag(gates?.attachmentUploadPolicyStatus);
+  const sroF = gateFlag(gates?.schemaRecordOrderPolicyStatus);
+
+  const anyPriorBlocked = sandboxF.blocked || dopF.blocked || aupF.blocked || sroF.blocked;
+  const anyPriorWarn = sandboxF.warning || dopF.warning || aupF.warning || sroF.warning;
+
+  if (anyPriorBlocked) {
+    const blockedNames: string[] = [];
+    if (sandboxF.blocked) blockedNames.push("sandbox-verification");
+    if (dopF.blocked) blockedNames.push("destructive-operation-policy");
+    if (aupF.blocked) blockedNames.push("attachment-upload-policy");
+    if (sroF.blocked) blockedNames.push("schema-record-order-policy");
+    checks.push({
+      checkId: "LWC-02",
+      label: "prior-gates-not-blocked",
+      status: "failed",
+      message: `Prior safety gate(s) are blocked: ${blockedNames.join(", ")}. Resolve before confirming.`,
+      remediation: "Resolve all blocked prior gates before attempting live-write confirmation.",
+    });
+  } else if (anyPriorWarn) {
+    checks.push({
+      checkId: "LWC-02",
+      label: "prior-gates-not-blocked",
+      status: "warning",
+      message: "Prior safety gates have warnings. Review before proceeding.",
+      remediation: "Resolve prior-gate warnings where possible before confirming live writes.",
+    });
+  } else {
+    checks.push({
+      checkId: "LWC-02",
+      label: "prior-gates-not-blocked",
+      status: "passed",
+      message: "Prior safety gates are not blocked.",
+    });
+  }
+
+  // LWC-03: Sandbox write testing gate not blocked
+  const swtF = gateFlag(gates?.sandboxWriteTestingPolicyStatus);
+  if (swtF.blocked) {
+    checks.push({
+      checkId: "LWC-03",
+      label: "sandbox-write-testing-not-blocked",
+      status: "failed",
+      message: "Sandbox write testing policy (Gate 7) is blocked. Resolve before confirming.",
+      remediation:
+        "Complete sandbox write testing with required evidence before confirming live writes.",
+    });
+  } else if (swtF.warning) {
+    checks.push({
+      checkId: "LWC-03",
+      label: "sandbox-write-testing-not-blocked",
+      status: "warning",
+      message:
+        "Sandbox write testing policy (Gate 7) has warnings. Review evidence completeness.",
+      remediation:
+        "Complete all required sandbox test evidence fields before confirming live writes.",
+    });
+  } else {
+    checks.push({
+      checkId: "LWC-03",
+      label: "sandbox-write-testing-not-blocked",
+      status: "passed",
+      message: "Sandbox write testing policy (Gate 7) is not blocked.",
+    });
+  }
+
+  // LWC-04: Confirmation text match (case-sensitive, trim only)
+  const entered = request.enteredText.trim();
+  const textMatches = entered === requiredText;
+  if (textMatches) {
+    checks.push({
+      checkId: "LWC-04",
+      label: "confirmation-text-match",
+      status: "passed",
+      message: "Confirmation text matches the required phrase.",
+    });
+  } else {
+    checks.push({
+      checkId: "LWC-04",
+      label: "confirmation-text-match",
+      status: "failed",
+      message:
+        "Confirmation text does not match the required phrase. Text must match exactly, case-sensitively.",
+      remediation: `Type exactly: ${requiredText}`,
+    });
+  }
+
+  // LWC-05: Writes remain disabled (always passes)
+  checks.push({
+    checkId: "LWC-05",
+    label: "writes-remain-disabled",
+    status: "passed",
+    message:
+      "Restore write execution is not enabled. Confirming this phrase does not start any write operation.",
+  });
+
+  const hasBlocked = checks.some((c) => c.status === "failed");
+  const hasWarning = checks.some((c) => c.status === "warning");
+
+  let status: LiveWriteConfirmationPolicyStatus;
+  if (hasBlocked) {
+    status = textMatches ? "blocked" : "rejected";
+  } else if (!textMatches) {
+    status = "rejected";
+  } else if (hasWarning) {
+    status = "warning";
+  } else {
+    status = "confirmed";
+  }
+
+  const targetName = request.targetLabel ?? "the restore target";
+  const message =
+    status === "confirmed"
+      ? `Live-write confirmation for ${targetName} accepted. Required phrase matched. Restore writes remain disabled — confirmation does not enable live writes.`
+      : status === "warning"
+        ? `Live-write confirmation for ${targetName} accepted with warnings. Required phrase matched, but prior gates have unresolved warnings. Restore writes remain disabled.`
+        : status === "blocked"
+          ? `Live-write confirmation for ${targetName} is blocked. One or more prior safety gates are blocked. Restore writes remain disabled.`
+          : `Live-write confirmation for ${targetName} rejected. Confirmation text did not match the required phrase. Restore writes remain disabled.`;
+
+  return Promise.resolve({
+    status,
+    checks,
+    requiredText,
+    message,
+    noChangesMade: true,
+    networkWritesAttempted: false,
+    writesEnabled: false,
+  });
+}
+
 export const mockAirBridgeService: AirBridgeService = {
   listConnections,
   listWorkspaces,
@@ -2685,4 +2852,5 @@ export const mockAirBridgeService: AirBridgeService = {
   verifyAttachmentUploadPolicy: verifyAttachmentUploadPolicyImpl,
   verifySchemaRecordOrderPolicy: verifySchemaRecordOrderPolicyImpl,
   verifySandboxWriteTestingPolicy: verifySandboxWriteTestingPolicyImpl,
+  verifyLiveWriteConfirmationPolicy: verifyLiveWriteConfirmationPolicyImpl,
 };

@@ -13,6 +13,10 @@ use crate::restore::destructive_operation_policy::{
 use crate::restore::dry_run::create_dry_run_plan;
 use crate::restore::execution::{RestoreExecutionRequest, RestoreExecutionResult};
 use crate::restore::execution_gate::validate_restore_execution_gate;
+use crate::restore::live_write_confirmation_policy::{
+    verify_live_write_confirmation_policy, LiveWriteConfirmationPolicyRequest,
+    LiveWriteConfirmationPolicyResult,
+};
 use crate::restore::plan::{RestoreDryRunPlan, RestoreDryRunRequest};
 use crate::restore::record_import_plan::{RestoreRecordImportPlan, RestoreRecordImportPlanRequest};
 use crate::restore::record_import_planner::create_record_import_plan;
@@ -543,6 +547,13 @@ pub fn verify_sandbox_write_testing_policy_gate(
     request: SandboxWriteTestingPolicyRequest,
 ) -> SandboxWriteTestingPolicyResult {
     verify_sandbox_write_testing_policy(&request)
+}
+
+#[tauri::command]
+pub fn verify_live_write_confirmation_policy_gate(
+    request: LiveWriteConfirmationPolicyRequest,
+) -> LiveWriteConfirmationPolicyResult {
+    verify_live_write_confirmation_policy(&request)
 }
 
 #[cfg(test)]

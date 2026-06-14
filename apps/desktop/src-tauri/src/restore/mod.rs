@@ -6,6 +6,7 @@ pub mod dry_run;
 pub mod execution;
 pub mod execution_gate;
 pub mod linked_record_updates;
+pub mod live_write_confirmation_policy;
 pub mod ordering;
 pub mod plan;
 pub mod record_import_batches;
