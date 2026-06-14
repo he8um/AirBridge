@@ -4,6 +4,7 @@ export { RestoreSandboxVerificationPanel } from "./RestoreSandboxVerificationPan
 export { RestoreTargetEmptyVerificationPanel } from "./RestoreTargetEmptyVerificationPanel";
 export { RestoreDestructiveOperationPolicyPanel } from "./RestoreDestructiveOperationPolicyPanel";
 export { RestoreAttachmentUploadPolicyPanel } from "./RestoreAttachmentUploadPolicyPanel";
+export { RestoreSchemaRecordOrderPolicyPanel } from "./RestoreSchemaRecordOrderPolicyPanel";
 export { JobHistoryPanel } from "./JobHistoryPanel";
 export { RestoreRecordImportPlanPanel } from "./RestoreRecordImportPlanPanel";
 export { BackupConfirmationBox } from "./BackupConfirmationBox";

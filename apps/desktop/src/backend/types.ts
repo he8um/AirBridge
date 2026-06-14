@@ -1676,3 +1676,41 @@ export interface AttachmentUploadPolicyResult {
   networkWritesAttempted: boolean;
   writesEnabled: boolean;
 }
+
+export type SchemaRecordOrderPolicyStatus = "compliant" | "warning" | "blocked";
+export type SchemaRecordOrderCheckStatus = "passed" | "warning" | "failed";
+export type RestoreWritePhaseKind =
+  | "schema"
+  | "records"
+  | "linkedRecords"
+  | "attachments"
+  | "validation";
+
+export interface DeclaredWritePhase {
+  phase: RestoreWritePhaseKind;
+  isPlanned: boolean;
+  isBlocked: boolean;
+}
+
+export interface SchemaRecordOrderCheck {
+  checkId: string;
+  label: string;
+  status: SchemaRecordOrderCheckStatus;
+  message: string;
+  remediation?: string;
+}
+
+export interface SchemaRecordOrderPolicyRequest {
+  declaredPhases: DeclaredWritePhase[];
+  targetDisplayName?: string;
+}
+
+export interface SchemaRecordOrderPolicyResult {
+  status: SchemaRecordOrderPolicyStatus;
+  checks: SchemaRecordOrderCheck[];
+  message: string;
+  orderingViolations: string[];
+  noChangesMade: boolean;
+  networkWritesAttempted: boolean;
+  writesEnabled: boolean;
+}

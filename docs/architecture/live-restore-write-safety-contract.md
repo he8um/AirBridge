@@ -18,6 +18,8 @@ All restore write paths are hard-disabled. `evaluate_write_gate()` returns `Disa
 
 **Gate 5 — attachment upload policy** is implemented via the `verify_attachment_upload_policy_gate` Tauri command. It runs 5 checks (AUP-01 through AUP-05): write gate state, no upload-requested intents, no download-requested intents (warning only), no unknown intents (warning only), and metadata-only confirmation. Any `UploadRequested` field intent causes status `Blocked`. `DownloadRequested` or `Unknown` intents cause status `Warning`. Attachment file bytes are never uploaded or downloaded. No Airtable API calls are made. No token is required. No full attachment URL appears in any result field. A `Compliant` result does NOT enable restore writes.
 
+**Gate 6 — schema record order policy** is implemented via the `verify_schema_record_order_policy_gate` Tauri command. It runs 5 checks (SRO-01 through SRO-05): write gate state, schema phase presence and plannedness, schema phase ordering before records, record-create ordering before linked-record updates, and record-create ordering before attachment handling. Missing or blocked schema phases cause `Blocked`. A record phase declared before a schema phase causes `Blocked` with a `records-before-schema` ordering violation. Linked-record or attachment phases declared before record-create cause `Blocked`. Warning conditions (unplanned schema, linked/attachment without records, no phases declared) produce `Warning`. No Airtable API calls are made. No token is required. No record payload appears in any result field. A `Compliant` result does NOT enable restore writes.
+
 This contract defines what must be true before `evaluate_write_gate()` is ever changed to return an enabled decision.
 
 ---

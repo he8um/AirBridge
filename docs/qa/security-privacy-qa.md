@@ -480,6 +480,51 @@ If AirBridge supports user-configured field redaction:
 
 ---
 
+## Restore Schema Record Order Policy Safety (Gate 6)
+
+**Goal:** Confirm that the schema record order policy gate makes no Airtable API calls, requires no token, makes no writes, contains no record payload, and always returns `noChangesMade: true` and `writesEnabled: false`.
+
+**SRO-01: No token accepted.**
+- The `verify_schema_record_order_policy_gate` Tauri command has no `token` parameter.
+- The `RestoreSchemaRecordOrderPolicyPanel` component does not render a token input field.
+- No token flows through the schema record order policy code path.
+
+**SRO-02: No Airtable API calls.**
+- `verify_schema_record_order_policy` accepts no HTTP client or base client argument.
+- No HTTP calls are made by this command.
+- All checks run purely against the declared phase list.
+
+**SRO-03: No write operations.**
+- No Airtable record, table, field, or base is created, updated, or deleted.
+- `networkWritesAttempted` is always `false` in the result.
+
+**SRO-04: No record payload in any result field.**
+- `SchemaRecordOrderPolicyResult` contains no raw record data, no record IDs, and no field values.
+- Rust serialization tests assert this for every output field.
+
+**SRO-05: No full path in result.**
+- `SchemaRecordOrderPolicyResult` has no path field.
+- `SchemaRecordOrderPolicyRequest` has no path field.
+- Serialized result does not contain `/Users/`, `/home/`, or `:\\`.
+
+**SRO-06: `noChangesMade` always true.**
+- All code paths in `verify_schema_record_order_policy` set `no_changes_made: true`.
+- Rust unit tests assert this for every status branch.
+
+**SRO-07: No execute button.**
+- `RestoreSchemaRecordOrderPolicyPanel` does not render any button with execute, run, or restore semantics.
+- Panel tests assert no button with text matching `/execute/i` or `/run restore/i` is present.
+
+**SRO-08: Compliant status does not enable writes.**
+- `writesEnabled` is always `false` regardless of policy status.
+- `Compliant` is a phase ordering check result, not an execution gate — it does not change the write engine state.
+
+**SRO-09: Schema must precede records in declared phase list.**
+- Any request where a record-create phase appears before or without a schema phase causes `Blocked`.
+- The `records-before-schema` or `missing-schema-with-records` ordering violation is included in the result.
+
+---
+
 ## Restore Schema Creation Plan Safety (V0.1)
 
 **Goal:** Confirm that the schema creation planning flow makes no Airtable API calls, requires no token, creates no Airtable tables or fields, and always returns `noChangesMade: true`.

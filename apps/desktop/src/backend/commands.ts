@@ -39,6 +39,8 @@ import type {
   DestructiveOperationPolicyResult,
   AttachmentUploadPolicyRequest,
   AttachmentUploadPolicyResult,
+  SchemaRecordOrderPolicyRequest,
+  SchemaRecordOrderPolicyResult,
   RunBackupCommandRequest,
   RunBackupCommandResponse,
   SandboxVerificationRequest,
@@ -441,6 +443,21 @@ export async function verifyAttachmentUploadPolicy(
   request: AttachmentUploadPolicyRequest,
 ): Promise<AttachmentUploadPolicyResult | null> {
   return safeInvoke<AttachmentUploadPolicyResult>("verify_attachment_upload_policy_gate", {
+    request,
+  });
+}
+
+/**
+ * Verifies that write phases observe schema-before-record ordering (Gate 6).
+ * - No Airtable API calls. No token. No full path. No record payload. No network writes.
+ * - writesEnabled is always false. noChangesMade is always true.
+ * - Compliant status does NOT enable restore writes.
+ * - Returns null if Tauri IPC is unavailable.
+ */
+export async function verifySchemaRecordOrderPolicy(
+  request: SchemaRecordOrderPolicyRequest,
+): Promise<SchemaRecordOrderPolicyResult | null> {
+  return safeInvoke<SchemaRecordOrderPolicyResult>("verify_schema_record_order_policy_gate", {
     request,
   });
 }

@@ -22,6 +22,7 @@ pub mod sandbox_verification;
 pub mod schema_dependencies;
 pub mod schema_plan;
 pub mod schema_planner;
+pub mod schema_record_order_policy;
 pub mod schema_steps;
 pub mod schema_warnings;
 pub mod schema_write_executor;

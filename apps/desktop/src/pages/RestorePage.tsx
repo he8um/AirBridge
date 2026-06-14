@@ -11,6 +11,7 @@ import { RestoreSandboxVerificationPanel } from "../features/backups/RestoreSand
 import { RestoreTargetEmptyVerificationPanel } from "../features/backups/RestoreTargetEmptyVerificationPanel";
 import { RestoreDestructiveOperationPolicyPanel } from "../features/backups/RestoreDestructiveOperationPolicyPanel";
 import { RestoreAttachmentUploadPolicyPanel } from "../features/backups/RestoreAttachmentUploadPolicyPanel";
+import { RestoreSchemaRecordOrderPolicyPanel } from "../features/backups/RestoreSchemaRecordOrderPolicyPanel";
 import { RestoreWriteEnginePanel } from "../features/backups/RestoreWriteEnginePanel";
 import { liveAirBridgeService } from "../services/liveAirBridgeService";
 import type { BackupPackageInspectionResult } from "../backend/types";
@@ -27,6 +28,7 @@ import type {
   TargetEmptyVerificationResult,
   DestructiveOperationPolicyResult,
   AttachmentUploadPolicyResult,
+  SchemaRecordOrderPolicyResult,
 } from "../backend/types";
 
 export function RestorePage() {
@@ -61,6 +63,8 @@ export function RestorePage() {
   const [dopLoading, setDopLoading] = useState(false);
   const [aupResult, setAupResult] = useState<AttachmentUploadPolicyResult | null>(null);
   const [aupLoading, setAupLoading] = useState(false);
+  const [sroResult, setSroResult] = useState<SchemaRecordOrderPolicyResult | null>(null);
+  const [sroLoading, setSroLoading] = useState(false);
 
   return (
     <div className="page">
@@ -358,6 +362,31 @@ export function RestorePage() {
                   })
                   .finally(() => {
                     setAupLoading(false);
+                  });
+              }}
+            />
+
+            <div className="divider" style={{ margin: 0 }} />
+
+            {/* Schema record order policy — Gate 6. No writes. No token. No record payload. */}
+            <RestoreSchemaRecordOrderPolicyPanel
+              result={sroResult}
+              loading={sroLoading}
+              onVerify={() => {
+                setSroLoading(true);
+                liveAirBridgeService
+                  .verifySchemaRecordOrderPolicy({
+                    declaredPhases: [],
+                    targetDisplayName: targetBaseName ?? undefined,
+                  })
+                  .then((r) => {
+                    setSroResult(r);
+                  })
+                  .catch(() => {
+                    setSroResult(null);
+                  })
+                  .finally(() => {
+                    setSroLoading(false);
                   });
               }}
             />

@@ -43,6 +43,8 @@ import type {
   DestructiveOperationPolicyResult,
   AttachmentUploadPolicyRequest,
   AttachmentUploadPolicyResult,
+  SchemaRecordOrderPolicyRequest,
+  SchemaRecordOrderPolicyResult,
   RestoreWriteEngineRequest,
   RestoreWriteEngineResult,
   RunBackupCommandRequest,
@@ -538,6 +540,24 @@ async function verifyAttachmentUploadPolicy(
   return result;
 }
 
+async function verifySchemaRecordOrderPolicy(
+  request: SchemaRecordOrderPolicyRequest,
+): Promise<SchemaRecordOrderPolicyResult> {
+  const result = await commands.verifySchemaRecordOrderPolicy(request);
+  if (result === null) {
+    return {
+      status: "blocked",
+      checks: [],
+      message: "Schema record order policy check is not available in this context.",
+      orderingViolations: [],
+      noChangesMade: true,
+      networkWritesAttempted: false,
+      writesEnabled: false,
+    };
+  }
+  return result;
+}
+
 export const liveAirBridgeService: AirBridgeService = {
   listConnections,
   listWorkspaces,
@@ -574,4 +594,5 @@ export const liveAirBridgeService: AirBridgeService = {
   verifyRestoreTargetEmpty,
   verifyDestructiveOperationPolicy,
   verifyAttachmentUploadPolicy,
+  verifySchemaRecordOrderPolicy,
 };

@@ -1052,6 +1052,52 @@ These test cases cover the command contract layer: confirmation enforcement, out
 
 ---
 
+## Schema Record Order Policy (Gate 6)
+
+**TC-SRO-01: Writes-disabled notice always visible**
+
+- Preconditions: Restore page open.
+- Steps:
+  1. Scroll to the "Schema Record Order Policy (Gate 6)" section.
+- Expected result: A writes-disabled notice is shown. No execute button is shown. No token field is shown.
+
+**TC-SRO-02: Empty phase list returns warning**
+
+- Preconditions: Restore page open. No phases declared (default state).
+- Steps:
+  1. Click "Verify phase ordering".
+- Expected result: Status badge shows `warning`. A warning notice is shown.
+
+**TC-SRO-03: Valid phase order returns compliant**
+
+- Preconditions: Restore page open. Phases declared in order: schema → records → linkedRecords → attachments → validation.
+- Steps:
+  1. Click "Verify phase ordering".
+- Expected result: Status badge shows `compliant`. A compliant notice is shown. "Restore writes remain disabled" is visible in the compliant notice. All 5 check rows show `passed`.
+
+**TC-SRO-04: Records before schema returns blocked**
+
+- Preconditions: Restore page open. Phases declared in order: records → schema.
+- Steps:
+  1. Click "Verify phase ordering".
+- Expected result: Status badge shows `blocked`. SRO-03 check row shows `failed`. Ordering violations list shows `records-before-schema`.
+
+**TC-SRO-05: Missing schema with records returns blocked**
+
+- Preconditions: Restore page open. Only a records phase declared (no schema phase).
+- Steps:
+  1. Click "Verify phase ordering".
+- Expected result: Status badge shows `blocked`. SRO-02 check row shows `failed`. Ordering violations list shows `missing-schema-with-records`.
+
+**TC-SRO-06: No execute button or token input**
+
+- Preconditions: Restore page open with a schema record order policy result (any status).
+- Steps:
+  1. Inspect the Schema Record Order Policy section for buttons and input fields.
+- Expected result: No "Execute", "Run Restore", or similar button. No password or token input field.
+
+---
+
 ## Write Engine Skeleton
 
 **TC-WE-01: Write engine disabled notice is always visible**

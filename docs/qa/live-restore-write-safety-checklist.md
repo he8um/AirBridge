@@ -133,7 +133,26 @@ The `verify_destructive_operation_policy_gate` Tauri command verifies that no de
 
 ---
 
-## Gate 6 — Sandbox Write Testing
+## Gate 6 — Schema Record Order Policy
+
+- [x] **`SchemaRecordOrderPolicyRequest` / `SchemaRecordOrderPolicyResult` types defined.** Rust types use `#[serde(rename_all = "camelCase")]`. TypeScript types are in `backend/types.ts`.
+- [x] **`verify_schema_record_order_policy()` implemented.** Runs 5 checks: SRO-01 through SRO-05.
+- [x] **SRO-01 always passes.** Write gate check always returns `Passed`.
+- [x] **SRO-02 blocks missing or blocked schema phase.** Missing schema with a declared record phase causes `Blocked`. Blocked schema phase causes `Blocked`. Unplanned schema phase causes `Warning`.
+- [x] **SRO-03 blocks records before schema.** Record-create phase at or before schema phase causes `Blocked`.
+- [x] **SRO-04 blocks linked updates before records.** Linked-record update phase at or before record-create phase causes `Blocked`. Linked phase without record phase causes `Warning`.
+- [x] **SRO-05 blocks attachments before records.** Attachment phase at or before record-create phase causes `Blocked`. Attachment phase without record phase causes `Warning`.
+- [x] **Empty phase list is warning.** No phases declared → `Warning` (cannot verify ordering).
+- [x] **`noChangesMade` always true.** All 3 safety invariants are always set in every result.
+- [x] **`writesEnabled` always false.** Compliant result does NOT enable restore writes.
+- [x] **No token/path/record-payload in any result field.** Confirmed by serialization tests.
+- [x] **35 Rust unit tests pass** for schema record order policy module.
+- [x] **Sufficient frontend tests pass** for schema record order policy service contract and panel rendering.
+- [ ] **Policy wired to live planner.** A future release must pass actual planned phase declarations from the write engine to this command before any write is attempted.
+
+---
+
+## Gate 7 — Sandbox Write Testing
 
 - [ ] **Sandbox base designated.** A dedicated empty Airtable base exists for write testing. Its base ID is in test configuration only, not in release code.
 - [ ] **Schema creation phase tested in sandbox.** CreateTable, CreateField, and DeferLinkedField operations complete successfully against the sandbox base.
@@ -142,7 +161,9 @@ The `verify_destructive_operation_policy_gate` Tauri command verifies that no de
 - [ ] **Final validation phase tested in sandbox.** Record and table counts verified; `Succeeded` status only set after validation passes.
 - [ ] **Sandbox base deleted after test.** No production data affected.
 
-## Gate 7 — User Confirmation for Live Writes
+---
+
+## Gate 8 — User Confirmation for Live Writes
 
 - [ ] **Confirmation phrase enforced at Rust level.** The Rust command rejects any confirmation that is not exactly the required phrase (see Gate 2).
 - [ ] **Partial match rejected.** Lowercase, partial, and extra-word inputs all fail the check.
@@ -152,7 +173,7 @@ The `verify_destructive_operation_policy_gate` Tauri command verifies that no de
 
 ---
 
-## Gate 8 — Target Base Safety
+## Gate 9 — Target Base Safety
 
 - [ ] **Empty-base check implemented.** Before the first write, the Airtable schema API is called to verify the target base has zero tables.
 - [ ] **Non-empty base rejected.** If the target base contains any tables, the write engine stops with a `BlockedByTargetSafety` reason before any write is attempted.
@@ -161,7 +182,7 @@ The `verify_destructive_operation_policy_gate` Tauri command verifies that no de
 
 ---
 
-## Gate 9 — No Destructive Operations
+## Gate 10 — No Destructive Operations
 
 - [ ] **No delete record calls.** Grep confirms no `DELETE /v0/` record endpoint is called anywhere in the write path.
 - [ ] **No delete table calls.** Grep confirms no table deletion API call exists.
@@ -171,7 +192,7 @@ The `verify_destructive_operation_policy_gate` Tauri command verifies that no de
 
 ---
 
-## Gate 10 — Write Phase Ordering
+## Gate 11 — Write Phase Ordering
 
 - [ ] **Tables created before fields.** `CreateTable` operations all complete before any `CreateField` operation begins.
 - [ ] **Fields created before records.** `CreateField` and `DeferLinkedField` operations complete before any `CreateRecordBatch` begins.
@@ -181,7 +202,7 @@ The `verify_destructive_operation_policy_gate` Tauri command verifies that no de
 
 ---
 
-## Gate 11 — Checkpoint Safety
+## Gate 12 — Checkpoint Safety
 
 - [ ] **Checkpoint before each batch.** A durable checkpoint is written before each `CreateRecordBatch` operation begins.
 - [ ] **Checkpoint before second pass.** A durable checkpoint records first-pass completion before `UpdateLinkedRecordBatch` begins.
@@ -190,7 +211,7 @@ The `verify_destructive_operation_policy_gate` Tauri command verifies that no de
 
 ---
 
-## Gate 12 — Rate Limit and Backoff
+## Gate 13 — Rate Limit and Backoff
 
 - [ ] **429 triggers backoff.** A 429 response from the Airtable API pauses the write engine and waits before retrying.
 - [ ] **Initial backoff ≥ 1 000 ms.** The first retry waits at least one second.
@@ -202,7 +223,7 @@ The `verify_destructive_operation_policy_gate` Tauri command verifies that no de
 
 ---
 
-## Gate 13 — Failure Modes
+## Gate 14 — Failure Modes
 
 - [ ] **401 stops execution.** An authentication error stops all further writes. "Token invalid" message shown. No further API calls.
 - [ ] **403 stops execution.** A permission error stops all further writes. "Permission denied" message shown.
@@ -214,7 +235,7 @@ The `verify_destructive_operation_policy_gate` Tauri command verifies that no de
 
 ---
 
-## Gate 14 — Rollback Limitation Notice
+## Gate 15 — Rollback Limitation Notice
 
 - [ ] **Notice shown in UI before confirmation.** Before the user types `"RESTORE BACKUP"`, a notice reads: "Restore cannot be automatically rolled back. If execution fails partway through, the partially-created base must be cleaned up manually."
 - [ ] **Notice not dismissable.** The notice is always visible when the confirmation input is shown — it is not collapsible or behind a toggle.
@@ -222,7 +243,7 @@ The `verify_destructive_operation_policy_gate` Tauri command verifies that no de
 
 ---
 
-## Gate 15 — Final Validation
+## Gate 16 — Final Validation
 
 - [ ] **`FinalValidation` phase implemented.** A `FinalValidation` phase exists in the write engine and runs after all record writes complete.
 - [ ] **Record count check.** `FinalValidation` verifies the record count in the target base matches the count in the backup manifest.
@@ -232,7 +253,7 @@ The `verify_destructive_operation_policy_gate` Tauri command verifies that no de
 
 ---
 
-## Gate 16 — Token Safety During Live Writes
+## Gate 17 — Token Safety During Live Writes
 
 - [ ] **Token not in any write engine result.** `RestoreWriteEngineResult` has no token field. `JSON.stringify(result)` does not contain the token string.
 - [ ] **Token not in any job history item.** After a live restore, `list_job_history` response does not contain the token.
@@ -242,7 +263,7 @@ The `verify_destructive_operation_policy_gate` Tauri command verifies that no de
 
 ---
 
-## Gate 17 — Path Safety During Live Writes
+## Gate 18 — Path Safety During Live Writes
 
 - [ ] **Full path not in any result.** `RestoreWriteEngineResult.filename` contains only the basename.
 - [ ] **`Path::file_name()` applied.** Confirmed by code review that all result filenames are derived via `Path::file_name()`.
@@ -251,7 +272,7 @@ The `verify_destructive_operation_policy_gate` Tauri command verifies that no de
 
 ---
 
-## Gate 18 — Attachment Phase Disabled
+## Gate 19 — Attachment Phase Disabled
 
 - [ ] **`AttachmentHandling` phase remains disabled.** The phase produces a disabled-status summary with zero operations.
 - [ ] **No attachment upload API call.** Grep confirms no attachment upload endpoint (`/v0/{baseId}/{tableId}/{recordId}/files` or similar) is called.
@@ -260,7 +281,7 @@ The `verify_destructive_operation_policy_gate` Tauri command verifies that no de
 
 ---
 
-## Gate 19 — No Prohibited Terms in Public Files
+## Gate 20 — No Prohibited Terms in Public Files
 
 - [ ] **Full prohibited terms scan passes.** `grep -RniE 'claude|anthropic|chatgpt|openai|ai-generated|ai-assisted|agent|llm|co-authored|generated with|generated by'` returns no hits in source, docs, or config files.
 
@@ -275,22 +296,23 @@ The `verify_destructive_operation_policy_gate` Tauri command verifies that no de
 | 3 | Target empty verification | ☐ |
 | 4 | Destructive operation policy | ☐ |
 | 5 | Attachment upload policy | ☐ |
-| 6 | Sandbox write testing | ☐ |
-| 7 | User confirmation for live writes | ☐ |
-| 8 | Target base safety | ☐ |
-| 9 | No destructive operations | ☐ |
-| 10 | Write phase ordering | ☐ |
-| 11 | Checkpoint safety | ☐ |
-| 12 | Rate limit and backoff | ☐ |
-| 13 | Failure modes | ☐ |
-| 14 | Rollback limitation notice | ☐ |
-| 15 | Final validation | ☐ |
-| 16 | Token safety | ☐ |
-| 17 | Path safety | ☐ |
-| 18 | Attachment phase disabled | ☐ |
-| 19 | No prohibited terms | ☐ |
+| 6 | Schema record order policy | ☐ |
+| 7 | Sandbox write testing | ☐ |
+| 8 | User confirmation for live writes | ☐ |
+| 9 | Target base safety | ☐ |
+| 10 | No destructive operations | ☐ |
+| 11 | Write phase ordering | ☐ |
+| 12 | Checkpoint safety | ☐ |
+| 13 | Rate limit and backoff | ☐ |
+| 14 | Failure modes | ☐ |
+| 15 | Rollback limitation notice | ☐ |
+| 16 | Final validation | ☐ |
+| 17 | Token safety | ☐ |
+| 18 | Path safety | ☐ |
+| 19 | Attachment phase disabled | ☐ |
+| 20 | No prohibited terms | ☐ |
 
-**Release decision:** Do not enable live writes until all 19 gates are marked Pass.
+**Release decision:** Do not enable live writes until all 20 gates are marked Pass.
 
 ---
 

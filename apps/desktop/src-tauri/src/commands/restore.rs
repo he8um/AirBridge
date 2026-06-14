@@ -29,6 +29,10 @@ use crate::restore::sandbox_verification::{
 };
 use crate::restore::schema_plan::{RestoreSchemaPlan, RestoreSchemaPlanRequest};
 use crate::restore::schema_planner::create_schema_plan;
+use crate::restore::schema_record_order_policy::{
+    verify_schema_record_order_policy, SchemaRecordOrderPolicyRequest,
+    SchemaRecordOrderPolicyResult,
+};
 use crate::restore::schema_write_executor::execute_schema_write_dry_run;
 use crate::restore::schema_write_requests::build_schema_write_request_plan;
 use crate::restore::schema_write_result::{
@@ -510,6 +514,24 @@ pub fn verify_attachment_upload_policy_gate(
     request: AttachmentUploadPolicyRequest,
 ) -> AttachmentUploadPolicyResult {
     verify_attachment_upload_policy(&request)
+}
+
+/// Verifies that write phases observe schema-before-record ordering (Gate 6).
+///
+/// Safety:
+/// - No Airtable API calls.
+/// - No token accepted or returned.
+/// - No filesystem path accepted or returned.
+/// - No record payload accepted or returned.
+/// - no_changes_made is always true.
+/// - network_writes_attempted is always false.
+/// - writes_enabled is always false.
+/// - Compliant status does NOT enable restore writes.
+#[tauri::command]
+pub fn verify_schema_record_order_policy_gate(
+    request: SchemaRecordOrderPolicyRequest,
+) -> SchemaRecordOrderPolicyResult {
+    verify_schema_record_order_policy(&request)
 }
 
 #[cfg(test)]

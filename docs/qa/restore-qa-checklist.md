@@ -427,6 +427,62 @@ After completing a restore, perform the following manual checks in Airtable:
 
 ---
 
+## Restore Schema Record Order Policy Checklist (Gate 6)
+
+### Before testing
+
+- [ ] Confirm `verify_schema_record_order_policy_gate` is registered in the Tauri invoke handler.
+- [ ] Confirm `RestoreSchemaRecordOrderPolicyPanel` is rendered on the Restore page after the attachment upload policy section.
+- [ ] Confirm no execute button is present in the panel.
+- [ ] Confirm no token input is present in the panel.
+
+### Panel behavior
+
+- [ ] A writes-disabled notice is always shown in the schema record order policy section.
+- [ ] A "Verify phase ordering" button is shown before any result is available.
+- [ ] Clicking the button calls `verifySchemaRecordOrderPolicy` and updates the panel.
+- [ ] While loading, the verify button is disabled and shows a loading label.
+- [ ] After a result is returned, the button label changes to "Re-verify".
+
+### Result display
+
+- [ ] Status badge shows `compliant`, `warning`, or `blocked` correctly.
+- [ ] The result message is shown beneath the status badge.
+- [ ] The checks table shows one row per check (SRO-01 through SRO-05).
+- [ ] Each check row shows the check ID, label, status badge, and message.
+- [ ] A safety summary showing `noChangesMade`, `writesEnabled`, and `networkWritesAttempted` is shown.
+- [ ] A "No changes have been made to Airtable." notice is shown.
+- [ ] When ordering violations are present, a violations list is shown with each violation string.
+- [ ] When no violations are present, no violations list is shown.
+
+### Status scenarios
+
+- [ ] An empty declared phases list returns `warning`.
+- [ ] A schema-only declared phase list returns `compliant`.
+- [ ] A valid full phase order (schema → records → linkedRecords → attachments → validation) returns `compliant`.
+- [ ] A record phase declared before schema returns `blocked` with `records-before-schema` violation.
+- [ ] A missing schema with a declared record phase returns `blocked` with `missing-schema-with-records` violation.
+- [ ] A blocked schema phase returns `blocked` with `schema-phase-blocked` violation.
+- [ ] A linked-record phase before record-create returns `blocked` with `linked-before-record-create` violation.
+- [ ] An attachment phase before record-create returns `blocked` with `attachment-before-record-create` violation.
+- [ ] An unplanned schema phase with records returns `warning` (not `blocked`).
+- [ ] A `compliant` result shows the `sro-compliant-notice` notice, which says "writes remain disabled".
+- [ ] A `blocked` result shows the `sro-blocked-notice` notice.
+- [ ] A `warning` result shows the `sro-warning-notice` notice.
+
+### Safety invariants
+
+- [ ] `noChangesMade` is `true` in every schema record order policy result.
+- [ ] `writesEnabled` is `false` in every schema record order policy result.
+- [ ] `networkWritesAttempted` is `false` in every schema record order policy result.
+- [ ] The policy request type has no `token` field.
+- [ ] The policy result has no `token` field.
+- [ ] The policy result contains no full filesystem path.
+- [ ] The policy result contains no raw record payload (no `fields`, no record IDs).
+- [ ] A `compliant` result does NOT enable restore writes.
+
+---
+
 ## Write Engine Skeleton Checklist
 
 ### Before testing

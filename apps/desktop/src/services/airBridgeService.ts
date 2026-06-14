@@ -43,6 +43,8 @@ import type {
   DestructiveOperationPolicyResult,
   AttachmentUploadPolicyRequest,
   AttachmentUploadPolicyResult,
+  SchemaRecordOrderPolicyRequest,
+  SchemaRecordOrderPolicyResult,
   RestoreWriteEngineRequest,
   RestoreWriteEngineResult,
   RunBackupCommandRequest,
@@ -260,4 +262,14 @@ export interface AirBridgeService {
   verifyAttachmentUploadPolicy(
     request: AttachmentUploadPolicyRequest,
   ): Promise<AttachmentUploadPolicyResult>;
+  /**
+   * Verifies that write phases observe schema-before-record ordering (Gate 6).
+   *
+   * - No Airtable write API calls. No token. No full path. No record payload. No network writes.
+   * - writesEnabled is always false. noChangesMade is always true.
+   * - Compliant status does NOT enable restore writes.
+   */
+  verifySchemaRecordOrderPolicy(
+    request: SchemaRecordOrderPolicyRequest,
+  ): Promise<SchemaRecordOrderPolicyResult>;
 }

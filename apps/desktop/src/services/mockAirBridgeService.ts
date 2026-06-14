@@ -54,6 +54,9 @@ import type {
   AttachmentUploadPolicyRequest,
   AttachmentUploadPolicyResult,
   AttachmentUploadPolicyStatus,
+  SchemaRecordOrderPolicyRequest,
+  SchemaRecordOrderPolicyResult,
+  SchemaRecordOrderPolicyStatus,
   RunBackupCommandResponse,
   RecordWriteRequestPlanRequest,
   RecordWriteRequestPlanResult,
@@ -2307,6 +2310,200 @@ function verifyAttachmentUploadPolicyImpl(
   });
 }
 
+function verifySchemaRecordOrderPolicyImpl(
+  request: SchemaRecordOrderPolicyRequest,
+): Promise<SchemaRecordOrderPolicyResult> {
+  const checks: SchemaRecordOrderPolicyResult["checks"] = [];
+  const violations: string[] = [];
+
+  const phases = request.declaredPhases;
+
+  const schemaIdx = phases.findIndex((p) => p.phase === "schema");
+  const recordsIdx = phases.findIndex((p) => p.phase === "records");
+  const linkedIdx = phases.findIndex((p) => p.phase === "linkedRecords");
+  const attachIdx = phases.findIndex((p) => p.phase === "attachments");
+
+  const schemaPhase = schemaIdx >= 0 ? phases[schemaIdx] : null;
+  const recordsPhase = recordsIdx >= 0 ? phases[recordsIdx] : null;
+
+  // SRO-01: write gate always disabled
+  checks.push({
+    checkId: "SRO-01",
+    label: "write-gate-disabled",
+    status: "passed",
+    message:
+      "Write gate is disabled — no writes can be executed. Restore write execution is not enabled in this version.",
+  });
+
+  // SRO-02: schema phase present and not blocked
+  if (schemaPhase === null) {
+    if (recordsPhase !== null) {
+      checks.push({
+        checkId: "SRO-02",
+        label: "schema-phase-present",
+        status: "failed",
+        message:
+          "Schema phase is missing but a record phase is declared. Records cannot be created without a schema.",
+        remediation: "Add a schema creation phase before the record creation phase.",
+      });
+      violations.push("missing-schema-with-records");
+    } else {
+      checks.push({
+        checkId: "SRO-02",
+        label: "schema-phase-present",
+        status: "warning",
+        message: "No phases declared. Phase ordering cannot be verified.",
+      });
+    }
+  } else if (schemaPhase.isBlocked) {
+    checks.push({
+      checkId: "SRO-02",
+      label: "schema-phase-present",
+      status: "failed",
+      message: "Schema phase is blocked. Record phases must not proceed when schema is blocked.",
+      remediation: "Resolve schema plan issues before attempting record creation.",
+    });
+    violations.push("schema-phase-blocked");
+  } else if (!schemaPhase.isPlanned) {
+    checks.push({
+      checkId: "SRO-02",
+      label: "schema-phase-present",
+      status: "warning",
+      message:
+        "Schema phase is declared but not yet planned. Phase ordering cannot be fully verified.",
+    });
+  } else {
+    checks.push({
+      checkId: "SRO-02",
+      label: "schema-phase-present",
+      status: "passed",
+      message: "Schema phase is present and planned.",
+    });
+  }
+
+  // SRO-03: schema before records
+  if (schemaIdx < 0 && recordsIdx >= 0) {
+    checks.push({
+      checkId: "SRO-03",
+      label: "schema-before-records",
+      status: "failed",
+      message: "Record phase declared but no schema phase present.",
+      remediation: "Add a schema phase before record creation.",
+    });
+    if (!violations.includes("missing-schema-with-records")) {
+      violations.push("missing-schema-with-records");
+    }
+  } else if (schemaIdx >= 0 && recordsIdx >= 0 && recordsIdx <= schemaIdx) {
+    checks.push({
+      checkId: "SRO-03",
+      label: "schema-before-records",
+      status: "failed",
+      message:
+        "Record-create phase appears at or before schema phase. Schema must precede all record operations.",
+      remediation: "Move schema phase before the record-create phase.",
+    });
+    violations.push("records-before-schema");
+  } else {
+    checks.push({
+      checkId: "SRO-03",
+      label: "schema-before-records",
+      status: "passed",
+      message:
+        schemaIdx >= 0 && recordsIdx >= 0
+          ? "Schema phase precedes record-create phase."
+          : "No record phase declared; schema ordering constraint is satisfied.",
+    });
+  }
+
+  // SRO-04: records before linked updates
+  if (linkedIdx >= 0 && recordsIdx < 0) {
+    checks.push({
+      checkId: "SRO-04",
+      label: "records-before-linked-updates",
+      status: "warning",
+      message:
+        "Linked-record update phase declared without a record-create phase. Phase data may be incomplete.",
+      remediation: "Ensure record-create phase is declared before linked-record updates.",
+    });
+  } else if (linkedIdx >= 0 && recordsIdx >= 0 && linkedIdx <= recordsIdx) {
+    checks.push({
+      checkId: "SRO-04",
+      label: "records-before-linked-updates",
+      status: "failed",
+      message:
+        "Linked-record update phase appears at or before record-create phase. Linked updates require first-pass records to exist.",
+      remediation: "Move linked-record update phase after record-create phase.",
+    });
+    violations.push("linked-before-record-create");
+  } else {
+    checks.push({
+      checkId: "SRO-04",
+      label: "records-before-linked-updates",
+      status: "passed",
+      message:
+        "Record-create phase precedes linked-record update phase, or no linked-record phase declared.",
+    });
+  }
+
+  // SRO-05: records before attachments
+  if (attachIdx >= 0 && recordsIdx < 0) {
+    checks.push({
+      checkId: "SRO-05",
+      label: "records-before-attachments",
+      status: "warning",
+      message:
+        "Attachment phase declared without a record-create phase. Phase data may be incomplete.",
+      remediation: "Ensure record-create phase is declared before attachment handling.",
+    });
+  } else if (attachIdx >= 0 && recordsIdx >= 0 && attachIdx <= recordsIdx) {
+    checks.push({
+      checkId: "SRO-05",
+      label: "records-before-attachments",
+      status: "failed",
+      message:
+        "Attachment-handling phase appears at or before record-create phase. Attachment metadata is associated with records and requires record IDs.",
+      remediation: "Move attachment-handling phase after record-create phase.",
+    });
+    violations.push("attachment-before-record-create");
+  } else {
+    checks.push({
+      checkId: "SRO-05",
+      label: "records-before-attachments",
+      status: "passed",
+      message:
+        "Record-create phase precedes attachment-handling phase, or no attachment phase declared.",
+    });
+  }
+
+  const hasBlocked = checks.some((c) => c.status === "failed");
+  const hasWarning = checks.some((c) => c.status === "warning");
+
+  const status: SchemaRecordOrderPolicyStatus = hasBlocked
+    ? "blocked"
+    : hasWarning
+      ? "warning"
+      : "compliant";
+
+  const targetName = request.targetDisplayName ?? "the restore target";
+
+  const message =
+    status === "compliant"
+      ? `Phase ordering for ${targetName} is valid. Schema precedes all record phases. Restore writes remain disabled.`
+      : status === "warning"
+        ? `Phase ordering for ${targetName} could not be fully verified. Some phase data is incomplete.`
+        : `Phase ordering violation detected for ${targetName}: ${violations.join(", ")}. Resolve ordering issues before enabling live writes.`;
+
+  return Promise.resolve({
+    status,
+    checks,
+    message,
+    orderingViolations: violations,
+    noChangesMade: true,
+    networkWritesAttempted: false,
+    writesEnabled: false,
+  });
+}
+
 export const mockAirBridgeService: AirBridgeService = {
   listConnections,
   listWorkspaces,
@@ -2343,4 +2540,5 @@ export const mockAirBridgeService: AirBridgeService = {
   verifyRestoreTargetEmpty: verifyRestoreTargetEmptyImpl,
   verifyDestructiveOperationPolicy: verifyDestructiveOperationPolicyImpl,
   verifyAttachmentUploadPolicy: verifyAttachmentUploadPolicyImpl,
+  verifySchemaRecordOrderPolicy: verifySchemaRecordOrderPolicyImpl,
 };
