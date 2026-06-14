@@ -41,6 +41,8 @@ import type {
   AttachmentUploadPolicyResult,
   SchemaRecordOrderPolicyRequest,
   SchemaRecordOrderPolicyResult,
+  SandboxWriteTestingPolicyRequest,
+  SandboxWriteTestingPolicyResult,
   RunBackupCommandRequest,
   RunBackupCommandResponse,
   SandboxVerificationRequest,
@@ -458,6 +460,14 @@ export async function verifySchemaRecordOrderPolicy(
   request: SchemaRecordOrderPolicyRequest,
 ): Promise<SchemaRecordOrderPolicyResult | null> {
   return safeInvoke<SchemaRecordOrderPolicyResult>("verify_schema_record_order_policy_gate", {
+    request,
+  });
+}
+
+export async function verifySandboxWriteTestingPolicy(
+  request: SandboxWriteTestingPolicyRequest,
+): Promise<SandboxWriteTestingPolicyResult | null> {
+  return safeInvoke<SandboxWriteTestingPolicyResult>("verify_sandbox_write_testing_policy_gate", {
     request,
   });
 }

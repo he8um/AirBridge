@@ -1714,3 +1714,57 @@ export interface SchemaRecordOrderPolicyResult {
   networkWritesAttempted: boolean;
   writesEnabled: boolean;
 }
+
+export type SandboxWriteTestingPolicyStatus = "compliant" | "warning" | "blocked";
+export type SandboxWriteTestingCheckStatus = "passed" | "warning" | "failed";
+export type SandboxTargetClassification = "sandbox" | "production" | "unknown";
+
+/**
+ * Evidence that sandbox write testing has been performed.
+ * - No token field.
+ * - No filesystem path field (testPackageFilename is basename only).
+ * - No raw record payload.
+ */
+export interface SandboxWriteTestEvidence {
+  sandboxBaseVerified: boolean;
+  testPackageFilename?: string;
+  dryRunCompleted: boolean;
+  schemaPlanReviewed: boolean;
+  recordPlanReviewed: boolean;
+  reviewerLabel?: string;
+  evidenceTimestamp?: string;
+}
+
+export interface SandboxWriteTestingCheck {
+  checkId: string;
+  label: string;
+  status: SandboxWriteTestingCheckStatus;
+  message: string;
+  remediation?: string;
+}
+
+export interface SandboxWriteTestingPolicyRequest {
+  targetClassification: SandboxTargetClassification;
+  sandboxVerificationPassed: boolean;
+  evidence?: SandboxWriteTestEvidence;
+  targetDisplayName?: string;
+}
+
+/**
+ * Result from verify_sandbox_write_testing_policy_gate.
+ * - No token field.
+ * - No filesystem path field.
+ * - No record payload field.
+ * - writesEnabled is always false.
+ * - noChangesMade is always true.
+ * - networkWritesAttempted is always false.
+ * - Compliant status does NOT enable restore writes.
+ */
+export interface SandboxWriteTestingPolicyResult {
+  status: SandboxWriteTestingPolicyStatus;
+  checks: SandboxWriteTestingCheck[];
+  message: string;
+  noChangesMade: boolean;
+  networkWritesAttempted: boolean;
+  writesEnabled: boolean;
+}

@@ -57,6 +57,9 @@ import type {
   SchemaRecordOrderPolicyRequest,
   SchemaRecordOrderPolicyResult,
   SchemaRecordOrderPolicyStatus,
+  SandboxWriteTestingPolicyRequest,
+  SandboxWriteTestingPolicyResult,
+  SandboxWriteTestingPolicyStatus,
   RunBackupCommandResponse,
   RecordWriteRequestPlanRequest,
   RecordWriteRequestPlanResult,
@@ -2504,6 +2507,146 @@ function verifySchemaRecordOrderPolicyImpl(
   });
 }
 
+function verifySandboxWriteTestingPolicyImpl(
+  request: SandboxWriteTestingPolicyRequest,
+): Promise<SandboxWriteTestingPolicyResult> {
+  const checks = [];
+
+  // SWT-01: write gate always disabled
+  checks.push({
+    checkId: "SWT-01",
+    label: "write-gate-disabled",
+    status: "passed" as const,
+    message: "Restore write gate is disabled. No live writes are possible.",
+  });
+
+  // SWT-02: target classification
+  if (request.targetClassification === "sandbox") {
+    checks.push({
+      checkId: "SWT-02",
+      label: "sandbox-target-classification",
+      status: "passed" as const,
+      message: "Target is classified as a sandbox base.",
+    });
+  } else {
+    checks.push({
+      checkId: "SWT-02",
+      label: "sandbox-target-classification",
+      status: "failed" as const,
+      message:
+        request.targetClassification === "production"
+          ? "Target is classified as a production base. Write testing must not be performed against production."
+          : "Target classification is unknown. Cannot confirm this is a safe sandbox base.",
+      remediation: "Use a dedicated sandbox or test base for write testing.",
+    });
+  }
+
+  // SWT-03: sandbox verification passed
+  if (request.sandboxVerificationPassed) {
+    checks.push({
+      checkId: "SWT-03",
+      label: "sandbox-verification-passed",
+      status: "passed" as const,
+      message: "Sandbox environment verification (Gate 1) has passed for this session.",
+    });
+  } else {
+    checks.push({
+      checkId: "SWT-03",
+      label: "sandbox-verification-passed",
+      status: "failed" as const,
+      message: "Sandbox environment verification (Gate 1) has not passed. Run Gate 1 checks first.",
+      remediation: "Complete sandbox environment verification before sandbox write testing.",
+    });
+  }
+
+  // SWT-04: evidence declared
+  if (!request.evidence) {
+    checks.push({
+      checkId: "SWT-04",
+      label: "sandbox-test-evidence-present",
+      status: "failed" as const,
+      message: "No sandbox test evidence declared. Sandbox write testing has not been recorded.",
+      remediation:
+        "Provide SandboxWriteTestEvidence with the results of a completed sandbox test run.",
+    });
+    checks.push({
+      checkId: "SWT-05",
+      label: "sandbox-evidence-complete",
+      status: "failed" as const,
+      message: "Evidence completeness check skipped — no evidence declared.",
+      remediation: "Declare sandbox test evidence to enable this check.",
+    });
+  } else {
+    checks.push({
+      checkId: "SWT-04",
+      label: "sandbox-test-evidence-present",
+      status: "passed" as const,
+      message: "Sandbox test evidence is declared.",
+    });
+
+    // SWT-05: evidence completeness
+    const ev = request.evidence;
+    const allRequired =
+      ev.sandboxBaseVerified &&
+      ev.dryRunCompleted &&
+      ev.schemaPlanReviewed &&
+      ev.recordPlanReviewed;
+    const filenameOk =
+      typeof ev.testPackageFilename === "string" &&
+      ev.testPackageFilename.length > 0 &&
+      !ev.testPackageFilename.includes("/") &&
+      !ev.testPackageFilename.includes("\\");
+
+    if (allRequired && filenameOk) {
+      checks.push({
+        checkId: "SWT-05",
+        label: "sandbox-evidence-complete",
+        status: "passed" as const,
+        message: "All required evidence fields are present and confirmed.",
+      });
+    } else {
+      const missing: string[] = [];
+      if (!ev.sandboxBaseVerified) missing.push("sandboxBaseVerified");
+      if (!ev.dryRunCompleted) missing.push("dryRunCompleted");
+      if (!ev.schemaPlanReviewed) missing.push("schemaPlanReviewed");
+      if (!ev.recordPlanReviewed) missing.push("recordPlanReviewed");
+      if (!filenameOk) missing.push("testPackageFilename");
+      checks.push({
+        checkId: "SWT-05",
+        label: "sandbox-evidence-complete",
+        status: "warning" as const,
+        message: `Evidence is incomplete. Missing or false: ${missing.join(", ")}.`,
+        remediation: "Complete all required evidence fields before live write testing.",
+      });
+    }
+  }
+
+  const hasBlocked = checks.some((c) => c.status === "failed");
+  const hasWarning = checks.some((c) => c.status === "warning");
+  const status: SandboxWriteTestingPolicyStatus = hasBlocked
+    ? "blocked"
+    : hasWarning
+      ? "warning"
+      : "compliant";
+
+  const targetName = request.targetDisplayName ?? "the restore target";
+  const message =
+    status === "compliant"
+      ? `Sandbox write testing policy for ${targetName} is satisfied. All required evidence is present. Restore writes remain disabled.`
+      : status === "warning"
+        ? `Sandbox write testing policy for ${targetName} has warnings. Evidence is incomplete or partial. Restore writes remain disabled.`
+        : `Sandbox write testing policy for ${targetName} is blocked. Target is not a sandbox base or required evidence is missing. Restore writes remain disabled.`;
+
+  return Promise.resolve({
+    status,
+    checks,
+    message,
+    noChangesMade: true,
+    networkWritesAttempted: false,
+    writesEnabled: false,
+  });
+}
+
 export const mockAirBridgeService: AirBridgeService = {
   listConnections,
   listWorkspaces,
@@ -2541,4 +2684,5 @@ export const mockAirBridgeService: AirBridgeService = {
   verifyDestructiveOperationPolicy: verifyDestructiveOperationPolicyImpl,
   verifyAttachmentUploadPolicy: verifyAttachmentUploadPolicyImpl,
   verifySchemaRecordOrderPolicy: verifySchemaRecordOrderPolicyImpl,
+  verifySandboxWriteTestingPolicy: verifySandboxWriteTestingPolicyImpl,
 };

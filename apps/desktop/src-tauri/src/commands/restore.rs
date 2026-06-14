@@ -27,6 +27,10 @@ use crate::restore::restore_confirmation::{
 use crate::restore::sandbox_verification::{
     verify_sandbox_environment, SandboxVerificationRequest, SandboxVerificationResult,
 };
+use crate::restore::sandbox_write_testing_policy::{
+    verify_sandbox_write_testing_policy, SandboxWriteTestingPolicyRequest,
+    SandboxWriteTestingPolicyResult,
+};
 use crate::restore::schema_plan::{RestoreSchemaPlan, RestoreSchemaPlanRequest};
 use crate::restore::schema_planner::create_schema_plan;
 use crate::restore::schema_record_order_policy::{
@@ -532,6 +536,13 @@ pub fn verify_schema_record_order_policy_gate(
     request: SchemaRecordOrderPolicyRequest,
 ) -> SchemaRecordOrderPolicyResult {
     verify_schema_record_order_policy(&request)
+}
+
+#[tauri::command]
+pub fn verify_sandbox_write_testing_policy_gate(
+    request: SandboxWriteTestingPolicyRequest,
+) -> SandboxWriteTestingPolicyResult {
+    verify_sandbox_write_testing_policy(&request)
 }
 
 #[cfg(test)]

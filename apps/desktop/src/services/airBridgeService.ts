@@ -45,6 +45,8 @@ import type {
   AttachmentUploadPolicyResult,
   SchemaRecordOrderPolicyRequest,
   SchemaRecordOrderPolicyResult,
+  SandboxWriteTestingPolicyRequest,
+  SandboxWriteTestingPolicyResult,
   RestoreWriteEngineRequest,
   RestoreWriteEngineResult,
   RunBackupCommandRequest,
@@ -272,4 +274,14 @@ export interface AirBridgeService {
   verifySchemaRecordOrderPolicy(
     request: SchemaRecordOrderPolicyRequest,
   ): Promise<SchemaRecordOrderPolicyResult>;
+  /**
+   * Verifies that sandbox write testing has been completed with required evidence (Gate 7).
+   *
+   * - No Airtable write API calls. No token. No full path. No record payload. No network writes.
+   * - writesEnabled is always false. noChangesMade is always true.
+   * - Compliant status does NOT enable restore writes.
+   */
+  verifySandboxWriteTestingPolicy(
+    request: SandboxWriteTestingPolicyRequest,
+  ): Promise<SandboxWriteTestingPolicyResult>;
 }

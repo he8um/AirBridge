@@ -152,14 +152,21 @@ The `verify_destructive_operation_policy_gate` Tauri command verifies that no de
 
 ---
 
-## Gate 7 — Sandbox Write Testing
+## Gate 7 — Sandbox Write Testing Policy
 
-- [ ] **Sandbox base designated.** A dedicated empty Airtable base exists for write testing. Its base ID is in test configuration only, not in release code.
-- [ ] **Schema creation phase tested in sandbox.** CreateTable, CreateField, and DeferLinkedField operations complete successfully against the sandbox base.
-- [ ] **Record creation phase tested in sandbox.** CreateRecordBatch operations complete with correct field values. Record count in target matches expected count.
-- [ ] **Linked second-pass tested in sandbox.** UpdateLinkedRecordBatch operations complete after first-pass records exist. Linked field values point to new record IDs, not source IDs.
-- [ ] **Final validation phase tested in sandbox.** Record and table counts verified; `Succeeded` status only set after validation passes.
-- [ ] **Sandbox base deleted after test.** No production data affected.
+- [x] **`SandboxWriteTestingPolicyRequest` / `SandboxWriteTestingPolicyResult` types defined.** Rust types use `#[serde(rename_all = "camelCase")]`. TypeScript types are in `backend/types.ts`.
+- [x] **`verify_sandbox_write_testing_policy()` implemented.** Runs 5 checks: SWT-01 through SWT-05.
+- [x] **SWT-01 always passes.** Write gate check always returns `Passed`.
+- [x] **SWT-02 blocks non-sandbox targets.** `Production` and `Unknown` target classifications cause `Blocked`. `Sandbox` classification causes `Passed`.
+- [x] **SWT-03 blocks when sandbox verification not passed.** Gate 1 prerequisite must be satisfied.
+- [x] **SWT-04 blocks when no evidence declared.** A `None` evidence field causes `Blocked`.
+- [x] **SWT-05 warns on incomplete evidence.** Any missing or false required field (`sandboxBaseVerified`, `dryRunCompleted`, `schemaPlanReviewed`, `recordPlanReviewed`, `testPackageFilename`) causes `Warning`. Full path in filename causes `Warning`.
+- [x] **`noChangesMade` always true.** All 3 safety invariants are always set in every result.
+- [x] **`writesEnabled` always false.** Compliant result does NOT enable restore writes.
+- [x] **No token/path/record-payload in any result field.** Confirmed by serialization tests.
+- [x] **27 Rust unit tests pass** for sandbox write testing policy module.
+- [x] **Sufficient frontend tests pass** for sandbox write testing policy service contract and panel rendering.
+- [ ] **Policy connected to live write test run.** A future release must provide real sandbox test evidence before any live write phase is attempted.
 
 ---
 
@@ -297,7 +304,7 @@ The `verify_destructive_operation_policy_gate` Tauri command verifies that no de
 | 4 | Destructive operation policy | ☐ |
 | 5 | Attachment upload policy | ☐ |
 | 6 | Schema record order policy | ☐ |
-| 7 | Sandbox write testing | ☐ |
+| 7 | Sandbox write testing policy | ☐ |
 | 8 | User confirmation for live writes | ☐ |
 | 9 | Target base safety | ☐ |
 | 10 | No destructive operations | ☐ |

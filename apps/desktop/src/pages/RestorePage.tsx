@@ -12,6 +12,7 @@ import { RestoreTargetEmptyVerificationPanel } from "../features/backups/Restore
 import { RestoreDestructiveOperationPolicyPanel } from "../features/backups/RestoreDestructiveOperationPolicyPanel";
 import { RestoreAttachmentUploadPolicyPanel } from "../features/backups/RestoreAttachmentUploadPolicyPanel";
 import { RestoreSchemaRecordOrderPolicyPanel } from "../features/backups/RestoreSchemaRecordOrderPolicyPanel";
+import { RestoreSandboxWriteTestingPolicyPanel } from "../features/backups/RestoreSandboxWriteTestingPolicyPanel";
 import { RestoreWriteEnginePanel } from "../features/backups/RestoreWriteEnginePanel";
 import { liveAirBridgeService } from "../services/liveAirBridgeService";
 import type { BackupPackageInspectionResult } from "../backend/types";
@@ -29,6 +30,7 @@ import type {
   DestructiveOperationPolicyResult,
   AttachmentUploadPolicyResult,
   SchemaRecordOrderPolicyResult,
+  SandboxWriteTestingPolicyResult,
 } from "../backend/types";
 
 export function RestorePage() {
@@ -65,6 +67,8 @@ export function RestorePage() {
   const [aupLoading, setAupLoading] = useState(false);
   const [sroResult, setSroResult] = useState<SchemaRecordOrderPolicyResult | null>(null);
   const [sroLoading, setSroLoading] = useState(false);
+  const [swtResult, setSwtResult] = useState<SandboxWriteTestingPolicyResult | null>(null);
+  const [swtLoading, setSwtLoading] = useState(false);
 
   return (
     <div className="page">
@@ -387,6 +391,32 @@ export function RestorePage() {
                   })
                   .finally(() => {
                     setSroLoading(false);
+                  });
+              }}
+            />
+
+            <div className="divider" style={{ margin: 0 }} />
+
+            {/* Sandbox write testing policy — Gate 7. No writes. No token. No record payload. */}
+            <RestoreSandboxWriteTestingPolicyPanel
+              result={swtResult}
+              loading={swtLoading}
+              onVerify={() => {
+                setSwtLoading(true);
+                liveAirBridgeService
+                  .verifySandboxWriteTestingPolicy({
+                    targetClassification: "unknown",
+                    sandboxVerificationPassed: false,
+                    targetDisplayName: targetBaseName ?? undefined,
+                  })
+                  .then((r) => {
+                    setSwtResult(r);
+                  })
+                  .catch(() => {
+                    setSwtResult(null);
+                  })
+                  .finally(() => {
+                    setSwtLoading(false);
                   });
               }}
             />

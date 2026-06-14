@@ -483,6 +483,58 @@ After completing a restore, perform the following manual checks in Airtable:
 
 ---
 
+## Restore Sandbox Write Testing Policy Checklist (Gate 7)
+
+### Before testing
+
+- [ ] Confirm `verify_sandbox_write_testing_policy_gate` is registered in the Tauri invoke handler.
+- [ ] Confirm `RestoreSandboxWriteTestingPolicyPanel` is rendered on the Restore page after the schema record order policy section.
+- [ ] Confirm no execute button is present in the panel.
+- [ ] Confirm no token input is present in the panel.
+
+### Panel behavior
+
+- [ ] A writes-disabled notice is always shown in the sandbox write testing policy section.
+- [ ] A "Verify sandbox testing" button is shown before any result is available.
+- [ ] Clicking the button calls `verifySandboxWriteTestingPolicy` and updates the panel.
+- [ ] While loading, the verify button is disabled and shows a loading label.
+- [ ] After a result is returned, the button label changes to "Re-verify".
+
+### Result display
+
+- [ ] Status badge shows `compliant`, `warning`, or `blocked` correctly.
+- [ ] The result message is shown beneath the status badge.
+- [ ] The checks table shows one row per check (SWT-01 through SWT-05).
+- [ ] Each check row shows the check ID, label, status badge, and message.
+- [ ] A safety summary showing `noChangesMade`, `writesEnabled`, and `networkWritesAttempted` is shown.
+- [ ] A "No changes have been made to Airtable." notice is shown.
+
+### Status scenarios
+
+- [ ] A `sandbox` target with all evidence present and all evidence fields true returns `compliant`.
+- [ ] A `production` target returns `blocked`.
+- [ ] An `unknown` target returns `blocked`.
+- [ ] Sandbox verification not passed returns `blocked`.
+- [ ] No evidence declared returns `blocked`.
+- [ ] Partial evidence (some fields false) returns `warning`.
+- [ ] A filename with a path separator in evidence returns `warning`.
+- [ ] A `compliant` result shows the `swt-compliant-notice` notice, which says "writes remain disabled".
+- [ ] A `blocked` result shows the `swt-blocked-notice` notice.
+- [ ] A `warning` result shows the `swt-warning-notice` notice.
+
+### Safety invariants
+
+- [ ] `noChangesMade` is `true` in every sandbox write testing policy result.
+- [ ] `writesEnabled` is `false` in every sandbox write testing policy result.
+- [ ] `networkWritesAttempted` is `false` in every sandbox write testing policy result.
+- [ ] The policy request type has no `token` field.
+- [ ] The policy result has no `token` field.
+- [ ] The policy result contains no full filesystem path.
+- [ ] Evidence filenames are basenames only — a path separator causes `Warning`.
+- [ ] A `compliant` result does NOT enable restore writes.
+
+---
+
 ## Write Engine Skeleton Checklist
 
 ### Before testing

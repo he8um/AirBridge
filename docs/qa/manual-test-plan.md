@@ -1098,6 +1098,52 @@ These test cases cover the command contract layer: confirmation enforcement, out
 
 ---
 
+## Sandbox Write Testing Policy (Gate 7)
+
+**TC-SWT-01: Writes-disabled notice always visible**
+
+- Preconditions: Restore page open.
+- Steps:
+  1. Scroll to the "Sandbox Write Testing Policy (Gate 7)" section.
+- Expected result: A writes-disabled notice is shown. No execute button is shown. No token field is shown.
+
+**TC-SWT-02: Production target returns blocked**
+
+- Preconditions: Restore page open. Request has `targetClassification: "production"`.
+- Steps:
+  1. Click "Verify sandbox testing".
+- Expected result: Status badge shows `blocked`. SWT-02 check row shows `failed`.
+
+**TC-SWT-03: No evidence returns blocked**
+
+- Preconditions: Restore page open. No evidence declared in request.
+- Steps:
+  1. Click "Verify sandbox testing".
+- Expected result: Status badge shows `blocked`. SWT-04 check row shows `failed`.
+
+**TC-SWT-04: Partial evidence returns warning**
+
+- Preconditions: Restore page open. Evidence has some fields false (e.g., `schemaPlanReviewed: false`).
+- Steps:
+  1. Click "Verify sandbox testing".
+- Expected result: Status badge shows `warning`. SWT-05 check row shows `warning`.
+
+**TC-SWT-05: Complete evidence with sandbox target returns compliant**
+
+- Preconditions: Restore page open. `targetClassification: "sandbox"`, `sandboxVerificationPassed: true`, all evidence fields true, filename is a basename.
+- Steps:
+  1. Click "Verify sandbox testing".
+- Expected result: Status badge shows `compliant`. A compliant notice is shown. "Restore writes remain disabled" is visible in the compliant notice.
+
+**TC-SWT-06: No execute button or token input**
+
+- Preconditions: Restore page open with a sandbox write testing policy result (any status).
+- Steps:
+  1. Inspect the Sandbox Write Testing Policy section for buttons and input fields.
+- Expected result: No "Execute", "Run Restore", or similar button. No password or token input field.
+
+---
+
 ## Write Engine Skeleton
 
 **TC-WE-01: Write engine disabled notice is always visible**

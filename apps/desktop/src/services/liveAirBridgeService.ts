@@ -45,6 +45,8 @@ import type {
   AttachmentUploadPolicyResult,
   SchemaRecordOrderPolicyRequest,
   SchemaRecordOrderPolicyResult,
+  SandboxWriteTestingPolicyRequest,
+  SandboxWriteTestingPolicyResult,
   RestoreWriteEngineRequest,
   RestoreWriteEngineResult,
   RunBackupCommandRequest,
@@ -558,6 +560,23 @@ async function verifySchemaRecordOrderPolicy(
   return result;
 }
 
+async function verifySandboxWriteTestingPolicy(
+  request: SandboxWriteTestingPolicyRequest,
+): Promise<SandboxWriteTestingPolicyResult> {
+  const result = await commands.verifySandboxWriteTestingPolicy(request);
+  if (result === null) {
+    return {
+      status: "blocked",
+      checks: [],
+      message: "Sandbox write testing policy check is not available in this context.",
+      noChangesMade: true,
+      networkWritesAttempted: false,
+      writesEnabled: false,
+    };
+  }
+  return result;
+}
+
 export const liveAirBridgeService: AirBridgeService = {
   listConnections,
   listWorkspaces,
@@ -595,4 +614,5 @@ export const liveAirBridgeService: AirBridgeService = {
   verifyDestructiveOperationPolicy,
   verifyAttachmentUploadPolicy,
   verifySchemaRecordOrderPolicy,
+  verifySandboxWriteTestingPolicy,
 };
