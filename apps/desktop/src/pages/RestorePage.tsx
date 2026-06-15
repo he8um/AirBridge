@@ -19,6 +19,7 @@ import { RestoreCheckpointDurabilityPolicyPanel } from "../features/backups/Rest
 import { RestoreFinalValidationPolicyPanel } from "../features/backups/RestoreFinalValidationPolicyPanel";
 import { RestoreWritePhaseOrderingPolicyPanel } from "../features/backups/RestoreWritePhaseOrderingPolicyPanel";
 import { RestoreFailureModesPolicyPanel } from "../features/backups/RestoreFailureModesPolicyPanel";
+import { RestoreRollbackLimitationPolicyPanel } from "../features/backups/RestoreRollbackLimitationPolicyPanel";
 import { RestoreWriteEnginePanel } from "../features/backups/RestoreWriteEnginePanel";
 import { liveAirBridgeService } from "../services/liveAirBridgeService";
 import type { BackupPackageInspectionResult } from "../backend/types";
@@ -43,6 +44,7 @@ import type {
   FinalValidationPolicyResult,
   WritePhaseOrderingPolicyResult,
   FailureModesPolicyResult,
+  RollbackLimitationPolicyResult,
 } from "../backend/types";
 
 export function RestorePage() {
@@ -93,6 +95,8 @@ export function RestorePage() {
   const [wpoLoading, setWpoLoading] = useState(false);
   const [fmpResult, setFmpResult] = useState<FailureModesPolicyResult | null>(null);
   const [fmpLoading, setFmpLoading] = useState(false);
+  const [rlpResult, setRlpResult] = useState<RollbackLimitationPolicyResult | null>(null);
+  const [rlpLoading, setRlpLoading] = useState(false);
 
   return (
     <div className="page">
@@ -600,6 +604,30 @@ export function RestorePage() {
                   })
                   .finally(() => {
                     setFmpLoading(false);
+                  });
+              }}
+            />
+
+            <div className="divider" style={{ margin: 0 }} />
+
+            {/* Rollback limitation policy — Gate 14. No writes. No token. No record payload. No success state. No automatic rollback/cleanup. */}
+            <RestoreRollbackLimitationPolicyPanel
+              result={rlpResult}
+              loading={rlpLoading}
+              onVerify={() => {
+                setRlpLoading(true);
+                liveAirBridgeService
+                  .verifyRollbackLimitationPolicy({
+                    targetLabel: targetBaseName ?? undefined,
+                  })
+                  .then((r) => {
+                    setRlpResult(r);
+                  })
+                  .catch(() => {
+                    setRlpResult(null);
+                  })
+                  .finally(() => {
+                    setRlpLoading(false);
                   });
               }}
             />

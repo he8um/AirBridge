@@ -23,6 +23,7 @@ pub mod record_write_requests;
 pub mod record_write_result;
 pub mod record_write_skeleton;
 pub mod restore_confirmation;
+pub mod rollback_limitation_policy;
 pub mod sandbox_verification;
 pub mod sandbox_write_testing_policy;
 pub mod schema_dependencies;

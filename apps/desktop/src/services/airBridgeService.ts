@@ -59,6 +59,8 @@ import type {
   WritePhaseOrderingPolicyResult,
   FailureModesPolicyRequest,
   FailureModesPolicyResult,
+  RollbackLimitationPolicyRequest,
+  RollbackLimitationPolicyResult,
   RestoreWriteEngineRequest,
   RestoreWriteEngineResult,
   RunBackupCommandRequest,
@@ -371,4 +373,22 @@ export interface AirBridgeService {
    * - Compliant does NOT introduce a restore success state.
    */
   verifyFailureModesPolicy(request: FailureModesPolicyRequest): Promise<FailureModesPolicyResult>;
+  /**
+   * Verifies the rollback limitation policy for a planned restore write operation.
+   *
+   * Safety invariants:
+   * - No Airtable API calls are made.
+   * - No token accepted or returned.
+   * - No filesystem path accepted or returned.
+   * - No record payload accepted or returned.
+   * - writesEnabled is always false.
+   * - noChangesMade is always true.
+   * - networkWritesAttempted is always false.
+   * - Compliant does NOT enable restore writes.
+   * - Compliant does NOT introduce a restore success state.
+   * - No automatic destructive rollback, delete, or update cleanup exists.
+   */
+  verifyRollbackLimitationPolicy(
+    request: RollbackLimitationPolicyRequest,
+  ): Promise<RollbackLimitationPolicyResult>;
 }

@@ -78,6 +78,9 @@ import type {
   FailureModesPolicyRequest,
   FailureModesPolicyResult,
   FailureModesPolicyStatus,
+  RollbackLimitationPolicyRequest,
+  RollbackLimitationPolicyResult,
+  RollbackLimitationPolicyStatus,
   RunBackupCommandResponse,
   RecordWriteRequestPlanRequest,
   RecordWriteRequestPlanResult,
@@ -4156,6 +4159,276 @@ function verifyFailureModesPolicyImpl(
   });
 }
 
+function verifyRollbackLimitationPolicyImpl(
+  request: RollbackLimitationPolicyRequest,
+): Promise<RollbackLimitationPolicyResult> {
+  const checks: RollbackLimitationPolicyResult["checks"] = [];
+
+  // RLP-01: Write gate disabled (always passes in mock)
+  checks.push({
+    checkId: "RLP-01",
+    label: "write-gate-disabled",
+    status: "passed",
+    message: "Write gate is disabled. No restore writes are attempted.",
+  });
+
+  // RLP-02: Plan declared — short-circuit if absent
+  const plan = request.plan;
+  if (!plan) {
+    checks.push({
+      checkId: "RLP-02",
+      label: "plan-declared",
+      status: "failed",
+      message:
+        "No rollback limitation plan declared. A plan declaring rollback behavior, recovery guidance, and user-visible notice is required before any live write path is considered.",
+      remediation:
+        "Declare a RollbackLimitationPlan with rollbackBehavior, recoveryGuidance, and userVisibleLimitationNotice.",
+    });
+    return Promise.resolve({
+      status: "blocked" as RollbackLimitationPolicyStatus,
+      checks,
+      message:
+        "Rollback limitation policy is blocked. Automatic destructive rollback or cleanup is allowed, or required declarations are missing. Resolve all violations before any live write is considered. Restore writes remain disabled.",
+      noChangesMade: true,
+      networkWritesAttempted: false,
+      writesEnabled: false,
+    });
+  }
+
+  checks.push({
+    checkId: "RLP-02",
+    label: "plan-declared",
+    status: "passed",
+    message: "Rollback limitation plan is declared.",
+  });
+
+  let blocked = false;
+  let hasWarning = false;
+
+  // RLP-03: No automatic destructive rollback
+  if (plan.rollbackBehavior === "automaticDestructiveRollback") {
+    checks.push({
+      checkId: "RLP-03",
+      label: "no-automatic-destructive-rollback",
+      status: "failed",
+      message:
+        "Automatic destructive rollback is declared. The restore engine must not automatically delete all created objects on failure.",
+      remediation:
+        "Set rollbackBehavior to noAutomaticRollback. Destructive cleanup must require explicit separate user action.",
+    });
+    blocked = true;
+  } else {
+    checks.push({
+      checkId: "RLP-03",
+      label: "no-automatic-destructive-rollback",
+      status: "passed",
+      message: "Automatic destructive rollback is not declared.",
+    });
+  }
+
+  // RLP-04: No automatic delete cleanup
+  if (plan.rollbackBehavior === "automaticDeleteCleanup") {
+    checks.push({
+      checkId: "RLP-04",
+      label: "no-automatic-delete-cleanup",
+      status: "failed",
+      message:
+        "Automatic delete cleanup is declared. The restore engine must not automatically delete partially created records on failure.",
+      remediation:
+        "Set rollbackBehavior to noAutomaticRollback. Delete cleanup must require explicit separate user action.",
+    });
+    blocked = true;
+  } else {
+    checks.push({
+      checkId: "RLP-04",
+      label: "no-automatic-delete-cleanup",
+      status: "passed",
+      message: "Automatic delete cleanup is not declared.",
+    });
+  }
+
+  // RLP-05: No automatic update/revert cleanup
+  if (plan.rollbackBehavior === "automaticUpdateRevertCleanup") {
+    checks.push({
+      checkId: "RLP-05",
+      label: "no-automatic-update-revert-cleanup",
+      status: "failed",
+      message:
+        "Automatic update/revert cleanup is declared. The restore engine must not automatically revert or update partially linked records on failure.",
+      remediation:
+        "Set rollbackBehavior to noAutomaticRollback. Revert cleanup must require explicit separate user action.",
+    });
+    blocked = true;
+  } else {
+    checks.push({
+      checkId: "RLP-05",
+      label: "no-automatic-update-revert-cleanup",
+      status: "passed",
+      message: "Automatic update/revert cleanup is not declared.",
+    });
+  }
+
+  // RLP-06: Partial restore is not success
+  if (!plan.partialRestoreIsNotSuccess) {
+    checks.push({
+      checkId: "RLP-06",
+      label: "partial-restore-is-not-success",
+      status: "failed",
+      message:
+        "Plan does not declare that partial restore is not success. A partial restore that fails mid-way must never be reported as a successful completion.",
+      remediation: "Set partialRestoreIsNotSuccess: true in the rollback limitation plan.",
+    });
+    blocked = true;
+  } else {
+    checks.push({
+      checkId: "RLP-06",
+      label: "partial-restore-is-not-success",
+      status: "passed",
+      message: "Partial restore is explicitly declared as not a success state.",
+    });
+  }
+
+  // RLP-07: Checkpoint-based recovery guidance
+  if (plan.recoveryGuidance === "noneDeClared") {
+    checks.push({
+      checkId: "RLP-07",
+      label: "checkpoint-recovery-guidance",
+      status: "warning",
+      message:
+        "No recovery guidance is declared. Users must be informed of how to recover from a partial restore failure.",
+      remediation: "Set recoveryGuidance to checkpointBasedResume or manualCleanupRequired.",
+    });
+    hasWarning = true;
+  } else if (plan.recoveryGuidance !== "checkpointBasedResume") {
+    checks.push({
+      checkId: "RLP-07",
+      label: "checkpoint-recovery-guidance",
+      status: "warning",
+      message:
+        "Recovery guidance is declared but does not include checkpoint-based resume. Checkpoint-based recovery is preferred to avoid duplicating already-created objects.",
+      remediation: "Consider adding checkpointBasedResume as the primary recovery guidance.",
+    });
+    hasWarning = true;
+  } else {
+    checks.push({
+      checkId: "RLP-07",
+      label: "checkpoint-recovery-guidance",
+      status: "passed",
+      message: "Checkpoint-based recovery guidance is declared.",
+    });
+  }
+
+  // RLP-08: User-visible limitation notice
+  if (!plan.userVisibleLimitationNotice) {
+    checks.push({
+      checkId: "RLP-08",
+      label: "user-visible-limitation-notice",
+      status: "warning",
+      message:
+        "No user-visible rollback limitation notice is declared. Users must be informed that automatic rollback is not available before any restore operation begins.",
+      remediation:
+        "Set userVisibleLimitationNotice: true and show the notice in the UI before restore execution.",
+    });
+    hasWarning = true;
+  } else if (!plan.noticeIncludesLimitationDetails) {
+    checks.push({
+      checkId: "RLP-08",
+      label: "user-visible-limitation-notice",
+      status: "warning",
+      message:
+        "User-visible notice is declared but does not include limitation details. Incomplete notice may leave users unable to understand the risk.",
+      remediation:
+        "Set noticeIncludesLimitationDetails: true and ensure the notice describes which objects may remain and what manual cleanup is required.",
+    });
+    hasWarning = true;
+  } else {
+    checks.push({
+      checkId: "RLP-08",
+      label: "user-visible-limitation-notice",
+      status: "passed",
+      message: "User-visible rollback limitation notice with details is declared.",
+    });
+  }
+
+  // RLP-09: Manual cleanup requires separate explicit future action
+  if (!plan.manualCleanupRequiresSeparateAction) {
+    checks.push({
+      checkId: "RLP-09",
+      label: "manual-cleanup-separate-action",
+      status: "failed",
+      message:
+        "Plan does not declare that manual cleanup requires a separate, explicit future user action. The restore engine must never trigger cleanup automatically.",
+      remediation:
+        "Set manualCleanupRequiresSeparateAction: true. Cleanup tooling must be a separate future feature requiring explicit user initiation.",
+    });
+    blocked = true;
+  } else {
+    checks.push({
+      checkId: "RLP-09",
+      label: "manual-cleanup-separate-action",
+      status: "passed",
+      message: "Manual cleanup is declared to require a separate, explicit future user action.",
+    });
+  }
+
+  // RLP-10: No token/path/payload (always passes)
+  checks.push({
+    checkId: "RLP-10",
+    label: "no-token-path-payload",
+    status: "passed",
+    message: "No token, filesystem path, or record payload is present in any result field.",
+  });
+
+  // RLP-11: No network writes (always passes)
+  checks.push({
+    checkId: "RLP-11",
+    label: "no-network-writes",
+    status: "passed",
+    message: "No network writes have been attempted. networkWritesAttempted is always false.",
+  });
+
+  // RLP-12: Writes remain disabled (always passes)
+  checks.push({
+    checkId: "RLP-12",
+    label: "writes-remain-disabled",
+    status: "passed",
+    message: "Restore writes remain disabled. Policy compliance does not enable write execution.",
+  });
+
+  const status: RollbackLimitationPolicyStatus = blocked
+    ? "blocked"
+    : hasWarning
+      ? "warning"
+      : "compliant";
+
+  const planSummary = {
+    rollbackBehavior: plan.rollbackBehavior,
+    partialRestoreIsNotSuccess: plan.partialRestoreIsNotSuccess,
+    recoveryGuidanceDeclared: plan.recoveryGuidance !== "noneDeClared",
+    includesCheckpointGuidance: plan.recoveryGuidance === "checkpointBasedResume",
+    userVisibleNotice: plan.userVisibleLimitationNotice,
+    manualCleanupRequiresSeparateAction: plan.manualCleanupRequiresSeparateAction,
+  };
+
+  const label = request.targetLabel ? ` for '${request.targetLabel}'` : "";
+  const message =
+    status === "compliant"
+      ? `Rollback limitation policy is compliant${label}. Automatic destructive rollback and cleanup are disabled. Partial restore is not success. Recovery guidance and user-visible limitation notice are declared. Restore writes remain disabled.`
+      : status === "warning"
+        ? `Rollback limitation policy has warnings${label}. Automatic rollback is safely disabled, but recovery guidance or the user-visible notice is incomplete. Restore writes remain disabled.`
+        : `Rollback limitation policy is blocked${label}. Automatic destructive rollback or cleanup is allowed, or required declarations are missing. Resolve all violations before any live write is considered. Restore writes remain disabled.`;
+
+  return Promise.resolve({
+    status,
+    checks,
+    message,
+    planSummary,
+    noChangesMade: true,
+    networkWritesAttempted: false,
+    writesEnabled: false,
+  });
+}
+
 export const mockAirBridgeService: AirBridgeService = {
   listConnections,
   listWorkspaces,
@@ -4200,4 +4473,5 @@ export const mockAirBridgeService: AirBridgeService = {
   verifyFinalValidationPolicy: verifyFinalValidationPolicyImpl,
   verifyWritePhaseOrderingPolicy: verifyWritePhaseOrderingPolicyImpl,
   verifyFailureModesPolicy: verifyFailureModesPolicyImpl,
+  verifyRollbackLimitationPolicy: verifyRollbackLimitationPolicyImpl,
 };

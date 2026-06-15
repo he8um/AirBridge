@@ -59,6 +59,8 @@ import type {
   WritePhaseOrderingPolicyResult,
   FailureModesPolicyRequest,
   FailureModesPolicyResult,
+  RollbackLimitationPolicyRequest,
+  RollbackLimitationPolicyResult,
   RestoreWriteEngineRequest,
   RestoreWriteEngineResult,
   RunBackupCommandRequest,
@@ -692,6 +694,23 @@ async function verifyFailureModesPolicy(
   return result;
 }
 
+async function verifyRollbackLimitationPolicy(
+  request: RollbackLimitationPolicyRequest,
+): Promise<RollbackLimitationPolicyResult> {
+  const result = await commands.verifyRollbackLimitationPolicy(request);
+  if (result === null) {
+    return {
+      status: "blocked",
+      checks: [],
+      message: "Rollback limitation policy check is not available in this context.",
+      noChangesMade: true,
+      networkWritesAttempted: false,
+      writesEnabled: false,
+    };
+  }
+  return result;
+}
+
 export const liveAirBridgeService: AirBridgeService = {
   listConnections,
   listWorkspaces,
@@ -736,4 +755,5 @@ export const liveAirBridgeService: AirBridgeService = {
   verifyFinalValidationPolicy,
   verifyWritePhaseOrderingPolicy,
   verifyFailureModesPolicy,
+  verifyRollbackLimitationPolicy,
 };

@@ -55,6 +55,8 @@ import type {
   WritePhaseOrderingPolicyResult,
   FailureModesPolicyRequest,
   FailureModesPolicyResult,
+  RollbackLimitationPolicyRequest,
+  RollbackLimitationPolicyResult,
   RunBackupCommandRequest,
   RunBackupCommandResponse,
   SandboxVerificationRequest,
@@ -529,4 +531,12 @@ export async function verifyFailureModesPolicy(
   request: FailureModesPolicyRequest,
 ): Promise<FailureModesPolicyResult | null> {
   return safeInvoke<FailureModesPolicyResult>("verify_failure_modes_policy_gate", { request });
+}
+
+export async function verifyRollbackLimitationPolicy(
+  request: RollbackLimitationPolicyRequest,
+): Promise<RollbackLimitationPolicyResult | null> {
+  return safeInvoke<RollbackLimitationPolicyResult>("verify_rollback_limitation_policy_gate", {
+    request,
+  });
 }

@@ -2213,3 +2213,92 @@ export interface FailureModesPolicyResult {
   networkWritesAttempted: boolean;
   writesEnabled: boolean;
 }
+
+// ── Gate 14: Rollback Limitation Policy ──────────────────────────────────────
+
+export type RollbackLimitationPolicyStatus = "compliant" | "warning" | "blocked";
+
+export type RollbackLimitationCheckStatus = "passed" | "warning" | "failed";
+
+/** Whether automatic rollback is declared for partial restore failures. */
+export type RollbackBehavior =
+  | "noAutomaticRollback"
+  | "automaticDestructiveRollback"
+  | "automaticDeleteCleanup"
+  | "automaticUpdateRevertCleanup";
+
+/** How users are guided to recover after a partial restore failure. */
+export type RecoveryGuidance = "checkpointBasedResume" | "manualCleanupRequired" | "noneDeClared";
+
+/**
+ * Rollback limitation declaration for the restore write pipeline.
+ *
+ * Safety invariants:
+ * - No token field.
+ * - No filesystem path field.
+ * - No record payload field.
+ */
+export interface RollbackLimitationPlan {
+  rollbackBehavior: RollbackBehavior;
+  partialRestoreIsNotSuccess: boolean;
+  recoveryGuidance: RecoveryGuidance;
+  userVisibleLimitationNotice: boolean;
+  noticeIncludesLimitationDetails: boolean;
+  manualCleanupRequiresSeparateAction: boolean;
+  note?: string;
+}
+
+/**
+ * Input to the rollback limitation policy gate.
+ *
+ * Safety invariants:
+ * - No token field.
+ * - No filesystem path field.
+ * - No record payload field.
+ */
+export interface RollbackLimitationPolicyRequest {
+  plan?: RollbackLimitationPlan;
+  targetLabel?: string;
+}
+
+export interface RollbackLimitationCheck {
+  checkId: string;
+  label: string;
+  status: RollbackLimitationCheckStatus;
+  message: string;
+  remediation?: string;
+}
+
+/** Safe read-only summary of the evaluated rollback limitation plan. */
+export interface RollbackLimitationSummary {
+  rollbackBehavior: string;
+  partialRestoreIsNotSuccess: boolean;
+  recoveryGuidanceDeclared: boolean;
+  includesCheckpointGuidance: boolean;
+  userVisibleNotice: boolean;
+  manualCleanupRequiresSeparateAction: boolean;
+}
+
+/**
+ * Result from `verify_rollback_limitation_policy`.
+ *
+ * Safety invariants:
+ * - No token field.
+ * - No filesystem path field.
+ * - No record payload field.
+ * - writesEnabled is always false.
+ * - noChangesMade is always true.
+ * - networkWritesAttempted is always false.
+ * - Compliant status does NOT enable restore writes.
+ * - Compliant status does NOT introduce a restore success state.
+ * - No automatic destructive rollback, delete, or update cleanup exists.
+ */
+export interface RollbackLimitationPolicyResult {
+  status: RollbackLimitationPolicyStatus;
+  checks: RollbackLimitationCheck[];
+  message: string;
+  planSummary?: RollbackLimitationSummary;
+  noChangesMade: boolean;
+  networkWritesAttempted: boolean;
+  writesEnabled: boolean;
+}

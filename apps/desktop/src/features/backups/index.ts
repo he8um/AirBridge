@@ -12,6 +12,7 @@ export { RestoreCheckpointDurabilityPolicyPanel } from "./RestoreCheckpointDurab
 export { RestoreFinalValidationPolicyPanel } from "./RestoreFinalValidationPolicyPanel";
 export { RestoreWritePhaseOrderingPolicyPanel } from "./RestoreWritePhaseOrderingPolicyPanel";
 export { RestoreFailureModesPolicyPanel } from "./RestoreFailureModesPolicyPanel";
+export { RestoreRollbackLimitationPolicyPanel } from "./RestoreRollbackLimitationPolicyPanel";
 export { JobHistoryPanel } from "./JobHistoryPanel";
 export { RestoreRecordImportPlanPanel } from "./RestoreRecordImportPlanPanel";
 export { BackupConfirmationBox } from "./BackupConfirmationBox";

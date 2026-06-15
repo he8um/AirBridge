@@ -871,6 +871,69 @@ After completing a restore, perform the following manual checks in Airtable:
 
 ---
 
+## Restore Rollback Limitation Policy Checklist (Gate 14)
+
+### Before testing
+
+- [ ] Confirm `verify_rollback_limitation_policy_gate` is registered in the Tauri invoke handler.
+- [ ] Confirm `RestoreRollbackLimitationPolicyPanel` is rendered on the Restore page after the failure modes policy section.
+- [ ] Confirm no execute button is present in the panel.
+- [ ] Confirm no cleanup, delete-all, or revert button is present in the panel.
+- [ ] Confirm no token input field (`type="password"` or `name="token"`) is present.
+
+### Panel behavior
+
+- [ ] A writes-disabled notice is always shown in the rollback limitation policy section.
+- [ ] The notice mentions that automatic rollback is not available.
+- [ ] The verify button is enabled and calls `verifyRollbackLimitationPolicy` when clicked.
+- [ ] While loading, the verify button is disabled and shows a loading label.
+
+### Result display
+
+- [ ] Status badge shows `compliant`, `warning`, or `blocked` correctly.
+- [ ] The result message is shown beside the status badge.
+- [ ] A "Writes disabled" tag is always shown.
+- [ ] The checks list shows 12 check rows for a complete plan.
+- [ ] The checks list shows 2 check rows when no plan is declared (short-circuit).
+- [ ] Each check row shows the check ID, status badge, label, and message.
+- [ ] Remediation text is shown for any check with a `remediation` field.
+- [ ] Plan summary section is shown when a plan is present.
+- [ ] Plan summary shows `rollbackBehavior`, `partialRestoreIsNotSuccess`, `recoveryGuidanceDeclared`, `includesCheckpointGuidance`, `userVisibleNotice`, and `manualCleanupRequiresSeparateAction`.
+- [ ] Plan summary is not shown when no plan is declared.
+- [ ] A "No changes made" footer is shown.
+
+### Status scenarios
+
+- [ ] Safe plan (`noAutomaticRollback`, `partialRestoreIsNotSuccess: true`, `recoveryGuidance: checkpointBasedResume`, `userVisibleLimitationNotice: true`, `noticeIncludesLimitationDetails: true`, `manualCleanupRequiresSeparateAction: true`) returns `compliant`.
+- [ ] No plan declared returns `blocked` with 2 checks.
+- [ ] `rollbackBehavior: automaticDestructiveRollback` returns `blocked` (RLP-03 failed).
+- [ ] `rollbackBehavior: automaticDeleteCleanup` returns `blocked` (RLP-04 failed).
+- [ ] `rollbackBehavior: automaticUpdateRevertCleanup` returns `blocked` (RLP-05 failed).
+- [ ] `partialRestoreIsNotSuccess: false` returns `blocked` (RLP-06 failed).
+- [ ] `manualCleanupRequiresSeparateAction: false` returns `blocked` (RLP-09 failed).
+- [ ] `recoveryGuidance: noneDeClared` returns `warning` (RLP-07 warning).
+- [ ] `recoveryGuidance: manualCleanupRequired` (non-checkpoint) returns `warning` (RLP-07 warning).
+- [ ] `userVisibleLimitationNotice: false` returns `warning` (RLP-08 warning).
+- [ ] `userVisibleLimitationNotice: true` but `noticeIncludesLimitationDetails: false` returns `warning` (RLP-08 warning).
+- [ ] A `compliant` result message says "writes remain disabled".
+- [ ] A `blocked` result message says "writes remain disabled".
+
+### Safety invariants
+
+- [ ] `noChangesMade` is `true` in every rollback limitation policy result.
+- [ ] `writesEnabled` is `false` in every rollback limitation policy result — including `compliant`.
+- [ ] `networkWritesAttempted` is `false` in every rollback limitation policy result.
+- [ ] The policy request type has no `token` field.
+- [ ] The policy result has no `token` field.
+- [ ] The policy result contains no full filesystem path.
+- [ ] The policy result contains no record payload field.
+- [ ] A `compliant` result does NOT enable restore writes.
+- [ ] A `compliant` result does NOT introduce a restore success state.
+- [ ] No automatic rollback, delete cleanup, or update/revert cleanup operation exists in the implementation.
+- [ ] Manual cleanup requires a separate explicit future user action — not triggered by the restore engine.
+
+---
+
 ## Write Engine Skeleton Checklist
 
 ### Before testing
@@ -974,7 +1037,7 @@ After completing a restore, perform the following manual checks in Airtable:
 
 Before any live Airtable write path is enabled, complete the separate checklist:
 
-- [ ] See [live-restore-write-safety-checklist.md](./live-restore-write-safety-checklist.md) — all 24 gates must pass.
+- [ ] See [live-restore-write-safety-checklist.md](./live-restore-write-safety-checklist.md) — all 25 gates must pass.
 - [ ] Confirm `write_safety_contract.rs` tests still pass (`cargo test -- write_safety_contract`).
 - [ ] Confirm write gate still returns `Disabled/DisabledByProductPolicy`.
 - [ ] Confirm `Succeeded` status does not exist in any write engine status type.

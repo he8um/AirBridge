@@ -452,17 +452,18 @@ The `verify_destructive_operation_policy_gate` Tauri command verifies that no de
 | 11 | Rate limit backoff policy (implemented) | ✅ |
 | 12 | Write phase ordering policy (implemented) | ✅ |
 | 13 | Failure modes policy (implemented) | ✅ |
-| 14 | No destructive operations (live) | ☐ |
-| 15 | Live write phase sequencing | ☐ |
-| 16 | Checkpoint safety | ☐ |
-| 17 | Rate limit and backoff | ☐ |
-| 18 | Failure modes (live execution enforcement) | ☐ |
-| 19 | Rollback limitation notice | ☐ |
-| 20 | Final validation | ☐ |
-| 21 | Token safety | ☐ |
-| 22 | Path safety | ☐ |
-| 23 | Attachment phase disabled | ☐ |
-| 24 | No prohibited terms | ☐ |
+| 14 | Rollback limitation policy (implemented) | ✅ |
+| 15 | No destructive operations (live) | ☐ |
+| 16 | Live write phase sequencing | ☐ |
+| 17 | Checkpoint safety | ☐ |
+| 18 | Rate limit and backoff | ☐ |
+| 19 | Failure modes (live execution enforcement) | ☐ |
+| 20 | Rollback limitation notice (live enforcement) | ☐ |
+| 21 | Final validation | ☐ |
+| 22 | Token safety | ☐ |
+| 23 | Path safety | ☐ |
+| 24 | Attachment phase disabled | ☐ |
+| 25 | No prohibited terms | ☐ |
 
 **Release decision:** Do not enable live writes until all gates are marked Pass.
 

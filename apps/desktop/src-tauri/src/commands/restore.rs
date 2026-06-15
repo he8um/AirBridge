@@ -41,6 +41,10 @@ use crate::restore::record_write_result::{
 use crate::restore::restore_confirmation::{
     validate_restore_confirmation, RestoreConfirmationRequest, RestoreConfirmationResult,
 };
+use crate::restore::rollback_limitation_policy::{
+    verify_rollback_limitation_policy, RollbackLimitationPolicyRequest,
+    RollbackLimitationPolicyResult,
+};
 use crate::restore::sandbox_verification::{
     verify_sandbox_environment, SandboxVerificationRequest, SandboxVerificationResult,
 };
@@ -652,6 +656,26 @@ pub fn verify_failure_modes_policy_gate(
     request: FailureModesPolicyRequest,
 ) -> FailureModesPolicyResult {
     verify_failure_modes_policy(&request)
+}
+
+/// Verifies the rollback limitation policy for a planned restore write operation.
+///
+/// Safety invariants:
+/// - No Airtable API calls are made.
+/// - No token accepted or returned.
+/// - No filesystem path accepted or returned.
+/// - No record payload accepted or returned.
+/// - no_changes_made is always true.
+/// - network_writes_attempted is always false.
+/// - writes_enabled is always false.
+/// - Compliant status does NOT enable restore writes.
+/// - Compliant status does NOT introduce a restore success state.
+/// - No automatic destructive rollback, delete, or update cleanup exists.
+#[tauri::command]
+pub fn verify_rollback_limitation_policy_gate(
+    request: RollbackLimitationPolicyRequest,
+) -> RollbackLimitationPolicyResult {
+    verify_rollback_limitation_policy(&request)
 }
 
 #[cfg(test)]

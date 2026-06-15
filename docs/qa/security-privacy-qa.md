@@ -884,6 +884,70 @@ If AirBridge supports user-configured field redaction:
 
 ---
 
+## Restore Rollback Limitation Policy Safety (Gate 14)
+
+**Goal:** Confirm that the rollback limitation policy gate makes no Airtable API calls, requires no token, performs no automatic rollback or cleanup operations, never introduces a restore success state, and always returns `writesEnabled: false`.
+
+**RLP-SEC-01: No token accepted.**
+- `RollbackLimitationPolicyRequest` has no `token` field in its Rust struct definition.
+- `RollbackLimitationPolicyResult` has no `token` field in any result variant.
+- `RollbackLimitationPlan` has no `token` field.
+- No token is forwarded to any downstream function.
+- Rust unit test `no_token_or_path_in_serialized_result` asserts no `pat_` or `token` string appears in the serialized result.
+
+**RLP-SEC-02: No Airtable API calls.**
+- `verify_rollback_limitation_policy` calls only `evaluate_write_gate()` and in-memory logic.
+- No HTTP client is constructed or called.
+- No Airtable endpoint is referenced in the function.
+
+**RLP-SEC-03: No write operations.**
+- `verify_rollback_limitation_policy` produces no writes to any storage system, file, or network endpoint.
+- `no_changes_made` is always `true`. `network_writes_attempted` is always `false`.
+- Rust unit tests assert both invariants across all result branches.
+
+**RLP-SEC-04: No record payload in any result field.**
+- `RollbackLimitationPolicyResult` contains status, checks, message, plan summary (boolean/string flags only), and safety invariant fields.
+- `RollbackLimitationPlan` contains only enum values and boolean flags — no record IDs, no field values, no base IDs.
+- The plan summary mirrors only safe boolean/string flags from the plan.
+
+**RLP-SEC-05: No full path in any field.**
+- No filesystem path appears in any request or result field.
+- Rust unit test `no_token_or_path_in_serialized_result` asserts no `/Users/` or `/home/` string appears in the serialized result.
+
+**RLP-SEC-06: `noChangesMade` always true.**
+- Every code path in `verify_rollback_limitation_policy` sets `no_changes_made: true` via the `build_result` helper.
+- Rust unit tests assert `no_changes_made` across compliant, warning, and blocked results.
+
+**RLP-SEC-07: No execute button or cleanup button.**
+- `RestoreRollbackLimitationPolicyPanel` renders no execute, restore, cleanup, delete-all, or revert control.
+- Frontend tests assert no "execute", "start restore", "cleanup", "delete all", or "revert" text is visible in the panel.
+
+**RLP-SEC-08: Compliant status does not enable writes.**
+- `writes_enabled` is always `false` in `build_result` — independent of policy status.
+- Rust unit tests assert `!result.writes_enabled` for both compliant and blocked results.
+
+**RLP-SEC-09: Compliant status does not introduce a restore success state.**
+- The compliant result message explicitly states writes remain disabled.
+- No "succeeded" or "restore complete" language appears in any result branch.
+- Frontend tests assert no "succeeded" text is visible in the panel for any status.
+
+**RLP-SEC-10: No automatic destructive rollback path exists.**
+- `automaticDestructiveRollback`, `automaticDeleteCleanup`, and `automaticUpdateRevertCleanup` rollback behaviors are checked and return `Blocked` — they are declaration-only types and trigger no actual rollback code.
+- There is no function in `rollback_limitation_policy.rs` that calls a delete, update, or revert API.
+- Rust unit tests assert `Blocked` for all three destructive behavior variants.
+
+**RLP-SEC-11: Manual cleanup requires separate explicit future action.**
+- The `manualCleanupRequiresSeparateAction` field must be `true` for the plan to pass RLP-09.
+- `false` triggers `Blocked` — the policy cannot be satisfied while claiming automatic cleanup is triggered.
+- No automatic cleanup flow exists anywhere in the restore implementation.
+
+**RLP-SEC-12: No-plan causes immediate blocked (short-circuit).**
+- When no `plan` field is provided, the function returns after RLP-02 with 2 checks and `Blocked` status.
+- No subsequent check fields are evaluated.
+- Rust unit tests assert `checks.len() == 2` in the no-plan case.
+
+---
+
 ## Restore Schema Creation Plan Safety (V0.1)
 
 **Goal:** Confirm that the schema creation planning flow makes no Airtable API calls, requires no token, creates no Airtable tables or fields, and always returns `noChangesMade: true`.

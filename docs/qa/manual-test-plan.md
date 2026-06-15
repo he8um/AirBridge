@@ -1502,6 +1502,80 @@ These test cases cover the command contract layer: confirmation enforcement, out
 
 ---
 
+## Restore Rollback Limitation Policy (Gate 14)
+
+**TC-RLP-01: Writes-disabled notice always visible**
+
+- Preconditions: Restore page open.
+- Steps:
+  1. Scroll to the "Gate 14 — Rollback Limitation Policy" section.
+- Expected result: A notice is always visible stating that live restore writes are disabled, automatic rollback is not available, and manual cleanup requires a separate explicit future action. No execute button is shown. No cleanup/delete/revert button is shown. No token input is shown.
+
+**TC-RLP-02: No plan declared returns blocked (2 checks)**
+
+- Preconditions: Restore page open.
+- Steps:
+  1. Invoke `verifyRollbackLimitationPolicy` with no `plan` field.
+- Expected result: Status badge shows `blocked`. Exactly 2 checks are shown. RLP-01 passed. RLP-02 failed with "No rollback limitation plan declared." No plan summary section. `writesEnabled` is `false`.
+
+**TC-RLP-03: Safe plan returns compliant (12 checks)**
+
+- Preconditions: Restore page open.
+- Steps:
+  1. Invoke `verifyRollbackLimitationPolicy` with a complete safe plan (`rollbackBehavior: noAutomaticRollback`, `partialRestoreIsNotSuccess: true`, `recoveryGuidance: checkpointBasedResume`, `userVisibleLimitationNotice: true`, `noticeIncludesLimitationDetails: true`, `manualCleanupRequiresSeparateAction: true`).
+- Expected result: Status badge shows `compliant`. 12 checks shown, all passed. Plan summary shows `noAutomaticRollback`. Message says "writes remain disabled".
+
+**TC-RLP-04: Automatic destructive rollback returns blocked**
+
+- Preconditions: Restore page open.
+- Steps:
+  1. Invoke `verifyRollbackLimitationPolicy` with `rollbackBehavior: automaticDestructiveRollback`.
+- Expected result: Status badge shows `blocked`. RLP-03 shows `failed`. Remediation text visible.
+
+**TC-RLP-05: Automatic delete cleanup returns blocked**
+
+- Preconditions: Restore page open.
+- Steps:
+  1. Invoke `verifyRollbackLimitationPolicy` with `rollbackBehavior: automaticDeleteCleanup`.
+- Expected result: Status badge shows `blocked`. RLP-04 shows `failed`. Remediation text visible.
+
+**TC-RLP-06: Missing recovery guidance returns warning**
+
+- Preconditions: Restore page open.
+- Steps:
+  1. Invoke `verifyRollbackLimitationPolicy` with `recoveryGuidance: noneDeClared` (all other fields safe).
+- Expected result: Status badge shows `warning`. RLP-07 shows `warning`. All blocking checks pass.
+
+**TC-RLP-07: Missing user-visible notice returns warning**
+
+- Preconditions: Restore page open.
+- Steps:
+  1. Invoke `verifyRollbackLimitationPolicy` with `userVisibleLimitationNotice: false` (all other fields safe).
+- Expected result: Status badge shows `warning`. RLP-08 shows `warning`.
+
+**TC-RLP-08: Manual cleanup without separate action returns blocked**
+
+- Preconditions: Restore page open.
+- Steps:
+  1. Invoke `verifyRollbackLimitationPolicy` with `manualCleanupRequiresSeparateAction: false`.
+- Expected result: Status badge shows `blocked`. RLP-09 shows `failed`.
+
+**TC-RLP-09: No execute button or token input**
+
+- Preconditions: Restore page open; `compliant` result shown.
+- Steps:
+  1. Inspect the Rollback Limitation Policy panel for interactive controls.
+- Expected result: No execute, restore, cleanup, delete-all, or revert button is present. No token or password input field is present.
+
+**TC-RLP-10: Compliant result does not enable writes or introduce restore success state**
+
+- Preconditions: Restore page; safe plan returns `compliant`.
+- Steps:
+  1. Inspect the Rollback Limitation Policy panel and all visible text.
+- Expected result: `writesEnabled` is `false`. "Writes disabled" tag is visible. No text containing "Restore complete", "Restore succeeded", "succeeded", or "success" is visible. The message explicitly says "writes remain disabled".
+
+---
+
 ## Write Engine Skeleton
 
 **TC-WE-01: Write engine disabled notice is always visible**
