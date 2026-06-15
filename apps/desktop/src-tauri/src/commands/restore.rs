@@ -6,6 +6,10 @@ use crate::models::restore::{
 use crate::restore::attachment_upload_policy::{
     verify_attachment_upload_policy, AttachmentUploadPolicyRequest, AttachmentUploadPolicyResult,
 };
+use crate::restore::checkpoint_durability_policy::{
+    verify_checkpoint_durability_policy, CheckpointDurabilityPolicyRequest,
+    CheckpointDurabilityPolicyResult,
+};
 use crate::restore::destructive_operation_policy::{
     verify_destructive_operation_policy, DestructiveOperationPolicyRequest,
     DestructiveOperationPolicyResult,
@@ -564,6 +568,24 @@ pub fn verify_rate_limit_backoff_policy_gate(
     request: RateLimitBackoffPolicyRequest,
 ) -> RateLimitBackoffPolicyResult {
     verify_rate_limit_backoff_policy(&request)
+}
+
+/// Verifies the checkpoint durability policy for a planned restore write operation (Gate 10).
+///
+/// Safety:
+/// - No Airtable API calls.
+/// - No token accepted or returned.
+/// - No filesystem path accepted or returned.
+/// - No record payload accepted or returned.
+/// - no_changes_made is always true.
+/// - network_writes_attempted is always false.
+/// - writes_enabled is always false.
+/// - Compliant status does NOT enable restore writes.
+#[tauri::command]
+pub fn verify_checkpoint_durability_policy_gate(
+    request: CheckpointDurabilityPolicyRequest,
+) -> CheckpointDurabilityPolicyResult {
+    verify_checkpoint_durability_policy(&request)
 }
 
 #[cfg(test)]

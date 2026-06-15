@@ -668,6 +668,55 @@ If AirBridge supports user-configured field redaction:
 
 ---
 
+## Restore Checkpoint Durability Policy Safety (Gate 10)
+
+**Goal:** Confirm that the checkpoint durability policy gate makes no Airtable API calls, requires no token, makes no writes, contains no record payload, never enables writes even when compliant, and always returns `noChangesMade: true` and `writesEnabled: false`.
+
+**CDP-SEC-01: No token accepted.**
+- The `verify_checkpoint_durability_policy_gate` Tauri command has no `token` parameter.
+- `CheckpointDurabilityPolicyRequest` contains no token field.
+- `CheckpointDurabilityPolicyResult` contains no token field.
+- `RestoreCheckpointDurabilityPolicyPanel` does not render a token input (`type="password"` or `name="token"`).
+- Frontend serialization tests assert no `pat_` prefix or `"token"` key in any result JSON.
+
+**CDP-SEC-02: No Airtable API calls.**
+- `verify_checkpoint_durability_policy` accepts no HTTP client or base client argument.
+- No HTTP calls are made by this command.
+- All checks run against the declared request fields only.
+
+**CDP-SEC-03: No write operations.**
+- No Airtable record, table, field, or base is created, updated, or deleted.
+- `networkWritesAttempted` is always `false` in all result branches.
+
+**CDP-SEC-04: No record payload in any result field.**
+- `CheckpointDurabilityPolicyResult` contains no raw record data, no record IDs, and no field values.
+- The plan summary mirrors only boolean policy parameters and the declared durability backend string.
+
+**CDP-SEC-05: No full path in any field.**
+- `CheckpointDurabilityPolicyResult` has no path field.
+- Serialized result does not contain `/Users/`, `/home/`, or `:\\`.
+- Frontend tests assert this for every result branch.
+
+**CDP-SEC-06: `noChangesMade` always true.**
+- All code paths in `verify_checkpoint_durability_policy` set `no_changes_made: true`.
+- Rust unit tests assert this for every status branch (compliant, warning, blocked).
+
+**CDP-SEC-07: No execute button.**
+- `RestoreCheckpointDurabilityPolicyPanel` does not render any button with execute, run, or restore semantics.
+- Panel tests assert no "succeeded" language is present.
+
+**CDP-SEC-08: Compliant status does not enable writes.**
+- `writesEnabled` is always `false` regardless of policy status.
+- `Compliant` validates the declared checkpoint plan only — it does not change the write engine state.
+- Rust unit tests assert `writesEnabled: false` in every result branch including `Compliant`.
+
+**CDP-SEC-09: No-plan causes immediate blocked (short-circuit).**
+- When no `CheckpointDurabilityPlan` is provided, the function returns after CDP-02 with 2 checks and `Blocked` status.
+- No subsequent check fields are evaluated.
+- Rust unit tests assert `checks.len() == 2` in the no-plan case.
+
+---
+
 ## Restore Schema Creation Plan Safety (V0.1)
 
 **Goal:** Confirm that the schema creation planning flow makes no Airtable API calls, requires no token, creates no Airtable tables or fields, and always returns `noChangesMade: true`.

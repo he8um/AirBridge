@@ -66,6 +66,9 @@ import type {
   RateLimitBackoffPolicyRequest,
   RateLimitBackoffPolicyResult,
   RateLimitBackoffPolicyStatus,
+  CheckpointDurabilityPolicyRequest,
+  CheckpointDurabilityPolicyResult,
+  CheckpointDurabilityPolicyStatus,
   RunBackupCommandResponse,
   RecordWriteRequestPlanRequest,
   RecordWriteRequestPlanResult,
@@ -3050,6 +3053,224 @@ function verifyRateLimitBackoffPolicyImpl(
   });
 }
 
+function verifyCheckpointDurabilityPolicyImpl(
+  request: CheckpointDurabilityPolicyRequest,
+): Promise<CheckpointDurabilityPolicyResult> {
+  const checks: CheckpointDurabilityPolicyResult["checks"] = [];
+
+  // CDP-01: Write gate always disabled
+  checks.push({
+    checkId: "CDP-01",
+    label: "write-gate-disabled",
+    status: "passed",
+    message: "Restore write gate is disabled. No live writes are possible.",
+  });
+
+  const plan = request.plan;
+  if (!plan) {
+    checks.push({
+      checkId: "CDP-02",
+      label: "plan-declared",
+      status: "failed",
+      message:
+        "No checkpoint durability plan declared. A plan is required before any live write path is considered.",
+      remediation: "Declare a CheckpointDurabilityPlan with all required fields.",
+    });
+    return Promise.resolve({
+      status: "blocked" as CheckpointDurabilityPolicyStatus,
+      checks,
+      message: `Checkpoint durability policy for ${request.targetLabel ?? "the restore target"} is blocked. One or more required checkpoint fields are missing. Restore writes remain disabled.`,
+      noChangesMade: true,
+      networkWritesAttempted: false,
+      writesEnabled: false,
+    });
+  }
+
+  // CDP-02: Plan declared
+  checks.push({
+    checkId: "CDP-02",
+    label: "plan-declared",
+    status: "passed",
+    message: "Checkpoint durability plan is declared.",
+  });
+
+  // CDP-03: Checkpoint after each table
+  if (!plan.checkpointAfterEachTable) {
+    checks.push({
+      checkId: "CDP-03",
+      label: "checkpoint-after-each-table",
+      status: "failed",
+      message:
+        "No checkpoint after each table is declared. A durable checkpoint must be written after each table completes to allow safe resumption.",
+      remediation: "Declare checkpointAfterEachTable: true in the durability plan.",
+    });
+  } else {
+    checks.push({
+      checkId: "CDP-03",
+      label: "checkpoint-after-each-table",
+      status: "passed",
+      message: "Checkpoint after each table is declared.",
+    });
+  }
+
+  // CDP-04: Checkpoint after each batch
+  if (!plan.checkpointAfterEachBatch) {
+    checks.push({
+      checkId: "CDP-04",
+      label: "checkpoint-after-each-batch",
+      status: "failed",
+      message:
+        "No checkpoint after each record batch is declared. A durable checkpoint must be written after each batch to prevent duplicate writes on resume.",
+      remediation: "Declare checkpointAfterEachBatch: true in the durability plan.",
+    });
+  } else {
+    checks.push({
+      checkId: "CDP-04",
+      label: "checkpoint-after-each-batch",
+      status: "passed",
+      message: "Checkpoint after each record batch is declared.",
+    });
+  }
+
+  // CDP-05: Phase markers
+  if (!plan.hasPhaseMarkers) {
+    checks.push({
+      checkId: "CDP-05",
+      label: "phase-markers-declared",
+      status: "failed",
+      message:
+        "Phase markers are not declared. Phase markers for schema, record_create, linked_update, and final_validation are required.",
+      remediation:
+        "Declare phase markers for all four required phases: schema, record_create, linked_update, final_validation.",
+    });
+  } else {
+    checks.push({
+      checkId: "CDP-05",
+      label: "phase-markers-declared",
+      status: "passed",
+      message: "Phase markers for all required phases are declared.",
+    });
+  }
+
+  // CDP-06: ID mapping checkpoint
+  if (plan.hasLinkedUpdates && !plan.hasIdMappingCheckpoint) {
+    checks.push({
+      checkId: "CDP-06",
+      label: "id-mapping-checkpoint",
+      status: "failed",
+      message:
+        "Linked record updates are declared but no old-to-new ID mapping checkpoint is planned. The mapping must be persisted before any linked update begins.",
+      remediation:
+        "Declare hasIdMappingCheckpoint: true to persist the record ID mapping before linked updates begin.",
+    });
+  } else if (!plan.hasLinkedUpdates && !plan.hasIdMappingCheckpoint) {
+    checks.push({
+      checkId: "CDP-06",
+      label: "id-mapping-checkpoint",
+      status: "passed",
+      message: "No linked record updates declared — ID mapping checkpoint not required.",
+    });
+  } else {
+    checks.push({
+      checkId: "CDP-06",
+      label: "id-mapping-checkpoint",
+      status: "passed",
+      message: "Old-to-new record ID mapping checkpoint is declared before linked updates.",
+    });
+  }
+
+  // CDP-07: Resume-safe stop condition
+  if (!plan.hasResumeSafeStopCondition) {
+    checks.push({
+      checkId: "CDP-07",
+      label: "resume-safe-stop-condition",
+      status: "failed",
+      message:
+        "No resume-safe stop condition is declared. The restore operation must be able to restart from the last checkpoint without duplicating writes.",
+      remediation:
+        "Declare a resume-safe stop condition that allows resumption from any checkpoint.",
+    });
+  } else {
+    checks.push({
+      checkId: "CDP-07",
+      label: "resume-safe-stop-condition",
+      status: "passed",
+      message: "A resume-safe stop condition is declared.",
+    });
+  }
+
+  // CDP-08: Durability backend
+  if (plan.durabilityBackend === "memory") {
+    checks.push({
+      checkId: "CDP-08",
+      label: "durability-backend",
+      status: "warning",
+      message:
+        "Durability backend is memory-only. Checkpoints will be lost if the process exits — long operations cannot be safely resumed after a crash.",
+      remediation: "Use a disk or remote durability backend for production restore operations.",
+    });
+  } else if (plan.durabilityBackend === "disk" || plan.durabilityBackend === "remote") {
+    checks.push({
+      checkId: "CDP-08",
+      label: "durability-backend",
+      status: "passed",
+      message: `Durability backend is '${plan.durabilityBackend}' — checkpoints survive process restart.`,
+    });
+  } else {
+    checks.push({
+      checkId: "CDP-08",
+      label: "durability-backend",
+      status: "warning",
+      message:
+        "Durability backend is not declared or unknown. Checkpoint durability cannot be confirmed.",
+      remediation: 'Declare durabilityBackend as "disk", "remote", or "memory".',
+    });
+  }
+
+  // CDP-09: Writes remain disabled (always passes)
+  checks.push({
+    checkId: "CDP-09",
+    label: "writes-remain-disabled",
+    status: "passed",
+    message:
+      "Restore write execution is not enabled. Verifying this policy does not start any write operation.",
+  });
+
+  const hasBlocked = checks.some((c) => c.status === "failed");
+  const hasWarning = checks.some((c) => c.status === "warning");
+  const status: CheckpointDurabilityPolicyStatus = hasBlocked
+    ? "blocked"
+    : hasWarning
+      ? "warning"
+      : "compliant";
+
+  const targetName = request.targetLabel ?? "the restore target";
+  const message =
+    status === "compliant"
+      ? `Checkpoint durability policy for ${targetName} is compliant. All required checkpoint fields are declared. Restore writes remain disabled.`
+      : status === "warning"
+        ? `Checkpoint durability policy for ${targetName} has warnings. No required field is missing, but some durability conditions are incomplete. Restore writes remain disabled.`
+        : `Checkpoint durability policy for ${targetName} is blocked. One or more required checkpoint fields are missing. Restore writes remain disabled.`;
+
+  return Promise.resolve({
+    status,
+    checks,
+    message,
+    planSummary: {
+      checkpointAfterEachTable: plan.checkpointAfterEachTable,
+      checkpointAfterEachBatch: plan.checkpointAfterEachBatch,
+      hasPhaseMarkers: plan.hasPhaseMarkers,
+      hasIdMappingCheckpoint: plan.hasIdMappingCheckpoint,
+      hasResumeSafeStopCondition: plan.hasResumeSafeStopCondition,
+      hasLinkedUpdates: plan.hasLinkedUpdates,
+      durabilityBackend: plan.durabilityBackend,
+    },
+    noChangesMade: true,
+    networkWritesAttempted: false,
+    writesEnabled: false,
+  });
+}
+
 export const mockAirBridgeService: AirBridgeService = {
   listConnections,
   listWorkspaces,
@@ -3090,4 +3311,5 @@ export const mockAirBridgeService: AirBridgeService = {
   verifySandboxWriteTestingPolicy: verifySandboxWriteTestingPolicyImpl,
   verifyLiveWriteConfirmationPolicy: verifyLiveWriteConfirmationPolicyImpl,
   verifyRateLimitBackoffPolicy: verifyRateLimitBackoffPolicyImpl,
+  verifyCheckpointDurabilityPolicy: verifyCheckpointDurabilityPolicyImpl,
 };

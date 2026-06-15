@@ -220,7 +220,32 @@ The `verify_destructive_operation_policy_gate` Tauri command verifies that no de
 
 ---
 
-## Gate 10 — No Destructive Operations
+## Gate 10 — Checkpoint Durability Policy (implemented)
+
+- [x] **`verify_checkpoint_durability_policy()` implemented.** Runs 9 checks: CDP-01 through CDP-09.
+- [x] **CDP-01 (write gate disabled) always passes.** `evaluate_write_gate()` unconditionally returns `Disabled`.
+- [x] **CDP-02 (plan declared) checked.** Missing plan causes immediate `Blocked` with 2 checks only (short-circuit).
+- [x] **CDP-03 (checkpoint after each table) enforced.** `checkpointAfterEachTable: false` causes `Blocked`.
+- [x] **CDP-04 (checkpoint after each batch) enforced.** `checkpointAfterEachBatch: false` causes `Blocked`.
+- [x] **CDP-05 (phase markers declared) enforced.** `hasPhaseMarkers: false` causes `Blocked`.
+- [x] **CDP-06 (ID mapping checkpoint) enforced.** Required only when `hasLinkedUpdates: true`; if no linked updates, check passes unconditionally.
+- [x] **CDP-07 (resume-safe stop condition) enforced.** `hasResumeSafeStopCondition: false` causes `Blocked`.
+- [x] **CDP-08 (durability backend not memory-only) checked.** `memory` or unknown backend produces `Warning`; `disk` and `remote` pass.
+- [x] **CDP-09 (writes remain disabled) always passes.** Compliant policy never enables writes.
+- [x] **`Compliant` status does NOT enable writes.** `writesEnabled` is always `false` in every result branch.
+- [x] **No token field anywhere in request or result.** Verified by serialization test.
+- [x] **No filesystem path field anywhere in request or result.** Verified by serialization test.
+- [x] **No record payload field anywhere in result.** Verified by serialization test.
+- [x] **`noChangesMade` always `true`.** Checked in all status branches.
+- [x] **`networkWritesAttempted` always `false`.** Checked across all status branches.
+- [x] **No execute button in Gate 10 panel.** Panel renders no execute or write-start control.
+- [x] **No "succeeded" language in panel.** Checked by UI test.
+- [x] **35+ Rust unit tests pass** for checkpoint durability policy module.
+- [x] **40+ frontend tests pass** for checkpoint durability policy service contract and panel rendering.
+
+---
+
+## Gate 11 — No Destructive Operations
 
 - [ ] **No delete record calls.** Grep confirms no `DELETE /v0/` record endpoint is called anywhere in the write path.
 - [ ] **No delete table calls.** Grep confirms no table deletion API call exists.

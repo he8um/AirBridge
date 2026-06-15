@@ -51,6 +51,8 @@ import type {
   LiveWriteConfirmationPolicyResult,
   RateLimitBackoffPolicyRequest,
   RateLimitBackoffPolicyResult,
+  CheckpointDurabilityPolicyRequest,
+  CheckpointDurabilityPolicyResult,
   RestoreWriteEngineRequest,
   RestoreWriteEngineResult,
   RunBackupCommandRequest,
@@ -310,4 +312,15 @@ export interface AirBridgeService {
   verifyRateLimitBackoffPolicy(
     request: RateLimitBackoffPolicyRequest,
   ): Promise<RateLimitBackoffPolicyResult>;
+  /**
+   * Gate 10: Checkpoint durability policy.
+   * - No Airtable API calls.
+   * - No token required.
+   * - No record payload.
+   * - writesEnabled is always false.
+   * - Compliant does NOT enable restore writes.
+   */
+  verifyCheckpointDurabilityPolicy(
+    request: CheckpointDurabilityPolicyRequest,
+  ): Promise<CheckpointDurabilityPolicyResult>;
 }

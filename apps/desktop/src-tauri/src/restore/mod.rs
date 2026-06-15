@@ -1,5 +1,6 @@
 pub mod attachment_restore_policy;
 pub mod attachment_upload_policy;
+pub mod checkpoint_durability_policy;
 pub mod compatibility;
 pub mod destructive_operation_policy;
 pub mod dry_run;

@@ -1895,3 +1895,73 @@ export interface RateLimitBackoffPolicyResult {
   networkWritesAttempted: boolean;
   writesEnabled: boolean;
 }
+
+// ── Gate 10: Checkpoint durability policy ─────────────────────────────────────
+
+export type CheckpointDurabilityPolicyStatus = "compliant" | "warning" | "blocked";
+export type CheckpointDurabilityCheckStatus = "passed" | "warning" | "failed";
+
+/**
+ * Declared checkpoint and durability plan for a future restore write operation.
+ * All fields are boolean flags or string labels — no token, no path, no
+ * record payload.
+ */
+export interface CheckpointDurabilityPlan {
+  checkpointAfterEachTable: boolean;
+  checkpointAfterEachBatch: boolean;
+  hasPhaseMarkers: boolean;
+  hasIdMappingCheckpoint: boolean;
+  hasResumeSafeStopCondition: boolean;
+  hasLinkedUpdates: boolean;
+  durabilityBackend?: string;
+}
+
+/**
+ * Input to the checkpoint durability policy gate.
+ * - No token field.
+ * - No filesystem path field.
+ * - No record payload field.
+ */
+export interface CheckpointDurabilityPolicyRequest {
+  plan?: CheckpointDurabilityPlan;
+  targetLabel?: string;
+}
+
+export interface CheckpointDurabilityCheck {
+  checkId: string;
+  label: string;
+  status: CheckpointDurabilityCheckStatus;
+  message: string;
+  remediation?: string;
+}
+
+/** Read-only summary of the evaluated plan fields, safe for display. */
+export interface CheckpointDurabilityPlanSummary {
+  checkpointAfterEachTable: boolean;
+  checkpointAfterEachBatch: boolean;
+  hasPhaseMarkers: boolean;
+  hasIdMappingCheckpoint: boolean;
+  hasResumeSafeStopCondition: boolean;
+  hasLinkedUpdates: boolean;
+  durabilityBackend?: string;
+}
+
+/**
+ * Result from verify_checkpoint_durability_policy_gate.
+ * - No token field.
+ * - No filesystem path field.
+ * - No record payload field.
+ * - writesEnabled is always false.
+ * - noChangesMade is always true.
+ * - networkWritesAttempted is always false.
+ * - Compliant status does NOT enable restore writes.
+ */
+export interface CheckpointDurabilityPolicyResult {
+  status: CheckpointDurabilityPolicyStatus;
+  checks: CheckpointDurabilityCheck[];
+  message: string;
+  planSummary?: CheckpointDurabilityPlanSummary;
+  noChangesMade: boolean;
+  networkWritesAttempted: boolean;
+  writesEnabled: boolean;
+}

@@ -51,6 +51,8 @@ import type {
   LiveWriteConfirmationPolicyResult,
   RateLimitBackoffPolicyRequest,
   RateLimitBackoffPolicyResult,
+  CheckpointDurabilityPolicyRequest,
+  CheckpointDurabilityPolicyResult,
   RestoreWriteEngineRequest,
   RestoreWriteEngineResult,
   RunBackupCommandRequest,
@@ -616,6 +618,23 @@ async function verifyRateLimitBackoffPolicy(
   return result;
 }
 
+async function verifyCheckpointDurabilityPolicy(
+  request: CheckpointDurabilityPolicyRequest,
+): Promise<CheckpointDurabilityPolicyResult> {
+  const result = await commands.verifyCheckpointDurabilityPolicy(request);
+  if (result === null) {
+    return {
+      status: "blocked",
+      checks: [],
+      message: "Checkpoint durability policy check is not available in this context.",
+      noChangesMade: true,
+      networkWritesAttempted: false,
+      writesEnabled: false,
+    };
+  }
+  return result;
+}
+
 export const liveAirBridgeService: AirBridgeService = {
   listConnections,
   listWorkspaces,
@@ -656,4 +675,5 @@ export const liveAirBridgeService: AirBridgeService = {
   verifySandboxWriteTestingPolicy,
   verifyLiveWriteConfirmationPolicy,
   verifyRateLimitBackoffPolicy,
+  verifyCheckpointDurabilityPolicy,
 };

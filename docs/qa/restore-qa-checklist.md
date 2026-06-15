@@ -644,6 +644,63 @@ After completing a restore, perform the following manual checks in Airtable:
 
 ---
 
+## Restore Checkpoint Durability Policy Checklist (Gate 10)
+
+### Before testing
+
+- [ ] Confirm `verify_checkpoint_durability_policy_gate` is registered in the Tauri invoke handler.
+- [ ] Confirm `RestoreCheckpointDurabilityPolicyPanel` is rendered on the Restore page after the rate-limit and backoff policy section.
+- [ ] Confirm no execute button is present in the panel.
+- [ ] Confirm no token input field (`type="password"` or `name="token"`) is present.
+
+### Panel behavior
+
+- [ ] A writes-disabled notice is always shown in the checkpoint durability policy section.
+- [ ] The verify button is enabled and calls `verifyCheckpointDurabilityPolicy` when clicked.
+- [ ] While loading, the verify button is disabled and shows a loading label.
+
+### Result display
+
+- [ ] Status badge shows `compliant`, `warning`, or `blocked` correctly.
+- [ ] The result message is shown beside the status badge.
+- [ ] The checks table shows 9 check rows for a complete plan.
+- [ ] The checks table shows 2 check rows when no plan is declared (short-circuit).
+- [ ] Each check row shows the check ID, status badge, and message.
+- [ ] Plan summary panel shows table checkpoint, batch checkpoint, phase markers, ID mapping checkpoint, resume stop condition, linked updates flag, and durability backend when a plan is declared.
+- [ ] Plan summary is not shown when no plan is declared.
+- [ ] A safety summary showing `noChangesMade`, `writesEnabled`, and `networkWritesAttempted` is shown.
+- [ ] A "No changes made." notice is shown.
+
+### Status scenarios
+
+- [ ] Complete plan (all fields true, remote backend) returns `compliant`.
+- [ ] No plan declared returns `blocked` with 2 checks.
+- [ ] `checkpointAfterEachTable: false` returns `blocked`.
+- [ ] `checkpointAfterEachBatch: false` returns `blocked`.
+- [ ] `hasPhaseMarkers: false` returns `blocked`.
+- [ ] `hasLinkedUpdates: true` with `hasIdMappingCheckpoint: false` returns `blocked`.
+- [ ] `hasLinkedUpdates: false` with `hasIdMappingCheckpoint: false` returns `compliant` (ID mapping not required).
+- [ ] `hasResumeSafeStopCondition: false` returns `blocked`.
+- [ ] `durabilityBackend: "memory"` returns `warning` (not blocked).
+- [ ] `durabilityBackend` not declared returns `warning`.
+- [ ] `durabilityBackend: "remote"` returns `compliant`.
+- [ ] A `compliant` result shows the `cdp-compliant-notice`, which says "writes remain disabled".
+- [ ] A `warning` result shows the `cdp-warning-notice`.
+- [ ] A `blocked` result shows the `cdp-blocked-notice`.
+
+### Safety invariants
+
+- [ ] `noChangesMade` is `true` in every checkpoint durability policy result.
+- [ ] `writesEnabled` is `false` in every checkpoint durability policy result — including `compliant`.
+- [ ] `networkWritesAttempted` is `false` in every checkpoint durability policy result.
+- [ ] The policy request type has no `token` field.
+- [ ] The policy result has no `token` field.
+- [ ] The policy result contains no full filesystem path.
+- [ ] The policy result contains no record payload field.
+- [ ] A `compliant` result does NOT enable restore writes.
+
+---
+
 ## Write Engine Skeleton Checklist
 
 ### Before testing

@@ -15,6 +15,7 @@ import { RestoreSchemaRecordOrderPolicyPanel } from "../features/backups/Restore
 import { RestoreSandboxWriteTestingPolicyPanel } from "../features/backups/RestoreSandboxWriteTestingPolicyPanel";
 import { RestoreLiveWriteConfirmationPolicyPanel } from "../features/backups/RestoreLiveWriteConfirmationPolicyPanel";
 import { RestoreRateLimitBackoffPolicyPanel } from "../features/backups/RestoreRateLimitBackoffPolicyPanel";
+import { RestoreCheckpointDurabilityPolicyPanel } from "../features/backups/RestoreCheckpointDurabilityPolicyPanel";
 import { RestoreWriteEnginePanel } from "../features/backups/RestoreWriteEnginePanel";
 import { liveAirBridgeService } from "../services/liveAirBridgeService";
 import type { BackupPackageInspectionResult } from "../backend/types";
@@ -35,6 +36,7 @@ import type {
   SandboxWriteTestingPolicyResult,
   LiveWriteConfirmationPolicyResult,
   RateLimitBackoffPolicyResult,
+  CheckpointDurabilityPolicyResult,
 } from "../backend/types";
 
 export function RestorePage() {
@@ -77,6 +79,8 @@ export function RestorePage() {
   const [lwcLoading, setLwcLoading] = useState(false);
   const [rlbResult, setRlbResult] = useState<RateLimitBackoffPolicyResult | null>(null);
   const [rlbLoading, setRlbLoading] = useState(false);
+  const [cdpResult, setCdpResult] = useState<CheckpointDurabilityPolicyResult | null>(null);
+  const [cdpLoading, setCdpLoading] = useState(false);
 
   return (
     <div className="page">
@@ -488,6 +492,30 @@ export function RestorePage() {
                   })
                   .finally(() => {
                     setRlbLoading(false);
+                  });
+              }}
+            />
+
+            <div className="divider" style={{ margin: 0 }} />
+
+            {/* Checkpoint durability policy — Gate 10. No writes. No token. No record payload. */}
+            <RestoreCheckpointDurabilityPolicyPanel
+              result={cdpResult}
+              loading={cdpLoading}
+              onVerify={() => {
+                setCdpLoading(true);
+                liveAirBridgeService
+                  .verifyCheckpointDurabilityPolicy({
+                    targetLabel: targetBaseName ?? undefined,
+                  })
+                  .then((r) => {
+                    setCdpResult(r);
+                  })
+                  .catch(() => {
+                    setCdpResult(null);
+                  })
+                  .finally(() => {
+                    setCdpLoading(false);
                   });
               }}
             />

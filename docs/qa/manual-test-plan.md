@@ -1248,6 +1248,66 @@ These test cases cover the command contract layer: confirmation enforcement, out
 
 ---
 
+## Checkpoint Durability Policy (Gate 10)
+
+**TC-CDP-01: Writes-disabled notice always visible**
+
+- Preconditions: Restore page open.
+- Steps:
+  1. Scroll to the "Checkpoint Durability Policy" section.
+- Expected result: A notice reads "Live restore writes are disabled." The notice is visible before any verification has been run.
+
+**TC-CDP-02: No plan declared returns blocked (2 checks)**
+
+- Preconditions: Restore page open.
+- Steps:
+  1. Click "Verify checkpoint durability policy" without providing a plan.
+- Expected result: Status badge shows `blocked`. Only 2 check rows are shown (CDP-01 and CDP-02). A blocked notice is shown saying "writes remain disabled".
+
+**TC-CDP-03: Complete plan returns compliant (9 checks)**
+
+- Preconditions: Restore page with a complete checkpoint plan (all boolean fields true, remote backend).
+- Steps:
+  1. Click "Verify checkpoint durability policy".
+- Expected result: Status badge shows `compliant`. 9 check rows are shown. Plan summary is shown. A compliant notice says "writes remain disabled".
+
+**TC-CDP-04: Memory backend produces warning**
+
+- Preconditions: Restore page with a plan where `durabilityBackend` is `"memory"` and all other fields are true.
+- Steps:
+  1. Click "Verify checkpoint durability policy".
+- Expected result: Status badge shows `warning` (not `blocked`). CDP-08 shows a warning status. A warning notice is shown saying "writes remain disabled".
+
+**TC-CDP-05: Linked updates without ID mapping blocked**
+
+- Preconditions: Restore page with a plan where `hasLinkedUpdates: true` and `hasIdMappingCheckpoint: false`.
+- Steps:
+  1. Click "Verify checkpoint durability policy".
+- Expected result: Status badge shows `blocked`. CDP-06 shows a failed status.
+
+**TC-CDP-06: No linked updates without ID mapping — passes**
+
+- Preconditions: Restore page with a plan where `hasLinkedUpdates: false` and `hasIdMappingCheckpoint: false`.
+- Steps:
+  1. Click "Verify checkpoint durability policy".
+- Expected result: CDP-06 shows a passed status (ID mapping not required when no linked updates).
+
+**TC-CDP-07: No execute button or token input**
+
+- Preconditions: Restore page open with a checkpoint durability policy result (any status).
+- Steps:
+  1. Inspect the Checkpoint Durability Policy section for buttons and input fields.
+- Expected result: No "Execute", "Run Restore", or similar button. No password or token input field (`type="password"` or `name="token"`).
+
+**TC-CDP-08: Compliant result does not enable writes**
+
+- Preconditions: Restore page; complete plan returns `compliant`.
+- Steps:
+  1. Observe the safety summary and compliant notice.
+- Expected result: "Writes enabled: no" is shown. Compliant notice explicitly states "compliance does not start any write operation".
+
+---
+
 ## Write Engine Skeleton
 
 **TC-WE-01: Write engine disabled notice is always visible**

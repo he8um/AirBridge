@@ -47,6 +47,8 @@ import type {
   LiveWriteConfirmationPolicyResult,
   RateLimitBackoffPolicyRequest,
   RateLimitBackoffPolicyResult,
+  CheckpointDurabilityPolicyRequest,
+  CheckpointDurabilityPolicyResult,
   RunBackupCommandRequest,
   RunBackupCommandResponse,
   SandboxVerificationRequest,
@@ -489,6 +491,14 @@ export async function verifyRateLimitBackoffPolicy(
   request: RateLimitBackoffPolicyRequest,
 ): Promise<RateLimitBackoffPolicyResult | null> {
   return safeInvoke<RateLimitBackoffPolicyResult>("verify_rate_limit_backoff_policy_gate", {
+    request,
+  });
+}
+
+export async function verifyCheckpointDurabilityPolicy(
+  request: CheckpointDurabilityPolicyRequest,
+): Promise<CheckpointDurabilityPolicyResult | null> {
+  return safeInvoke<CheckpointDurabilityPolicyResult>("verify_checkpoint_durability_policy_gate", {
     request,
   });
 }
