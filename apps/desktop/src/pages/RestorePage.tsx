@@ -16,6 +16,7 @@ import { RestoreSandboxWriteTestingPolicyPanel } from "../features/backups/Resto
 import { RestoreLiveWriteConfirmationPolicyPanel } from "../features/backups/RestoreLiveWriteConfirmationPolicyPanel";
 import { RestoreRateLimitBackoffPolicyPanel } from "../features/backups/RestoreRateLimitBackoffPolicyPanel";
 import { RestoreCheckpointDurabilityPolicyPanel } from "../features/backups/RestoreCheckpointDurabilityPolicyPanel";
+import { RestoreFinalValidationPolicyPanel } from "../features/backups/RestoreFinalValidationPolicyPanel";
 import { RestoreWriteEnginePanel } from "../features/backups/RestoreWriteEnginePanel";
 import { liveAirBridgeService } from "../services/liveAirBridgeService";
 import type { BackupPackageInspectionResult } from "../backend/types";
@@ -37,6 +38,7 @@ import type {
   LiveWriteConfirmationPolicyResult,
   RateLimitBackoffPolicyResult,
   CheckpointDurabilityPolicyResult,
+  FinalValidationPolicyResult,
 } from "../backend/types";
 
 export function RestorePage() {
@@ -81,6 +83,8 @@ export function RestorePage() {
   const [rlbLoading, setRlbLoading] = useState(false);
   const [cdpResult, setCdpResult] = useState<CheckpointDurabilityPolicyResult | null>(null);
   const [cdpLoading, setCdpLoading] = useState(false);
+  const [fvpResult, setFvpResult] = useState<FinalValidationPolicyResult | null>(null);
+  const [fvpLoading, setFvpLoading] = useState(false);
 
   return (
     <div className="page">
@@ -516,6 +520,30 @@ export function RestorePage() {
                   })
                   .finally(() => {
                     setCdpLoading(false);
+                  });
+              }}
+            />
+
+            <div className="divider" style={{ margin: 0 }} />
+
+            {/* Final validation policy — Gate 11. No writes. No token. No record payload. No success state. */}
+            <RestoreFinalValidationPolicyPanel
+              result={fvpResult}
+              loading={fvpLoading}
+              onVerify={() => {
+                setFvpLoading(true);
+                liveAirBridgeService
+                  .verifyFinalValidationPolicy({
+                    targetLabel: targetBaseName ?? undefined,
+                  })
+                  .then((r) => {
+                    setFvpResult(r);
+                  })
+                  .catch(() => {
+                    setFvpResult(null);
+                  })
+                  .finally(() => {
+                    setFvpLoading(false);
                   });
               }}
             />

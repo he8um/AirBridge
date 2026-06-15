@@ -49,6 +49,8 @@ import type {
   RateLimitBackoffPolicyResult,
   CheckpointDurabilityPolicyRequest,
   CheckpointDurabilityPolicyResult,
+  FinalValidationPolicyRequest,
+  FinalValidationPolicyResult,
   RunBackupCommandRequest,
   RunBackupCommandResponse,
   SandboxVerificationRequest,
@@ -499,6 +501,14 @@ export async function verifyCheckpointDurabilityPolicy(
   request: CheckpointDurabilityPolicyRequest,
 ): Promise<CheckpointDurabilityPolicyResult | null> {
   return safeInvoke<CheckpointDurabilityPolicyResult>("verify_checkpoint_durability_policy_gate", {
+    request,
+  });
+}
+
+export async function verifyFinalValidationPolicy(
+  request: FinalValidationPolicyRequest,
+): Promise<FinalValidationPolicyResult | null> {
+  return safeInvoke<FinalValidationPolicyResult>("verify_final_validation_policy_gate", {
     request,
   });
 }

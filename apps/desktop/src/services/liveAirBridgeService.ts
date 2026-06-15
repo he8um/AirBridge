@@ -53,6 +53,8 @@ import type {
   RateLimitBackoffPolicyResult,
   CheckpointDurabilityPolicyRequest,
   CheckpointDurabilityPolicyResult,
+  FinalValidationPolicyRequest,
+  FinalValidationPolicyResult,
   RestoreWriteEngineRequest,
   RestoreWriteEngineResult,
   RunBackupCommandRequest,
@@ -635,6 +637,23 @@ async function verifyCheckpointDurabilityPolicy(
   return result;
 }
 
+async function verifyFinalValidationPolicy(
+  request: FinalValidationPolicyRequest,
+): Promise<FinalValidationPolicyResult> {
+  const result = await commands.verifyFinalValidationPolicy(request);
+  if (result === null) {
+    return {
+      status: "blocked",
+      checks: [],
+      message: "Final validation policy check is not available in this context.",
+      noChangesMade: true,
+      networkWritesAttempted: false,
+      writesEnabled: false,
+    };
+  }
+  return result;
+}
+
 export const liveAirBridgeService: AirBridgeService = {
   listConnections,
   listWorkspaces,
@@ -676,4 +695,5 @@ export const liveAirBridgeService: AirBridgeService = {
   verifyLiveWriteConfirmationPolicy,
   verifyRateLimitBackoffPolicy,
   verifyCheckpointDurabilityPolicy,
+  verifyFinalValidationPolicy,
 };

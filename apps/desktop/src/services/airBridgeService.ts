@@ -53,6 +53,8 @@ import type {
   RateLimitBackoffPolicyResult,
   CheckpointDurabilityPolicyRequest,
   CheckpointDurabilityPolicyResult,
+  FinalValidationPolicyRequest,
+  FinalValidationPolicyResult,
   RestoreWriteEngineRequest,
   RestoreWriteEngineResult,
   RunBackupCommandRequest,
@@ -323,4 +325,19 @@ export interface AirBridgeService {
   verifyCheckpointDurabilityPolicy(
     request: CheckpointDurabilityPolicyRequest,
   ): Promise<CheckpointDurabilityPolicyResult>;
+  /**
+   * Verifies the final validation policy (Gate 11).
+   * - No Airtable API calls.
+   * - No token accepted or returned.
+   * - No filesystem path accepted or returned.
+   * - No record payload accepted or returned.
+   * - noChangesMade is always true.
+   * - networkWritesAttempted is always false.
+   * - writesEnabled is always false.
+   * - Compliant does NOT enable restore writes.
+   * - Compliant does NOT introduce a restore success state.
+   */
+  verifyFinalValidationPolicy(
+    request: FinalValidationPolicyRequest,
+  ): Promise<FinalValidationPolicyResult>;
 }

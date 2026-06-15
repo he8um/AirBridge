@@ -1965,3 +1965,73 @@ export interface CheckpointDurabilityPolicyResult {
   networkWritesAttempted: boolean;
   writesEnabled: boolean;
 }
+
+// ── Gate 11 — Final Validation Policy ─────────────────────────────────────────
+
+export type FinalValidationPolicyStatus = "compliant" | "warning" | "blocked";
+export type FinalValidationCheckStatus = "passed" | "warning" | "failed";
+
+export interface FinalValidationPlan {
+  hasSchemaCountValidation: boolean;
+  hasTableFieldValidation: boolean;
+  hasRecordCountValidation: boolean;
+  hasIdMappingValidation: boolean;
+  hasLinkedRecordValidation: boolean;
+  hasAttachmentMetadataValidation: boolean;
+  attachmentValidationMetadataOnly: boolean;
+  hasManifestChecksumValidation: boolean;
+  blocksSuccessWithoutValidation: boolean;
+}
+
+/**
+ * Input to the final validation policy gate.
+ * - No token field.
+ * - No filesystem path field.
+ * - No record payload field.
+ */
+export interface FinalValidationPolicyRequest {
+  plan?: FinalValidationPlan;
+  targetLabel?: string;
+}
+
+export interface FinalValidationCheck {
+  checkId: string;
+  label: string;
+  status: FinalValidationCheckStatus;
+  message: string;
+  remediation?: string;
+}
+
+/** Read-only summary of the evaluated plan fields, safe for display. */
+export interface FinalValidationPlanSummary {
+  hasSchemaCountValidation: boolean;
+  hasTableFieldValidation: boolean;
+  hasRecordCountValidation: boolean;
+  hasIdMappingValidation: boolean;
+  hasLinkedRecordValidation: boolean;
+  hasAttachmentMetadataValidation: boolean;
+  attachmentValidationMetadataOnly: boolean;
+  hasManifestChecksumValidation: boolean;
+  blocksSuccessWithoutValidation: boolean;
+}
+
+/**
+ * Result from verify_final_validation_policy_gate.
+ * - No token field.
+ * - No filesystem path field.
+ * - No record payload field.
+ * - writesEnabled is always false.
+ * - noChangesMade is always true.
+ * - networkWritesAttempted is always false.
+ * - Compliant status does NOT enable restore writes.
+ * - Compliant status does NOT introduce a restore success state.
+ */
+export interface FinalValidationPolicyResult {
+  status: FinalValidationPolicyStatus;
+  checks: FinalValidationCheck[];
+  message: string;
+  planSummary?: FinalValidationPlanSummary;
+  noChangesMade: boolean;
+  networkWritesAttempted: boolean;
+  writesEnabled: boolean;
+}

@@ -701,6 +701,64 @@ After completing a restore, perform the following manual checks in Airtable:
 
 ---
 
+## Restore Final Validation Policy Checklist (Gate 11)
+
+### Before testing
+
+- [ ] Confirm `verify_final_validation_policy_gate` is registered in the Tauri invoke handler.
+- [ ] Confirm `RestoreFinalValidationPolicyPanel` is rendered on the Restore page after the checkpoint durability policy section.
+- [ ] Confirm no execute button is present in the panel.
+- [ ] Confirm no token input field (`type="password"` or `name="token"`) is present.
+
+### Panel behavior
+
+- [ ] A writes-disabled notice is always shown in the final validation policy section.
+- [ ] The verify button is enabled and calls `verifyFinalValidationPolicy` when clicked.
+- [ ] While loading, the verify button is disabled and shows a loading label.
+
+### Result display
+
+- [ ] Status badge shows `compliant`, `warning`, or `blocked` correctly.
+- [ ] The result message is shown beside the status badge.
+- [ ] The checks table shows 12 check rows for a complete plan.
+- [ ] The checks table shows 2 check rows when no plan is declared (short-circuit).
+- [ ] Each check row shows the check ID, status badge, and message.
+- [ ] Plan summary panel shows all 9 fields when a plan is declared: schema count validation, table/field validation, record count validation, ID mapping validation, linked record validation, attachment metadata validation, attachment validation scope, manifest checksum validation, and blocks-success-without-validation.
+- [ ] Plan summary is not shown when no plan is declared.
+- [ ] A safety summary showing `noChangesMade`, `writesEnabled`, and `networkWritesAttempted` is shown.
+- [ ] A "No changes made." notice is shown.
+
+### Status scenarios
+
+- [ ] Complete plan (all boolean fields true, metadata-only false) returns `compliant`.
+- [ ] No plan declared returns `blocked` with 2 checks.
+- [ ] `hasSchemaCountValidation: false` returns `blocked`.
+- [ ] `hasTableFieldValidation: false` returns `blocked`.
+- [ ] `hasRecordCountValidation: false` returns `blocked`.
+- [ ] `hasIdMappingValidation: false` returns `blocked`.
+- [ ] `hasLinkedRecordValidation: false` returns `blocked`.
+- [ ] `hasAttachmentMetadataValidation: false` returns `blocked`.
+- [ ] `hasManifestChecksumValidation: false` returns `blocked`.
+- [ ] `blocksSuccessWithoutValidation: false` returns `blocked`.
+- [ ] `attachmentValidationMetadataOnly: true` returns `warning` (not blocked).
+- [ ] A `compliant` result shows the `fvp-compliant-notice`, which says "writes remain disabled".
+- [ ] A `warning` result shows the `fvp-warning-notice`.
+- [ ] A `blocked` result shows the `fvp-blocked-notice`.
+
+### Safety invariants
+
+- [ ] `noChangesMade` is `true` in every final validation policy result.
+- [ ] `writesEnabled` is `false` in every final validation policy result — including `compliant`.
+- [ ] `networkWritesAttempted` is `false` in every final validation policy result.
+- [ ] The policy request type has no `token` field.
+- [ ] The policy result has no `token` field.
+- [ ] The policy result contains no full filesystem path.
+- [ ] The policy result contains no record payload field.
+- [ ] A `compliant` result does NOT enable restore writes.
+- [ ] A `compliant` result does NOT introduce a restore success state.
+
+---
+
 ## Write Engine Skeleton Checklist
 
 ### Before testing

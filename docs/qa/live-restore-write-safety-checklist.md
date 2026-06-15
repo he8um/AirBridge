@@ -245,7 +245,36 @@ The `verify_destructive_operation_policy_gate` Tauri command verifies that no de
 
 ---
 
-## Gate 11 — No Destructive Operations
+## Gate 11 — Final Validation Policy (implemented)
+
+- [x] **`verify_final_validation_policy()` implemented.** Runs 12 checks: FVP-01 through FVP-12.
+- [x] **FVP-01 (write gate disabled) always passes.** `evaluate_write_gate()` unconditionally returns `Disabled`.
+- [x] **FVP-02 (plan declared) checked.** Missing plan causes immediate `Blocked` with 2 checks only (short-circuit).
+- [x] **FVP-03 (schema count validation) enforced.** `hasSchemaCountValidation: false` causes `Blocked`.
+- [x] **FVP-04 (table/field validation) enforced.** `hasTableFieldValidation: false` causes `Blocked`.
+- [x] **FVP-05 (record count validation) enforced.** `hasRecordCountValidation: false` causes `Blocked`.
+- [x] **FVP-06 (ID mapping validation) enforced.** `hasIdMappingValidation: false` causes `Blocked`.
+- [x] **FVP-07 (linked record validation) enforced.** `hasLinkedRecordValidation: false` causes `Blocked`.
+- [x] **FVP-08 (attachment metadata validation) enforced.** `hasAttachmentMetadataValidation: false` causes `Blocked`.
+- [x] **FVP-09 (attachment validation scope) checked.** Metadata-only attachment validation produces `Warning`; not `Blocked`.
+- [x] **FVP-10 (manifest checksum validation) enforced.** `hasManifestChecksumValidation: false` causes `Blocked`.
+- [x] **FVP-11 (success blocked without validation) enforced.** `blocksSuccessWithoutValidation: false` causes `Blocked`.
+- [x] **FVP-12 (writes remain disabled) always passes.** Compliant policy never enables writes.
+- [x] **`Compliant` status does NOT enable writes.** `writesEnabled` is always `false` in every result branch.
+- [x] **`Compliant` status does NOT introduce a restore success state.** Verified by message and serialization tests.
+- [x] **No token field anywhere in request or result.** Verified by serialization test.
+- [x] **No filesystem path field anywhere in request or result.** Verified by serialization test.
+- [x] **No record payload field anywhere in result.** Verified by serialization test.
+- [x] **`noChangesMade` always `true`.** Checked in all status branches.
+- [x] **`networkWritesAttempted` always `false`.** Checked across all status branches.
+- [x] **No execute button in Gate 11 panel.** Panel renders no execute or write-start control.
+- [x] **No "succeeded" language in panel.** Checked by UI test.
+- [x] **39+ Rust unit tests pass** for final validation policy module.
+- [x] **56+ frontend tests pass** for final validation policy service contract and panel rendering.
+
+---
+
+## Gate 12 — No Destructive Operations
 
 - [ ] **No delete record calls.** Grep confirms no `DELETE /v0/` record endpoint is called anywhere in the write path.
 - [ ] **No delete table calls.** Grep confirms no table deletion API call exists.

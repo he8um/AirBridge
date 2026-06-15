@@ -17,6 +17,9 @@ use crate::restore::destructive_operation_policy::{
 use crate::restore::dry_run::create_dry_run_plan;
 use crate::restore::execution::{RestoreExecutionRequest, RestoreExecutionResult};
 use crate::restore::execution_gate::validate_restore_execution_gate;
+use crate::restore::final_validation_policy::{
+    verify_final_validation_policy, FinalValidationPolicyRequest, FinalValidationPolicyResult,
+};
 use crate::restore::live_write_confirmation_policy::{
     verify_live_write_confirmation_policy, LiveWriteConfirmationPolicyRequest,
     LiveWriteConfirmationPolicyResult,
@@ -586,6 +589,25 @@ pub fn verify_checkpoint_durability_policy_gate(
     request: CheckpointDurabilityPolicyRequest,
 ) -> CheckpointDurabilityPolicyResult {
     verify_checkpoint_durability_policy(&request)
+}
+
+/// Verifies the final validation policy for a planned restore write operation (Gate 11).
+///
+/// Safety:
+/// - No Airtable API calls.
+/// - No token accepted or returned.
+/// - No filesystem path accepted or returned.
+/// - No record payload accepted or returned.
+/// - no_changes_made is always true.
+/// - network_writes_attempted is always false.
+/// - writes_enabled is always false.
+/// - Compliant status does NOT enable restore writes.
+/// - Compliant status does NOT introduce a restore success state.
+#[tauri::command]
+pub fn verify_final_validation_policy_gate(
+    request: FinalValidationPolicyRequest,
+) -> FinalValidationPolicyResult {
+    verify_final_validation_policy(&request)
 }
 
 #[cfg(test)]

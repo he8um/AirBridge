@@ -9,6 +9,7 @@ export { RestoreSandboxWriteTestingPolicyPanel } from "./RestoreSandboxWriteTest
 export { RestoreLiveWriteConfirmationPolicyPanel } from "./RestoreLiveWriteConfirmationPolicyPanel";
 export { RestoreRateLimitBackoffPolicyPanel } from "./RestoreRateLimitBackoffPolicyPanel";
 export { RestoreCheckpointDurabilityPolicyPanel } from "./RestoreCheckpointDurabilityPolicyPanel";
+export { RestoreFinalValidationPolicyPanel } from "./RestoreFinalValidationPolicyPanel";
 export { JobHistoryPanel } from "./JobHistoryPanel";
 export { RestoreRecordImportPlanPanel } from "./RestoreRecordImportPlanPanel";
 export { BackupConfirmationBox } from "./BackupConfirmationBox";

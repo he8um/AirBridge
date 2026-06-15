@@ -1308,6 +1308,66 @@ These test cases cover the command contract layer: confirmation enforcement, out
 
 ---
 
+## Final Validation Policy (Gate 11)
+
+**TC-FVP-01: Writes-disabled notice always visible**
+
+- Preconditions: Restore page open.
+- Steps:
+  1. Scroll to the "Final Validation Policy" section.
+- Expected result: A notice reads "Live restore writes are disabled." The notice is visible before any verification has been run.
+
+**TC-FVP-02: No plan declared returns blocked (2 checks)**
+
+- Preconditions: Restore page open.
+- Steps:
+  1. Click "Verify final validation policy" without providing a plan.
+- Expected result: Status badge shows `blocked`. Only 2 check rows are shown (FVP-01 and FVP-02). A blocked notice is shown saying "writes remain disabled".
+
+**TC-FVP-03: Complete plan returns compliant (12 checks)**
+
+- Preconditions: Restore page with a complete final validation plan (all boolean fields true, attachmentValidationMetadataOnly false).
+- Steps:
+  1. Click "Verify final validation policy".
+- Expected result: Status badge shows `compliant`. 12 check rows are shown. Plan summary is shown. A compliant notice says "writes remain disabled" and does not introduce a restore success state.
+
+**TC-FVP-04: Metadata-only attachment validation produces warning**
+
+- Preconditions: Restore page with a plan where `attachmentValidationMetadataOnly: true` and all other fields true.
+- Steps:
+  1. Click "Verify final validation policy".
+- Expected result: Status badge shows `warning` (not `blocked`). FVP-09 shows a warning status. A warning notice is shown saying "writes remain disabled".
+
+**TC-FVP-05: Missing required validation step blocked**
+
+- Preconditions: Restore page with a plan where `hasRecordCountValidation: false`.
+- Steps:
+  1. Click "Verify final validation policy".
+- Expected result: Status badge shows `blocked`. FVP-05 shows a failed status.
+
+**TC-FVP-06: No execute button or token input**
+
+- Preconditions: Restore page open with a final validation policy result (any status).
+- Steps:
+  1. Inspect the Final Validation Policy section for buttons and input fields.
+- Expected result: No "Execute", "Run Restore", or similar button. No password or token input field (`type="password"` or `name="token"`).
+
+**TC-FVP-07: Compliant result does not enable writes**
+
+- Preconditions: Restore page; complete plan returns `compliant`.
+- Steps:
+  1. Observe the safety summary and compliant notice.
+- Expected result: "Writes enabled: no" is shown. Compliant notice explicitly states "compliance does not start any write operation".
+
+**TC-FVP-08: Compliant result does not introduce restore success state**
+
+- Preconditions: Restore page; complete plan returns `compliant`.
+- Steps:
+  1. Inspect the Final Validation Policy panel and all visible text.
+- Expected result: No text containing "Restore complete", "Restore succeeded", "succeeded", or "success" is visible anywhere in the final validation policy area.
+
+---
+
 ## Write Engine Skeleton
 
 **TC-WE-01: Write engine disabled notice is always visible**

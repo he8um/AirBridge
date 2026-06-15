@@ -69,6 +69,9 @@ import type {
   CheckpointDurabilityPolicyRequest,
   CheckpointDurabilityPolicyResult,
   CheckpointDurabilityPolicyStatus,
+  FinalValidationPolicyRequest,
+  FinalValidationPolicyResult,
+  FinalValidationPolicyStatus,
   RunBackupCommandResponse,
   RecordWriteRequestPlanRequest,
   RecordWriteRequestPlanResult,
@@ -3271,6 +3274,265 @@ function verifyCheckpointDurabilityPolicyImpl(
   });
 }
 
+function verifyFinalValidationPolicyImpl(
+  request: FinalValidationPolicyRequest,
+): Promise<FinalValidationPolicyResult> {
+  const checks: FinalValidationPolicyResult["checks"] = [];
+
+  // FVP-01: Write gate always disabled
+  checks.push({
+    checkId: "FVP-01",
+    label: "write-gate-disabled",
+    status: "passed",
+    message: "Restore write gate is disabled. No live writes are possible.",
+  });
+
+  const plan = request.plan;
+  if (!plan) {
+    checks.push({
+      checkId: "FVP-02",
+      label: "plan-declared",
+      status: "failed",
+      message:
+        "No final validation plan declared. A plan is required before any live write path is considered.",
+      remediation: "Declare a FinalValidationPlan with all required validation steps.",
+    });
+    return Promise.resolve({
+      status: "blocked" as FinalValidationPolicyStatus,
+      checks,
+      message: `Final validation plan for ${request.targetLabel ?? "the restore target"} is blocked. A validation plan must be declared. Restore writes remain disabled.`,
+      noChangesMade: true,
+      networkWritesAttempted: false,
+      writesEnabled: false,
+    });
+  }
+
+  // FVP-02: Plan declared
+  checks.push({
+    checkId: "FVP-02",
+    label: "plan-declared",
+    status: "passed",
+    message: "Final validation plan is declared.",
+  });
+
+  // FVP-03: Schema count validation
+  if (!plan.hasSchemaCountValidation) {
+    checks.push({
+      checkId: "FVP-03",
+      label: "schema-count-validation",
+      status: "failed",
+      message:
+        "Schema count validation is not declared. Table and field counts must be verified against the backup manifest after restore.",
+      remediation: "Declare hasSchemaCountValidation: true in the final validation plan.",
+    });
+  } else {
+    checks.push({
+      checkId: "FVP-03",
+      label: "schema-count-validation",
+      status: "passed",
+      message: "Schema count validation is declared.",
+    });
+  }
+
+  // FVP-04: Table/field validation
+  if (!plan.hasTableFieldValidation) {
+    checks.push({
+      checkId: "FVP-04",
+      label: "table-field-validation",
+      status: "failed",
+      message:
+        "Table and field presence validation is not declared. Each table and field from the manifest must be confirmed present in the restored base.",
+      remediation: "Declare hasTableFieldValidation: true in the final validation plan.",
+    });
+  } else {
+    checks.push({
+      checkId: "FVP-04",
+      label: "table-field-validation",
+      status: "passed",
+      message: "Table and field presence validation is declared.",
+    });
+  }
+
+  // FVP-05: Record count validation
+  if (!plan.hasRecordCountValidation) {
+    checks.push({
+      checkId: "FVP-05",
+      label: "record-count-validation",
+      status: "failed",
+      message:
+        "Record count validation is not declared. Restored record counts must be verified against the backup manifest before restore is considered complete.",
+      remediation: "Declare hasRecordCountValidation: true in the final validation plan.",
+    });
+  } else {
+    checks.push({
+      checkId: "FVP-05",
+      label: "record-count-validation",
+      status: "passed",
+      message: "Record count validation is declared.",
+    });
+  }
+
+  // FVP-06: ID mapping validation
+  if (!plan.hasIdMappingValidation) {
+    checks.push({
+      checkId: "FVP-06",
+      label: "id-mapping-validation",
+      status: "failed",
+      message:
+        "Old-to-new record ID mapping validation is not declared. ID mapping completeness must be verified before linked records can be considered valid.",
+      remediation: "Declare hasIdMappingValidation: true in the final validation plan.",
+    });
+  } else {
+    checks.push({
+      checkId: "FVP-06",
+      label: "id-mapping-validation",
+      status: "passed",
+      message: "Old-to-new ID mapping validation is declared.",
+    });
+  }
+
+  // FVP-07: Linked record validation
+  if (!plan.hasLinkedRecordValidation) {
+    checks.push({
+      checkId: "FVP-07",
+      label: "linked-record-validation",
+      status: "failed",
+      message:
+        "Linked record second-pass validation is not declared. Linked field references must be verified after the second-pass write phase completes.",
+      remediation: "Declare hasLinkedRecordValidation: true in the final validation plan.",
+    });
+  } else {
+    checks.push({
+      checkId: "FVP-07",
+      label: "linked-record-validation",
+      status: "passed",
+      message: "Linked record second-pass validation is declared.",
+    });
+  }
+
+  // FVP-08: Attachment metadata validation
+  if (!plan.hasAttachmentMetadataValidation) {
+    checks.push({
+      checkId: "FVP-08",
+      label: "attachment-metadata-validation",
+      status: "failed",
+      message:
+        "Attachment metadata validation is not declared. Attachment field metadata must be validated against the backup manifest.",
+      remediation: "Declare hasAttachmentMetadataValidation: true in the final validation plan.",
+    });
+  } else {
+    checks.push({
+      checkId: "FVP-08",
+      label: "attachment-metadata-validation",
+      status: "passed",
+      message: "Attachment metadata validation is declared.",
+    });
+  }
+
+  // FVP-09: Attachment validation scope
+  if (plan.hasAttachmentMetadataValidation && plan.attachmentValidationMetadataOnly) {
+    checks.push({
+      checkId: "FVP-09",
+      label: "attachment-validation-scope",
+      status: "warning",
+      message:
+        "Attachment validation is metadata-only. Attachment file content integrity cannot be confirmed without a file download. Manual re-attachment is required after restore.",
+      remediation:
+        "Note that attachment file content is not validated. Plan for manual re-attachment of all attachment fields after restore.",
+    });
+  } else {
+    checks.push({
+      checkId: "FVP-09",
+      label: "attachment-validation-scope",
+      status: "passed",
+      message: "Attachment validation scope is acceptable.",
+    });
+  }
+
+  // FVP-10: Manifest checksum validation
+  if (!plan.hasManifestChecksumValidation) {
+    checks.push({
+      checkId: "FVP-10",
+      label: "manifest-checksum-validation",
+      status: "failed",
+      message:
+        "Manifest checksum and reference validation is not declared. The final package checksum must be verified against the backup manifest when available.",
+      remediation: "Declare hasManifestChecksumValidation: true in the final validation plan.",
+    });
+  } else {
+    checks.push({
+      checkId: "FVP-10",
+      label: "manifest-checksum-validation",
+      status: "passed",
+      message: "Manifest checksum and reference validation is declared.",
+    });
+  }
+
+  // FVP-11: Success blocked without validation
+  if (!plan.blocksSuccessWithoutValidation) {
+    checks.push({
+      checkId: "FVP-11",
+      label: "success-blocked-without-validation",
+      status: "failed",
+      message:
+        "The restore result is not declared to block success status without validation passing. A restore must not be marked succeeded unless all final validation checks pass.",
+      remediation: "Declare blocksSuccessWithoutValidation: true in the final validation plan.",
+    });
+  } else {
+    checks.push({
+      checkId: "FVP-11",
+      label: "success-blocked-without-validation",
+      status: "passed",
+      message: "Restore success is blocked until all validation checks pass.",
+    });
+  }
+
+  // FVP-12: Writes remain disabled (always passes)
+  checks.push({
+    checkId: "FVP-12",
+    label: "writes-remain-disabled",
+    status: "passed",
+    message:
+      "Restore write execution is not enabled. Verifying this policy does not start any write operation.",
+  });
+
+  const hasBlocked = checks.some((c) => c.status === "failed");
+  const hasWarning = checks.some((c) => c.status === "warning");
+  const status: FinalValidationPolicyStatus = hasBlocked
+    ? "blocked"
+    : hasWarning
+      ? "warning"
+      : "compliant";
+
+  const targetName = request.targetLabel ?? "the restore target";
+  const message =
+    status === "compliant"
+      ? `Final validation plan for ${targetName} is compliant. All required validation steps are declared. Restore writes remain disabled — compliance does not enable writes or introduce a restore success state.`
+      : status === "warning"
+        ? `Final validation plan for ${targetName} has warnings. Review incomplete validation steps before proceeding. Restore writes remain disabled.`
+        : `Final validation plan for ${targetName} is blocked. One or more required validation steps are missing. Restore writes remain disabled.`;
+
+  return Promise.resolve({
+    status,
+    checks,
+    message,
+    planSummary: {
+      hasSchemaCountValidation: plan.hasSchemaCountValidation,
+      hasTableFieldValidation: plan.hasTableFieldValidation,
+      hasRecordCountValidation: plan.hasRecordCountValidation,
+      hasIdMappingValidation: plan.hasIdMappingValidation,
+      hasLinkedRecordValidation: plan.hasLinkedRecordValidation,
+      hasAttachmentMetadataValidation: plan.hasAttachmentMetadataValidation,
+      attachmentValidationMetadataOnly: plan.attachmentValidationMetadataOnly,
+      hasManifestChecksumValidation: plan.hasManifestChecksumValidation,
+      blocksSuccessWithoutValidation: plan.blocksSuccessWithoutValidation,
+    },
+    noChangesMade: true,
+    networkWritesAttempted: false,
+    writesEnabled: false,
+  });
+}
+
 export const mockAirBridgeService: AirBridgeService = {
   listConnections,
   listWorkspaces,
@@ -3312,4 +3574,5 @@ export const mockAirBridgeService: AirBridgeService = {
   verifyLiveWriteConfirmationPolicy: verifyLiveWriteConfirmationPolicyImpl,
   verifyRateLimitBackoffPolicy: verifyRateLimitBackoffPolicyImpl,
   verifyCheckpointDurabilityPolicy: verifyCheckpointDurabilityPolicyImpl,
+  verifyFinalValidationPolicy: verifyFinalValidationPolicyImpl,
 };

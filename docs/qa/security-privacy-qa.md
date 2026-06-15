@@ -717,6 +717,60 @@ If AirBridge supports user-configured field redaction:
 
 ---
 
+## Restore Final Validation Policy Safety (Gate 11)
+
+**Goal:** Confirm that the final validation policy gate makes no Airtable API calls, requires no token, makes no writes, contains no record payload, never enables writes even when compliant, never introduces a restore success state, and always returns `noChangesMade: true` and `writesEnabled: false`.
+
+**FVP-SEC-01: No token accepted.**
+- The `verify_final_validation_policy_gate` Tauri command has no `token` parameter.
+- `FinalValidationPolicyRequest` contains no token field.
+- `FinalValidationPolicyResult` contains no token field.
+- `RestoreFinalValidationPolicyPanel` does not render a token input (`type="password"` or `name="token"`).
+- Frontend serialization tests assert no `pat_` prefix or `"token"` key in any result JSON.
+
+**FVP-SEC-02: No Airtable API calls.**
+- `verify_final_validation_policy` accepts no HTTP client or base client argument.
+- No HTTP calls are made by this command.
+- All checks run against the declared request fields only.
+
+**FVP-SEC-03: No write operations.**
+- No Airtable record, table, field, or base is created, updated, or deleted.
+- `networkWritesAttempted` is always `false` in all result branches.
+
+**FVP-SEC-04: No record payload in any result field.**
+- `FinalValidationPolicyResult` contains no raw record data, no record IDs, and no field values.
+- The plan summary mirrors only boolean policy parameters.
+
+**FVP-SEC-05: No full path in any field.**
+- `FinalValidationPolicyResult` has no path field.
+- Serialized result does not contain `/Users/`, `/home/`, or `:\\`.
+- Frontend tests assert this for every result branch.
+
+**FVP-SEC-06: `noChangesMade` always true.**
+- All code paths in `verify_final_validation_policy` set `no_changes_made: true`.
+- Rust unit tests assert this for every status branch (compliant, warning, blocked).
+
+**FVP-SEC-07: No execute button.**
+- `RestoreFinalValidationPolicyPanel` does not render any button with execute, run, or restore semantics.
+- Panel tests assert no "succeeded" language is present.
+
+**FVP-SEC-08: Compliant status does not enable writes.**
+- `writesEnabled` is always `false` regardless of policy status.
+- `Compliant` validates the declared final validation plan only — it does not change the write engine state.
+- Rust unit tests assert `writesEnabled: false` in every result branch including `Compliant`.
+
+**FVP-SEC-09: Compliant status does not introduce a restore success state.**
+- The compliant result message explicitly states writes remain disabled.
+- No "succeeded" or "restore complete" language appears in any result branch.
+- Frontend tests assert no "succeeded" text is visible in the panel for any status.
+
+**FVP-SEC-10: No-plan causes immediate blocked (short-circuit).**
+- When no `FinalValidationPlan` is provided, the function returns after FVP-02 with 2 checks and `Blocked` status.
+- No subsequent check fields are evaluated.
+- Rust unit tests assert `checks.len() == 2` in the no-plan case.
+
+---
+
 ## Restore Schema Creation Plan Safety (V0.1)
 
 **Goal:** Confirm that the schema creation planning flow makes no Airtable API calls, requires no token, creates no Airtable tables or fields, and always returns `noChangesMade: true`.
