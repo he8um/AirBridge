@@ -57,6 +57,8 @@ import type {
   FinalValidationPolicyResult,
   WritePhaseOrderingPolicyRequest,
   WritePhaseOrderingPolicyResult,
+  FailureModesPolicyRequest,
+  FailureModesPolicyResult,
   RestoreWriteEngineRequest,
   RestoreWriteEngineResult,
   RunBackupCommandRequest,
@@ -673,6 +675,23 @@ async function verifyWritePhaseOrderingPolicy(
   return result;
 }
 
+async function verifyFailureModesPolicy(
+  request: FailureModesPolicyRequest,
+): Promise<FailureModesPolicyResult> {
+  const result = await commands.verifyFailureModesPolicy(request);
+  if (result === null) {
+    return {
+      status: "blocked",
+      checks: [],
+      message: "Failure modes policy check is not available in this context.",
+      noChangesMade: true,
+      networkWritesAttempted: false,
+      writesEnabled: false,
+    };
+  }
+  return result;
+}
+
 export const liveAirBridgeService: AirBridgeService = {
   listConnections,
   listWorkspaces,
@@ -716,4 +735,5 @@ export const liveAirBridgeService: AirBridgeService = {
   verifyCheckpointDurabilityPolicy,
   verifyFinalValidationPolicy,
   verifyWritePhaseOrderingPolicy,
+  verifyFailureModesPolicy,
 };

@@ -824,6 +824,66 @@ If AirBridge supports user-configured field redaction:
 
 ---
 
+## Restore Failure Modes Policy Safety (Gate 13)
+
+**Goal:** Confirm that the failure modes policy gate makes no Airtable API calls, requires no token, makes no writes, contains no record payload, never enables writes even when compliant, never introduces a restore success state, and always returns `noChangesMade: true` and `writesEnabled: false`.
+
+**FMP-SEC-01: No token accepted.**
+- The `verify_failure_modes_policy_gate` Tauri command accepts `FailureModesPolicyRequest` which has no `token` field.
+- The `RestoreFailureModesPolicyPanel` component renders no token input field.
+- No token flows through the failure modes policy code path.
+- Rust serialization tests assert no `"token"` or `"apiKey"` key in any result JSON.
+
+**FMP-SEC-02: No Airtable API calls.**
+- The policy evaluator reads only from the declared handling plans in memory.
+- No HTTP client is constructed or called during policy verification.
+- Network monitoring during a failure modes policy check shows zero connections to `api.airtable.com`.
+
+**FMP-SEC-03: No write operations.**
+- The `verify_failure_modes_policy` function performs no Airtable writes, no filesystem writes, and no database writes.
+- `noChangesMade` is always `true`. `networkWritesAttempted` is always `false`.
+
+**FMP-SEC-04: No record payload in any result field.**
+- `FailureModesPolicyResult` has no `fields`, `records`, `recordId`, or `payload` field.
+- The handling summary entries contain only mode name, stop behavior, and boolean flags — no record data.
+- Rust unit tests assert the serialized JSON contains no `"fields"` or `"recordId"` keys.
+
+**FMP-SEC-05: No full path in any field.**
+- `FailureModesPolicyRequest` has no filesystem path field.
+- `FailureModesPolicyResult` has no filesystem path field.
+- Rust unit tests assert the serialized JSON contains no `/Users/` or `/home/` patterns.
+
+**FMP-SEC-06: `noChangesMade` always true.**
+- All result branches (Compliant, Warning, Blocked) set `no_changes_made: true`.
+- Rust unit tests assert this for every code path.
+
+**FMP-SEC-07: No execute button.**
+- The `RestoreFailureModesPolicyPanel` renders only a "Verify failure modes policy" button.
+- No "Execute restore", "Start restore", or "Run restore" button exists in this panel.
+- Frontend tests assert all button labels do not match execute/start/run restore patterns.
+
+**FMP-SEC-08: Compliant status does not enable writes.**
+- A `Compliant` result from `verify_failure_modes_policy` does not change `evaluate_write_gate()` behavior.
+- `writesEnabled` is always `false` in `FailureModesPolicyResult`.
+- Rust unit tests assert `writesEnabled: false` in every result branch including `Compliant`.
+
+**FMP-SEC-09: Compliant status does not introduce a restore success state.**
+- The compliant result message explicitly states writes remain disabled.
+- No "succeeded" or "restore complete" language appears in any result branch.
+- Frontend tests assert no "succeeded" text is visible in the panel for any status.
+
+**FMP-SEC-10: All stop behaviors unconditionally stop writes.**
+- All four `FailureStopBehavior` variants (`StopAndReport`, `StopPreserveCheckpointAndReport`, `StopAfterRetryLimit`, `BlockAndRequireManualReview`) return `true` from `stops_writes()`.
+- There is no stop behavior variant that permits write continuation after a failure.
+- Rust unit tests assert `stops_writes()` returns `true` for every variant.
+
+**FMP-SEC-11: No-plans causes immediate blocked (short-circuit).**
+- When no `handlingPlans` field is provided, the function returns after FMP-02 with 2 checks and `Blocked` status.
+- No subsequent check fields are evaluated.
+- Rust unit tests assert `checks.len() == 2` in the no-plans case.
+
+---
+
 ## Restore Schema Creation Plan Safety (V0.1)
 
 **Goal:** Confirm that the schema creation planning flow makes no Airtable API calls, requires no token, creates no Airtable tables or fields, and always returns `noChangesMade: true`.

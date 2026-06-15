@@ -17,6 +17,9 @@ use crate::restore::destructive_operation_policy::{
 use crate::restore::dry_run::create_dry_run_plan;
 use crate::restore::execution::{RestoreExecutionRequest, RestoreExecutionResult};
 use crate::restore::execution_gate::validate_restore_execution_gate;
+use crate::restore::failure_modes_policy::{
+    verify_failure_modes_policy, FailureModesPolicyRequest, FailureModesPolicyResult,
+};
 use crate::restore::final_validation_policy::{
     verify_final_validation_policy, FinalValidationPolicyRequest, FinalValidationPolicyResult,
 };
@@ -630,6 +633,25 @@ pub fn verify_write_phase_ordering_policy_gate(
     request: WritePhaseOrderingPolicyRequest,
 ) -> WritePhaseOrderingPolicyResult {
     verify_write_phase_ordering_policy(&request)
+}
+
+/// Verifies the failure modes policy for a planned restore write operation (Gate 13).
+///
+/// Safety invariants:
+/// - No Airtable API calls are made.
+/// - No token accepted or returned.
+/// - No filesystem path accepted or returned.
+/// - No record payload accepted or returned.
+/// - no_changes_made is always true.
+/// - network_writes_attempted is always false.
+/// - writes_enabled is always false.
+/// - Compliant status does NOT enable restore writes.
+/// - Compliant status does NOT introduce a restore success state.
+#[tauri::command]
+pub fn verify_failure_modes_policy_gate(
+    request: FailureModesPolicyRequest,
+) -> FailureModesPolicyResult {
+    verify_failure_modes_policy(&request)
 }
 
 #[cfg(test)]

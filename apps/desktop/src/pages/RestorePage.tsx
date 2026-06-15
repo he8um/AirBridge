@@ -18,6 +18,7 @@ import { RestoreRateLimitBackoffPolicyPanel } from "../features/backups/RestoreR
 import { RestoreCheckpointDurabilityPolicyPanel } from "../features/backups/RestoreCheckpointDurabilityPolicyPanel";
 import { RestoreFinalValidationPolicyPanel } from "../features/backups/RestoreFinalValidationPolicyPanel";
 import { RestoreWritePhaseOrderingPolicyPanel } from "../features/backups/RestoreWritePhaseOrderingPolicyPanel";
+import { RestoreFailureModesPolicyPanel } from "../features/backups/RestoreFailureModesPolicyPanel";
 import { RestoreWriteEnginePanel } from "../features/backups/RestoreWriteEnginePanel";
 import { liveAirBridgeService } from "../services/liveAirBridgeService";
 import type { BackupPackageInspectionResult } from "../backend/types";
@@ -41,6 +42,7 @@ import type {
   CheckpointDurabilityPolicyResult,
   FinalValidationPolicyResult,
   WritePhaseOrderingPolicyResult,
+  FailureModesPolicyResult,
 } from "../backend/types";
 
 export function RestorePage() {
@@ -89,6 +91,8 @@ export function RestorePage() {
   const [fvpLoading, setFvpLoading] = useState(false);
   const [wpoResult, setWpoResult] = useState<WritePhaseOrderingPolicyResult | null>(null);
   const [wpoLoading, setWpoLoading] = useState(false);
+  const [fmpResult, setFmpResult] = useState<FailureModesPolicyResult | null>(null);
+  const [fmpLoading, setFmpLoading] = useState(false);
 
   return (
     <div className="page">
@@ -572,6 +576,30 @@ export function RestorePage() {
                   })
                   .finally(() => {
                     setWpoLoading(false);
+                  });
+              }}
+            />
+
+            <div className="divider" style={{ margin: 0 }} />
+
+            {/* Failure modes policy — Gate 13. No writes. No token. No record payload. No success state. */}
+            <RestoreFailureModesPolicyPanel
+              result={fmpResult}
+              loading={fmpLoading}
+              onVerify={() => {
+                setFmpLoading(true);
+                liveAirBridgeService
+                  .verifyFailureModesPolicy({
+                    targetLabel: targetBaseName ?? undefined,
+                  })
+                  .then((r) => {
+                    setFmpResult(r);
+                  })
+                  .catch(() => {
+                    setFmpResult(null);
+                  })
+                  .finally(() => {
+                    setFmpLoading(false);
                   });
               }}
             />

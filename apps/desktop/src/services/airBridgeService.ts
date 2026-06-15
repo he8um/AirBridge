@@ -57,6 +57,8 @@ import type {
   FinalValidationPolicyResult,
   WritePhaseOrderingPolicyRequest,
   WritePhaseOrderingPolicyResult,
+  FailureModesPolicyRequest,
+  FailureModesPolicyResult,
   RestoreWriteEngineRequest,
   RestoreWriteEngineResult,
   RunBackupCommandRequest,
@@ -356,4 +358,17 @@ export interface AirBridgeService {
   verifyWritePhaseOrderingPolicy(
     request: WritePhaseOrderingPolicyRequest,
   ): Promise<WritePhaseOrderingPolicyResult>;
+  /**
+   * Gate 13 — Failure Modes Policy.
+   * Safety invariants:
+   * - No token field.
+   * - No filesystem path field.
+   * - No record payload field.
+   * - writesEnabled is always false.
+   * - noChangesMade is always true.
+   * - networkWritesAttempted is always false.
+   * - Compliant does NOT enable restore writes.
+   * - Compliant does NOT introduce a restore success state.
+   */
+  verifyFailureModesPolicy(request: FailureModesPolicyRequest): Promise<FailureModesPolicyResult>;
 }

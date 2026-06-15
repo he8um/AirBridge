@@ -11,6 +11,7 @@ export { RestoreRateLimitBackoffPolicyPanel } from "./RestoreRateLimitBackoffPol
 export { RestoreCheckpointDurabilityPolicyPanel } from "./RestoreCheckpointDurabilityPolicyPanel";
 export { RestoreFinalValidationPolicyPanel } from "./RestoreFinalValidationPolicyPanel";
 export { RestoreWritePhaseOrderingPolicyPanel } from "./RestoreWritePhaseOrderingPolicyPanel";
+export { RestoreFailureModesPolicyPanel } from "./RestoreFailureModesPolicyPanel";
 export { JobHistoryPanel } from "./JobHistoryPanel";
 export { RestoreRecordImportPlanPanel } from "./RestoreRecordImportPlanPanel";
 export { BackupConfirmationBox } from "./BackupConfirmationBox";

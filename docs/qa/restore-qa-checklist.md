@@ -815,6 +815,62 @@ After completing a restore, perform the following manual checks in Airtable:
 
 ---
 
+## Restore Failure Modes Policy Checklist (Gate 13)
+
+### Before testing
+
+- [ ] Confirm `verify_failure_modes_policy_gate` is registered in the Tauri invoke handler.
+- [ ] Confirm `RestoreFailureModesPolicyPanel` is rendered on the Restore page after the write phase ordering policy section.
+- [ ] Confirm no execute button is present in the panel.
+- [ ] Confirm no token input field (`type="password"` or `name="token"`) is present.
+
+### Panel behavior
+
+- [ ] A writes-disabled notice is always shown in the failure modes policy section.
+- [ ] The verify button is enabled and calls `verifyFailureModesPolicy` when clicked.
+- [ ] While loading, the verify button is disabled and shows a loading label.
+
+### Result display
+
+- [ ] Status badge shows `compliant`, `warning`, or `blocked` correctly.
+- [ ] The result message is shown beside the status badge.
+- [ ] The checks table shows 11 check rows for a complete handling plan.
+- [ ] The checks table shows 2 check rows when no handling plans are declared (short-circuit).
+- [ ] Each check row shows the check ID, status badge, and message.
+- [ ] Handling summary table shows one row per declared failure mode, including mode name, stop behavior, preserves-checkpoint flag, and captures-diagnostic-context flag.
+- [ ] Handling summary is shown when a handling plan is present.
+- [ ] Handling summary is not shown when no plans are declared.
+- [ ] A safety summary showing `noChangesMade`, `writesEnabled`, and `networkWritesAttempted` is shown.
+- [ ] A "No changes made." notice is shown.
+
+### Status scenarios
+
+- [ ] Complete plan (all 10 required modes declared, all stop behaviors safe, no destructive rollback, no partial-failure-labeled-success, all with diagnostic context) returns `compliant`.
+- [ ] No plans declared returns `blocked` with 2 checks.
+- [ ] Any required failure mode missing returns `blocked` (FMP-03 failed).
+- [ ] Any plan with `triggersDestructiveRollback: true` returns `blocked` (FMP-05 failed).
+- [ ] `finalValidationFailure` with `partialFailureLabeledSuccess: true` returns `blocked` (FMP-08 failed).
+- [ ] Any plan with `partialFailureLabeledSuccess: true` returns `blocked` (FMP-10 failed).
+- [ ] A mode with `capturesDiagnosticContext: false` returns `warning` (FMP-W-{mode} warning added).
+- [ ] A `compliant` result shows the `fmp-compliant-notice`, which says "writes remain disabled".
+- [ ] A `warning` result shows the `fmp-warning-notice`.
+- [ ] A `blocked` result shows the `fmp-blocked-notice`.
+
+### Safety invariants
+
+- [ ] `noChangesMade` is `true` in every failure modes policy result.
+- [ ] `writesEnabled` is `false` in every failure modes policy result — including `compliant`.
+- [ ] `networkWritesAttempted` is `false` in every failure modes policy result.
+- [ ] The policy request type has no `token` field.
+- [ ] The policy result has no `token` field.
+- [ ] The policy result contains no full filesystem path.
+- [ ] The policy result contains no record payload field.
+- [ ] A `compliant` result does NOT enable restore writes.
+- [ ] A `compliant` result does NOT introduce a restore success state.
+- [ ] All four `FailureStopBehavior` variants (`stopAndReport`, `stopPreserveCheckpointAndReport`, `stopAfterRetryLimit`, `blockAndRequireManualReview`) stop writes — none permit continuation.
+
+---
+
 ## Write Engine Skeleton Checklist
 
 ### Before testing
@@ -918,7 +974,7 @@ After completing a restore, perform the following manual checks in Airtable:
 
 Before any live Airtable write path is enabled, complete the separate checklist:
 
-- [ ] See [live-restore-write-safety-checklist.md](./live-restore-write-safety-checklist.md) — all 15 gates must pass.
+- [ ] See [live-restore-write-safety-checklist.md](./live-restore-write-safety-checklist.md) — all 24 gates must pass.
 - [ ] Confirm `write_safety_contract.rs` tests still pass (`cargo test -- write_safety_contract`).
 - [ ] Confirm write gate still returns `Disabled/DisabledByProductPolicy`.
 - [ ] Confirm `Succeeded` status does not exist in any write engine status type.

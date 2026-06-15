@@ -2120,3 +2120,96 @@ export interface WritePhaseOrderingPolicyResult {
   networkWritesAttempted: boolean;
   writesEnabled: boolean;
 }
+
+// ── Gate 13 — Failure Modes Policy ───────────────────────────────────────────
+
+export type FailureModesPolicyStatus = "compliant" | "warning" | "blocked";
+export type FailureModesCheckStatus = "passed" | "warning" | "failed";
+
+export type RestoreFailureMode =
+  | "schemaCreateFailure"
+  | "schemaVerifyFailure"
+  | "recordCreateFailure"
+  | "idMappingFailure"
+  | "linkedRecordUpdateFailure"
+  | "checkpointPersistenceFailure"
+  | "rateLimitExhaustion"
+  | "targetMutationDetected"
+  | "finalValidationFailure"
+  | "unknownFailure";
+
+export type FailureStopBehavior =
+  | "stopAndReport"
+  | "stopPreserveCheckpointAndReport"
+  | "stopAfterRetryLimit"
+  | "blockAndRequireManualReview";
+
+/**
+ * Declared handling plan for a single restore failure mode.
+ *
+ * Safety invariants:
+ * - No token field.
+ * - No filesystem path field.
+ * - No record payload field.
+ */
+export interface RestoreFailureHandlingPlan {
+  mode: RestoreFailureMode;
+  stopBehavior: FailureStopBehavior;
+  preservesCheckpoint: boolean;
+  triggersDestructiveRollback: boolean;
+  partialFailureLabeledSuccess: boolean;
+  capturesDiagnosticContext: boolean;
+  note?: string;
+}
+
+/**
+ * Input to the failure modes policy gate.
+ *
+ * Safety invariants:
+ * - No token field.
+ * - No filesystem path field.
+ * - No record payload field.
+ */
+export interface FailureModesPolicyRequest {
+  handlingPlans?: RestoreFailureHandlingPlan[];
+  targetLabel?: string;
+}
+
+export interface FailureModesCheck {
+  checkId: string;
+  label: string;
+  status: FailureModesCheckStatus;
+  message: string;
+  remediation?: string;
+}
+
+export interface FailureHandlingSummaryEntry {
+  mode: string;
+  stopBehavior: string;
+  preservesCheckpoint: boolean;
+  triggersDestructiveRollback: boolean;
+  capturesDiagnosticContext: boolean;
+}
+
+/**
+ * Result from `verify_failure_modes_policy`.
+ *
+ * Safety invariants:
+ * - No token field.
+ * - No filesystem path field.
+ * - No record payload field.
+ * - writesEnabled is always false.
+ * - noChangesMade is always true.
+ * - networkWritesAttempted is always false.
+ * - Compliant status does NOT enable restore writes.
+ * - Compliant status does NOT introduce a restore success state.
+ */
+export interface FailureModesPolicyResult {
+  status: FailureModesPolicyStatus;
+  checks: FailureModesCheck[];
+  message: string;
+  handlingSummary?: FailureHandlingSummaryEntry[];
+  noChangesMade: boolean;
+  networkWritesAttempted: boolean;
+  writesEnabled: boolean;
+}

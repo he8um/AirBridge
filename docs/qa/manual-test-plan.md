@@ -1428,6 +1428,80 @@ These test cases cover the command contract layer: confirmation enforcement, out
 
 ---
 
+## Failure Modes Policy (Gate 13)
+
+**TC-FMP-01: Writes-disabled notice always visible**
+
+- Preconditions: Restore page open.
+- Steps:
+  1. Scroll to the "Gate 13 — Failure Modes Policy" section.
+- Expected result: A notice reading "Live restore writes are disabled" is shown. No execute button is present. No token field is present.
+
+**TC-FMP-02: No handling plans declared returns blocked (2 checks)**
+
+- Preconditions: Restore page; invoke `verifyFailureModesPolicy` with no `handlingPlans` field.
+- Steps:
+  1. Click verify; observe result.
+- Expected result: Status is `blocked`. Exactly 2 checks shown (FMP-01, FMP-02). FMP-01 passes. FMP-02 fails with "No failure mode handling plans declared" message.
+
+**TC-FMP-03: Complete safe handling plan returns compliant (11 checks)**
+
+- Preconditions: Restore page; invoke with all 10 required failure modes declared, each with a safe stop behavior and `capturesDiagnosticContext: true`.
+- Steps:
+  1. Click verify; observe result.
+- Expected result: Status is `compliant`. 11 checks shown. All check rows show `passed`. Handling summary table shows 10 rows. Compliant notice says "writes remain disabled".
+
+**TC-FMP-04: Missing required failure mode returns blocked**
+
+- Preconditions: Restore page; declare only 9 of the 10 required failure modes (omit e.g. `recordCreateFailure`).
+- Steps:
+  1. Click verify; observe result.
+- Expected result: Status is `blocked`. FMP-03 shows `failed` with a message naming the missing mode. Blocked notice is shown.
+
+**TC-FMP-05: Destructive rollback declared returns blocked**
+
+- Preconditions: Restore page; declare all 10 modes but set `triggersDestructiveRollback: true` on any mode.
+- Steps:
+  1. Click verify; observe result.
+- Expected result: Status is `blocked`. FMP-05 shows `failed`. Blocked notice is shown.
+
+**TC-FMP-06: Mode without diagnostic context produces warning**
+
+- Preconditions: Restore page; declare all 10 modes with safe stop behaviors, but set `capturesDiagnosticContext: false` on one mode.
+- Steps:
+  1. Click verify; observe result.
+- Expected result: Status is `warning`. A warning check row with ID matching `FMP-W-{modeName}` is shown. Warning notice is shown. Safety summary shows `writesEnabled: no`.
+
+**TC-FMP-07: Partial failure labeled success returns blocked**
+
+- Preconditions: Restore page; declare all 10 modes but set `partialFailureLabeledSuccess: true` on any mode.
+- Steps:
+  1. Click verify; observe result.
+- Expected result: Status is `blocked`. FMP-10 shows `failed`. Blocked notice is shown.
+
+**TC-FMP-08: No execute button or token input**
+
+- Preconditions: Restore page; Gate 13 panel visible.
+- Steps:
+  1. Inspect all buttons and input fields in the panel.
+- Expected result: Only a "Verify failure modes policy" button is present. No "Execute", "Start restore", or "Run" button. No password or token input field.
+
+**TC-FMP-09: Compliant result does not enable writes**
+
+- Preconditions: Restore page; complete safe plan returns `compliant`.
+- Steps:
+  1. Observe the safety summary and compliant notice.
+- Expected result: "Writes enabled: no" is shown. Compliant notice explicitly states "compliance does not start any write operation".
+
+**TC-FMP-10: Compliant result does not introduce restore success state**
+
+- Preconditions: Restore page; complete safe plan returns `compliant`.
+- Steps:
+  1. Inspect the Failure Modes Policy panel and all visible text.
+- Expected result: No text containing "Restore complete", "Restore succeeded", "succeeded", or "success" is visible anywhere in the failure modes policy area.
+
+---
+
 ## Write Engine Skeleton
 
 **TC-WE-01: Write engine disabled notice is always visible**

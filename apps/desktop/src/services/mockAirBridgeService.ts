@@ -75,6 +75,9 @@ import type {
   WritePhaseOrderingPolicyRequest,
   WritePhaseOrderingPolicyResult,
   WritePhaseOrderingPolicyStatus,
+  FailureModesPolicyRequest,
+  FailureModesPolicyResult,
+  FailureModesPolicyStatus,
   RunBackupCommandResponse,
   RecordWriteRequestPlanRequest,
   RecordWriteRequestPlanResult,
@@ -3856,6 +3859,303 @@ function verifyWritePhaseOrderingPolicyImpl(
   });
 }
 
+// ── Gate 13 — Failure Modes Policy ───────────────────────────────────────────
+
+const REQUIRED_FAILURE_MODES = [
+  "schemaCreateFailure",
+  "schemaVerifyFailure",
+  "recordCreateFailure",
+  "idMappingFailure",
+  "linkedRecordUpdateFailure",
+  "checkpointPersistenceFailure",
+  "rateLimitExhaustion",
+  "targetMutationDetected",
+  "finalValidationFailure",
+  "unknownFailure",
+] as const;
+
+function stopsWrites(behavior: string): boolean {
+  return (
+    behavior === "stopAndReport" ||
+    behavior === "stopPreserveCheckpointAndReport" ||
+    behavior === "stopAfterRetryLimit" ||
+    behavior === "blockAndRequireManualReview"
+  );
+}
+
+function verifyFailureModesPolicyImpl(
+  request: FailureModesPolicyRequest,
+): Promise<FailureModesPolicyResult> {
+  const checks: FailureModesPolicyResult["checks"] = [];
+
+  // FMP-01: Write gate disabled (always passes in mock)
+  checks.push({
+    checkId: "FMP-01",
+    label: "write-gate-disabled",
+    status: "passed",
+    message: "Restore write gate is disabled. No live writes are possible.",
+  });
+
+  // FMP-02: Plans declared
+  const plans = request.handlingPlans;
+  if (!plans || plans.length === 0) {
+    checks.push({
+      checkId: "FMP-02",
+      label: "plans-declared",
+      status: "failed",
+      message:
+        "No failure handling plans declared. Plans for all required failure modes are required before any live write path is considered.",
+      remediation: "Declare a RestoreFailureHandlingPlan for each required failure mode.",
+    });
+    return Promise.resolve({
+      status: "blocked" as FailureModesPolicyStatus,
+      checks,
+      message:
+        "Failure modes policy is blocked. One or more required failure modes are missing or declare unsafe behavior. Resolve all violations before any live write is considered. Restore writes remain disabled.",
+      noChangesMade: true,
+      networkWritesAttempted: false,
+      writesEnabled: false,
+    });
+  }
+
+  checks.push({
+    checkId: "FMP-02",
+    label: "plans-declared",
+    status: "passed",
+    message: `Failure handling plans are declared (${plans.length} mode(s) covered).`,
+  });
+
+  // FMP-03: All required modes covered
+  const missing = REQUIRED_FAILURE_MODES.filter((mode) => !plans.some((p) => p.mode === mode));
+  if (missing.length > 0) {
+    checks.push({
+      checkId: "FMP-03",
+      label: "all-required-modes-covered",
+      status: "failed",
+      message: `Missing handling plans for required failure mode(s): ${missing.join(", ")}.`,
+      remediation: "Declare a RestoreFailureHandlingPlan for each missing failure mode.",
+    });
+  } else {
+    checks.push({
+      checkId: "FMP-03",
+      label: "all-required-modes-covered",
+      status: "passed",
+      message: "All required failure modes have handling plans.",
+    });
+  }
+
+  // FMP-04: No mode allows writes to continue after failure
+  const continuesWrites = plans.filter((p) => !stopsWrites(p.stopBehavior)).map((p) => p.mode);
+  if (continuesWrites.length > 0) {
+    checks.push({
+      checkId: "FMP-04",
+      label: "no-continue-after-failure",
+      status: "failed",
+      message: `The following failure mode(s) do not stop writes after failure: ${continuesWrites.join(", ")}.`,
+      remediation: "All failure modes must declare a stop behavior that halts further writes.",
+    });
+  } else {
+    checks.push({
+      checkId: "FMP-04",
+      label: "no-continue-after-failure",
+      status: "passed",
+      message: "All declared failure modes stop further writes on failure.",
+    });
+  }
+
+  // FMP-05: No destructive rollback
+  const destructive = plans.filter((p) => p.triggersDestructiveRollback).map((p) => p.mode);
+  if (destructive.length > 0) {
+    checks.push({
+      checkId: "FMP-05",
+      label: "no-destructive-rollback",
+      status: "failed",
+      message: `The following failure mode(s) declare automatic destructive rollback: ${destructive.join(", ")}.`,
+      remediation:
+        "Remove automatic destructive rollback. Instead, stop writes and report the partial state for manual review.",
+    });
+  } else {
+    checks.push({
+      checkId: "FMP-05",
+      label: "no-destructive-rollback",
+      status: "passed",
+      message: "No failure mode declares automatic destructive rollback.",
+    });
+  }
+
+  // FMP-06: Unknown failure stops writes
+  const unknownPlan = plans.find((p) => p.mode === "unknownFailure");
+  if (unknownPlan && !stopsWrites(unknownPlan.stopBehavior)) {
+    checks.push({
+      checkId: "FMP-06",
+      label: "unknown-failure-stops-writes",
+      status: "failed",
+      message:
+        "The unknownFailure mode does not stop all writes. Any unclassified failure must immediately halt further write operations.",
+      remediation:
+        "Set stopBehavior to stopAndReport or stopPreserveCheckpointAndReport for unknownFailure.",
+    });
+  } else if (unknownPlan) {
+    checks.push({
+      checkId: "FMP-06",
+      label: "unknown-failure-stops-writes",
+      status: "passed",
+      message: "Unknown/unclassified failure is declared to stop all writes.",
+    });
+  }
+
+  // FMP-07: Rate-limit stops after retry
+  const ratePlan = plans.find((p) => p.mode === "rateLimitExhaustion");
+  if (ratePlan) {
+    if (stopsWrites(ratePlan.stopBehavior)) {
+      checks.push({
+        checkId: "FMP-07",
+        label: "rate-limit-stops-after-retry",
+        status: "passed",
+        message: "Rate-limit exhaustion is declared to stop after the configured retry limit.",
+      });
+    } else {
+      checks.push({
+        checkId: "FMP-07",
+        label: "rate-limit-stops-after-retry",
+        status: "failed",
+        message: "Rate-limit exhaustion does not stop after a configured retry limit.",
+        remediation: "Declare stopBehavior as stopAfterRetryLimit for rateLimitExhaustion.",
+      });
+    }
+  }
+
+  // FMP-08: Final validation failure blocks success
+  const fvPlan = plans.find((p) => p.mode === "finalValidationFailure");
+  if (fvPlan) {
+    if (fvPlan.partialFailureLabeledSuccess || !stopsWrites(fvPlan.stopBehavior)) {
+      checks.push({
+        checkId: "FMP-08",
+        label: "final-validation-blocks-success",
+        status: "failed",
+        message:
+          "finalValidationFailure is declared to allow partial failure to be labeled as success or does not stop writes.",
+        remediation:
+          "Set partialFailureLabeledSuccess: false and a stop behavior for finalValidationFailure.",
+      });
+    } else {
+      checks.push({
+        checkId: "FMP-08",
+        label: "final-validation-blocks-success",
+        status: "passed",
+        message: "Final validation failure is declared to block success and stop writes.",
+      });
+    }
+  }
+
+  // FMP-09: Checkpoint persistence failure blocks continuation
+  const cpPlan = plans.find((p) => p.mode === "checkpointPersistenceFailure");
+  if (cpPlan) {
+    if (!stopsWrites(cpPlan.stopBehavior)) {
+      checks.push({
+        checkId: "FMP-09",
+        label: "checkpoint-failure-blocks-continuation",
+        status: "failed",
+        message:
+          "checkpointPersistenceFailure does not stop further writes. If a checkpoint cannot be written, the engine must not continue.",
+        remediation:
+          "Set stopBehavior to stopAndReport or stopPreserveCheckpointAndReport for checkpointPersistenceFailure.",
+      });
+    } else {
+      checks.push({
+        checkId: "FMP-09",
+        label: "checkpoint-failure-blocks-continuation",
+        status: "passed",
+        message: "Checkpoint persistence failure is declared to block continuation.",
+      });
+    }
+  }
+
+  // FMP-10: No partial failure labeled as success
+  const partialSuccess = plans.filter((p) => p.partialFailureLabeledSuccess).map((p) => p.mode);
+  if (partialSuccess.length > 0) {
+    checks.push({
+      checkId: "FMP-10",
+      label: "no-partial-failure-as-success",
+      status: "failed",
+      message: `The following failure mode(s) declare that a partial failure may be labeled success: ${partialSuccess.join(", ")}.`,
+      remediation: "Set partialFailureLabeledSuccess: false for all failure modes.",
+    });
+  } else {
+    checks.push({
+      checkId: "FMP-10",
+      label: "no-partial-failure-as-success",
+      status: "passed",
+      message: "No failure mode allows partial failure to be labeled as success.",
+    });
+  }
+
+  // FMP-11: Writes remain disabled
+  checks.push({
+    checkId: "FMP-11",
+    label: "writes-remain-disabled",
+    status: "passed",
+    message: "Restore writes remain disabled. This policy gate does not enable live writes.",
+  });
+
+  // Diagnostic context warnings
+  let hasWarning = false;
+  for (const plan of plans) {
+    if (!plan.capturesDiagnosticContext) {
+      checks.push({
+        checkId: `FMP-W-${plan.mode}`,
+        label: `diagnostic-context-${plan.mode}`,
+        status: "warning",
+        message: `Failure mode '${plan.mode}' does not capture diagnostic context.`,
+        remediation: `Ensure '${plan.mode}' captures error details for post-failure review.`,
+      });
+      hasWarning = true;
+    }
+  }
+
+  const isBlocked =
+    missing.length > 0 ||
+    continuesWrites.length > 0 ||
+    destructive.length > 0 ||
+    partialSuccess.length > 0 ||
+    (unknownPlan !== undefined && !stopsWrites(unknownPlan.stopBehavior)) ||
+    (fvPlan !== undefined &&
+      (fvPlan.partialFailureLabeledSuccess || !stopsWrites(fvPlan.stopBehavior))) ||
+    (cpPlan !== undefined && !stopsWrites(cpPlan.stopBehavior));
+
+  const status: FailureModesPolicyStatus = isBlocked
+    ? "blocked"
+    : hasWarning
+      ? "warning"
+      : "compliant";
+
+  const targetNote = request.targetLabel ? ` for '${request.targetLabel}'` : "";
+  const message =
+    status === "compliant"
+      ? `Failure modes policy is compliant${targetNote}. All required failure modes have explicit, safe stop-behavior declarations. Restore writes remain disabled — compliance does not start any write operation and does not introduce a restore success state.`
+      : status === "warning"
+        ? `Failure modes policy has warnings${targetNote}. All required modes have safe stop behavior, but one or more modes have incomplete diagnostic context. Restore writes remain disabled.`
+        : `Failure modes policy is blocked${targetNote}. One or more required failure modes are missing or declare unsafe behavior. Resolve all violations before any live write is considered. Restore writes remain disabled.`;
+
+  const handlingSummary = plans.map((p) => ({
+    mode: p.mode,
+    stopBehavior: p.stopBehavior,
+    preservesCheckpoint: p.preservesCheckpoint,
+    triggersDestructiveRollback: p.triggersDestructiveRollback,
+    capturesDiagnosticContext: p.capturesDiagnosticContext,
+  }));
+
+  return Promise.resolve({
+    status,
+    checks,
+    message,
+    handlingSummary,
+    noChangesMade: true,
+    networkWritesAttempted: false,
+    writesEnabled: false,
+  });
+}
+
 export const mockAirBridgeService: AirBridgeService = {
   listConnections,
   listWorkspaces,
@@ -3899,4 +4199,5 @@ export const mockAirBridgeService: AirBridgeService = {
   verifyCheckpointDurabilityPolicy: verifyCheckpointDurabilityPolicyImpl,
   verifyFinalValidationPolicy: verifyFinalValidationPolicyImpl,
   verifyWritePhaseOrderingPolicy: verifyWritePhaseOrderingPolicyImpl,
+  verifyFailureModesPolicy: verifyFailureModesPolicyImpl,
 };
