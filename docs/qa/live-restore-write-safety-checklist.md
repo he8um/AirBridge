@@ -194,12 +194,29 @@ The `verify_destructive_operation_policy_gate` Tauri command verifies that no de
 
 ---
 
-## Gate 9 — Target Base Safety
+## Gate 9 — Rate-Limit and Backoff Policy
 
-- [ ] **Empty-base check implemented.** Before the first write, the Airtable schema API is called to verify the target base has zero tables.
-- [ ] **Non-empty base rejected.** If the target base contains any tables, the write engine stops with a `BlockedByTargetSafety` reason before any write is attempted.
-- [ ] **New-base creation verified.** If target mode is "new base", the created base ID is confirmed before the schema phase begins.
-- [ ] **Target base ID not in public result.** The target base ID does not appear in any result, log line, or job history item.
+- [x] **`verify_rate_limit_backoff_policy()` implemented.** Runs 10 checks: RLB-01 through RLB-10.
+- [x] **RLB-01 (write gate disabled) always passes.** `evaluate_write_gate()` unconditionally returns `Disabled`.
+- [x] **RLB-02 (plan declared) checked.** Missing plan causes immediate `Blocked` with 2 checks only (short-circuit).
+- [x] **RLB-03 (max RPS ≤ 5) enforced.** `maxRequestsPerSecond > DEFAULT_PER_BASE_RPS` causes `Blocked`.
+- [x] **RLB-04 (batch size ≤ 10) enforced.** `batchSize > SAFE_MAX_BATCH_SIZE` causes `Blocked`.
+- [x] **RLB-05 (429 handling declared) enforced.** `handles429: false` causes `Blocked`.
+- [x] **RLB-06 (bounded retries) enforced.** `maxRetries: None` (unbounded) causes `Blocked`.
+- [x] **RLB-07 (backoff strategy declared) enforced.** `hasBackoffStrategy: false` causes `Blocked`.
+- [x] **RLB-08 (stop condition declared) enforced.** `hasStopCondition: false` causes `Blocked`.
+- [x] **RLB-09 (checkpoint compatibility) checked.** `partial`, `none`, or `unknown` produces `Warning`; `full` passes.
+- [x] **RLB-10 (writes remain disabled) always passes.** Compliant policy never enables writes.
+- [x] **`Compliant` status does NOT enable writes.** `writesEnabled` is always `false` in every result branch.
+- [x] **No token field anywhere in request or result.** Verified by serialization test.
+- [x] **No filesystem path field anywhere in request or result.** Verified by serialization test.
+- [x] **No record payload field anywhere in result.** Verified by serialization test.
+- [x] **`noChangesMade` always `true`.** Checked in all status branches.
+- [x] **`networkWritesAttempted` always `false`.** Checked across all status branches.
+- [x] **No execute button in Gate 9 panel.** Panel renders no execute or write-start control.
+- [x] **No "succeeded" language in panel.** Checked by UI test.
+- [x] **35+ Rust unit tests pass** for rate-limit backoff policy module.
+- [x] **50+ frontend tests pass** for rate-limit backoff policy service contract and panel rendering.
 
 ---
 

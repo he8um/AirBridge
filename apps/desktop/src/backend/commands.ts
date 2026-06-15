@@ -45,6 +45,8 @@ import type {
   SandboxWriteTestingPolicyResult,
   LiveWriteConfirmationPolicyRequest,
   LiveWriteConfirmationPolicyResult,
+  RateLimitBackoffPolicyRequest,
+  RateLimitBackoffPolicyResult,
   RunBackupCommandRequest,
   RunBackupCommandResponse,
   SandboxVerificationRequest,
@@ -481,4 +483,12 @@ export async function verifyLiveWriteConfirmationPolicy(
     "verify_live_write_confirmation_policy_gate",
     { request },
   );
+}
+
+export async function verifyRateLimitBackoffPolicy(
+  request: RateLimitBackoffPolicyRequest,
+): Promise<RateLimitBackoffPolicyResult | null> {
+  return safeInvoke<RateLimitBackoffPolicyResult>("verify_rate_limit_backoff_policy_gate", {
+    request,
+  });
 }

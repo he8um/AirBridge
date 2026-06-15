@@ -49,6 +49,8 @@ import type {
   SandboxWriteTestingPolicyResult,
   LiveWriteConfirmationPolicyRequest,
   LiveWriteConfirmationPolicyResult,
+  RateLimitBackoffPolicyRequest,
+  RateLimitBackoffPolicyResult,
   RestoreWriteEngineRequest,
   RestoreWriteEngineResult,
   RunBackupCommandRequest,
@@ -597,6 +599,23 @@ async function verifyLiveWriteConfirmationPolicy(
   return result;
 }
 
+async function verifyRateLimitBackoffPolicy(
+  request: RateLimitBackoffPolicyRequest,
+): Promise<RateLimitBackoffPolicyResult> {
+  const result = await commands.verifyRateLimitBackoffPolicy(request);
+  if (result === null) {
+    return {
+      status: "blocked",
+      checks: [],
+      message: "Rate-limit and backoff policy check is not available in this context.",
+      noChangesMade: true,
+      networkWritesAttempted: false,
+      writesEnabled: false,
+    };
+  }
+  return result;
+}
+
 export const liveAirBridgeService: AirBridgeService = {
   listConnections,
   listWorkspaces,
@@ -636,4 +655,5 @@ export const liveAirBridgeService: AirBridgeService = {
   verifySchemaRecordOrderPolicy,
   verifySandboxWriteTestingPolicy,
   verifyLiveWriteConfirmationPolicy,
+  verifyRateLimitBackoffPolicy,
 };

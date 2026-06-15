@@ -7,6 +7,7 @@ export { RestoreAttachmentUploadPolicyPanel } from "./RestoreAttachmentUploadPol
 export { RestoreSchemaRecordOrderPolicyPanel } from "./RestoreSchemaRecordOrderPolicyPanel";
 export { RestoreSandboxWriteTestingPolicyPanel } from "./RestoreSandboxWriteTestingPolicyPanel";
 export { RestoreLiveWriteConfirmationPolicyPanel } from "./RestoreLiveWriteConfirmationPolicyPanel";
+export { RestoreRateLimitBackoffPolicyPanel } from "./RestoreRateLimitBackoffPolicyPanel";
 export { JobHistoryPanel } from "./JobHistoryPanel";
 export { RestoreRecordImportPlanPanel } from "./RestoreRecordImportPlanPanel";
 export { BackupConfirmationBox } from "./BackupConfirmationBox";

@@ -1825,3 +1825,73 @@ export interface LiveWriteConfirmationPolicyResult {
   networkWritesAttempted: boolean;
   writesEnabled: boolean;
 }
+
+// ── Gate 9: Rate-limit and backoff policy ─────────────────────────────────────
+
+export type RateLimitBackoffPolicyStatus = "compliant" | "warning" | "blocked";
+export type RateLimitBackoffCheckStatus = "passed" | "warning" | "failed";
+
+/**
+ * Declared throttling and backoff plan for a future restore write operation.
+ * All fields are numeric counts or boolean flags — no token, no path, no
+ * record payload.
+ */
+export interface RateLimitBackoffPlan {
+  maxRequestsPerSecond: number;
+  batchSize: number;
+  handles429: boolean;
+  maxRetries?: number;
+  hasBackoffStrategy: boolean;
+  hasStopCondition: boolean;
+  checkpointCompatibility?: string;
+}
+
+/**
+ * Input to the rate-limit and backoff policy gate.
+ * - No token field.
+ * - No filesystem path field.
+ * - No record payload field.
+ */
+export interface RateLimitBackoffPolicyRequest {
+  plan?: RateLimitBackoffPlan;
+  targetLabel?: string;
+}
+
+export interface RateLimitBackoffCheck {
+  checkId: string;
+  label: string;
+  status: RateLimitBackoffCheckStatus;
+  message: string;
+  remediation?: string;
+}
+
+/** Read-only summary of the evaluated plan fields, safe for display. */
+export interface RateLimitBackoffPlanSummary {
+  maxRequestsPerSecond: number;
+  batchSize: number;
+  handles429: boolean;
+  maxRetries?: number;
+  hasBackoffStrategy: boolean;
+  hasStopCondition: boolean;
+  checkpointCompatibility?: string;
+}
+
+/**
+ * Result from verify_rate_limit_backoff_policy_gate.
+ * - No token field.
+ * - No filesystem path field.
+ * - No record payload field.
+ * - writesEnabled is always false.
+ * - noChangesMade is always true.
+ * - networkWritesAttempted is always false.
+ * - Compliant status does NOT enable restore writes.
+ */
+export interface RateLimitBackoffPolicyResult {
+  status: RateLimitBackoffPolicyStatus;
+  checks: RateLimitBackoffCheck[];
+  message: string;
+  planSummary?: RateLimitBackoffPlanSummary;
+  noChangesMade: boolean;
+  networkWritesAttempted: boolean;
+  writesEnabled: boolean;
+}

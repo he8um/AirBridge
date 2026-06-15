@@ -18,6 +18,9 @@ use crate::restore::live_write_confirmation_policy::{
     LiveWriteConfirmationPolicyResult,
 };
 use crate::restore::plan::{RestoreDryRunPlan, RestoreDryRunRequest};
+use crate::restore::rate_limit_backoff_policy::{
+    verify_rate_limit_backoff_policy, RateLimitBackoffPolicyRequest, RateLimitBackoffPolicyResult,
+};
 use crate::restore::record_import_plan::{RestoreRecordImportPlan, RestoreRecordImportPlanRequest};
 use crate::restore::record_import_planner::create_record_import_plan;
 use crate::restore::record_write_executor::execute_record_write_dry_run;
@@ -554,6 +557,13 @@ pub fn verify_live_write_confirmation_policy_gate(
     request: LiveWriteConfirmationPolicyRequest,
 ) -> LiveWriteConfirmationPolicyResult {
     verify_live_write_confirmation_policy(&request)
+}
+
+#[tauri::command]
+pub fn verify_rate_limit_backoff_policy_gate(
+    request: RateLimitBackoffPolicyRequest,
+) -> RateLimitBackoffPolicyResult {
+    verify_rate_limit_backoff_policy(&request)
 }
 
 #[cfg(test)]

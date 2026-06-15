@@ -49,6 +49,8 @@ import type {
   SandboxWriteTestingPolicyResult,
   LiveWriteConfirmationPolicyRequest,
   LiveWriteConfirmationPolicyResult,
+  RateLimitBackoffPolicyRequest,
+  RateLimitBackoffPolicyResult,
   RestoreWriteEngineRequest,
   RestoreWriteEngineResult,
   RunBackupCommandRequest,
@@ -297,4 +299,15 @@ export interface AirBridgeService {
   verifyLiveWriteConfirmationPolicy(
     request: LiveWriteConfirmationPolicyRequest,
   ): Promise<LiveWriteConfirmationPolicyResult>;
+  /**
+   * Gate 9: Rate-limit and backoff policy.
+   * - No Airtable API calls.
+   * - No token required.
+   * - No record payload.
+   * - writesEnabled is always false.
+   * - Compliant does NOT enable restore writes.
+   */
+  verifyRateLimitBackoffPolicy(
+    request: RateLimitBackoffPolicyRequest,
+  ): Promise<RateLimitBackoffPolicyResult>;
 }

@@ -63,6 +63,9 @@ import type {
   LiveWriteConfirmationPolicyRequest,
   LiveWriteConfirmationPolicyResult,
   LiveWriteConfirmationPolicyStatus,
+  RateLimitBackoffPolicyRequest,
+  RateLimitBackoffPolicyResult,
+  RateLimitBackoffPolicyStatus,
   RunBackupCommandResponse,
   RecordWriteRequestPlanRequest,
   RecordWriteRequestPlanResult,
@@ -2813,6 +2816,240 @@ function verifyLiveWriteConfirmationPolicyImpl(
   });
 }
 
+const SAFE_MAX_RPS = 5;
+const SAFE_MAX_BATCH_SIZE = 10;
+const DEFAULT_MAX_RETRIES = 3;
+
+function verifyRateLimitBackoffPolicyImpl(
+  request: RateLimitBackoffPolicyRequest,
+): Promise<RateLimitBackoffPolicyResult> {
+  const checks: RateLimitBackoffPolicyResult["checks"] = [];
+
+  // RLB-01: Write gate always disabled
+  checks.push({
+    checkId: "RLB-01",
+    label: "write-gate-disabled",
+    status: "passed",
+    message: "Restore write gate is disabled. No live writes are possible.",
+  });
+
+  const plan = request.plan;
+  if (!plan) {
+    checks.push({
+      checkId: "RLB-02",
+      label: "plan-declared",
+      status: "failed",
+      message:
+        "No rate-limit/backoff plan declared. A plan is required before any live write path is considered.",
+      remediation: "Declare a RateLimitBackoffPlan with all required fields.",
+    });
+    return Promise.resolve({
+      status: "blocked" as RateLimitBackoffPolicyStatus,
+      checks,
+      message: `Rate-limit and backoff policy for ${request.targetLabel ?? "the restore target"} is blocked. One or more required fields are missing or exceed safe thresholds. Restore writes remain disabled.`,
+      noChangesMade: true,
+      networkWritesAttempted: false,
+      writesEnabled: false,
+    });
+  }
+
+  checks.push({
+    checkId: "RLB-02",
+    label: "plan-declared",
+    status: "passed",
+    message: "Rate-limit/backoff plan is declared.",
+  });
+
+  // RLB-03: RPS within threshold
+  if (plan.maxRequestsPerSecond > SAFE_MAX_RPS) {
+    checks.push({
+      checkId: "RLB-03",
+      label: "requests-per-second-safe",
+      status: "failed",
+      message: `Declared max requests per second (${plan.maxRequestsPerSecond}) exceeds the safe threshold (${SAFE_MAX_RPS}).`,
+      remediation: `Reduce maxRequestsPerSecond to ${SAFE_MAX_RPS} or below.`,
+    });
+  } else {
+    checks.push({
+      checkId: "RLB-03",
+      label: "requests-per-second-safe",
+      status: "passed",
+      message: `Declared max requests per second (${plan.maxRequestsPerSecond}) is within the safe threshold (${SAFE_MAX_RPS}).`,
+    });
+  }
+
+  // RLB-04: Batch size within limit
+  if (plan.batchSize > SAFE_MAX_BATCH_SIZE) {
+    checks.push({
+      checkId: "RLB-04",
+      label: "batch-size-safe",
+      status: "failed",
+      message: `Declared batch size (${plan.batchSize}) exceeds the safe maximum (${SAFE_MAX_BATCH_SIZE}).`,
+      remediation: `Reduce batchSize to ${SAFE_MAX_BATCH_SIZE} or below.`,
+    });
+  } else {
+    checks.push({
+      checkId: "RLB-04",
+      label: "batch-size-safe",
+      status: "passed",
+      message: `Declared batch size (${plan.batchSize}) is within the safe maximum (${SAFE_MAX_BATCH_SIZE}).`,
+    });
+  }
+
+  // RLB-05: 429 handling
+  if (!plan.handles429) {
+    checks.push({
+      checkId: "RLB-05",
+      label: "handles-429",
+      status: "failed",
+      message: "No 429 (rate-limit) response handling strategy is declared.",
+      remediation: "Declare a 429 handling strategy (backoff and retry) before any live write.",
+    });
+  } else {
+    checks.push({
+      checkId: "RLB-05",
+      label: "handles-429",
+      status: "passed",
+      message: "A 429 response handling strategy is declared.",
+    });
+  }
+
+  // RLB-06: Retry limit bounded
+  if (plan.maxRetries === undefined || plan.maxRetries === null) {
+    checks.push({
+      checkId: "RLB-06",
+      label: "retry-limit-bounded",
+      status: "failed",
+      message: "No maximum retry limit declared. Unbounded retries are unsafe.",
+      remediation: `Declare a bounded maxRetries value (recommended: ${DEFAULT_MAX_RETRIES}).`,
+    });
+  } else {
+    checks.push({
+      checkId: "RLB-06",
+      label: "retry-limit-bounded",
+      status: "passed",
+      message: `Maximum retry limit is declared (${plan.maxRetries}).`,
+    });
+  }
+
+  // RLB-07: Backoff strategy
+  if (!plan.hasBackoffStrategy) {
+    checks.push({
+      checkId: "RLB-07",
+      label: "backoff-strategy-declared",
+      status: "failed",
+      message: "No backoff delay strategy declared between retries.",
+      remediation: "Declare an exponential or fixed backoff strategy before any live write.",
+    });
+  } else {
+    checks.push({
+      checkId: "RLB-07",
+      label: "backoff-strategy-declared",
+      status: "passed",
+      message: "A backoff strategy between retries is declared.",
+    });
+  }
+
+  // RLB-08: Stop condition
+  if (!plan.hasStopCondition) {
+    checks.push({
+      checkId: "RLB-08",
+      label: "stop-condition-declared",
+      status: "failed",
+      message: "No stop condition declared after repeated rate-limit failures.",
+      remediation:
+        "Declare a stop condition that aborts the operation after too many 429 failures.",
+    });
+  } else {
+    checks.push({
+      checkId: "RLB-08",
+      label: "stop-condition-declared",
+      status: "passed",
+      message: "A stop condition for repeated rate-limit failures is declared.",
+    });
+  }
+
+  // RLB-09: Checkpoint compatibility
+  if (plan.checkpointCompatibility === "full") {
+    checks.push({
+      checkId: "RLB-09",
+      label: "checkpoint-compatibility",
+      status: "passed",
+      message: "Full checkpoint/resume compatibility is declared.",
+    });
+  } else if (plan.checkpointCompatibility === "partial") {
+    checks.push({
+      checkId: "RLB-09",
+      label: "checkpoint-compatibility",
+      status: "warning",
+      message:
+        "Checkpoint/resume compatibility is partial. Full compatibility is recommended for long operations.",
+      remediation: "Upgrade to full checkpoint/resume compatibility before enabling live writes.",
+    });
+  } else if (plan.checkpointCompatibility === "none") {
+    checks.push({
+      checkId: "RLB-09",
+      label: "checkpoint-compatibility",
+      status: "warning",
+      message:
+        "No checkpoint/resume compatibility declared. Long operations cannot be safely resumed after interruption.",
+      remediation:
+        "Implement checkpoint/resume support before enabling live writes for long operations.",
+    });
+  } else {
+    checks.push({
+      checkId: "RLB-09",
+      label: "checkpoint-compatibility",
+      status: "warning",
+      message: "Checkpoint/resume compatibility is not declared or unknown.",
+      remediation: 'Declare checkpointCompatibility as "full", "partial", or "none".',
+    });
+  }
+
+  // RLB-10: Writes remain disabled (always passes)
+  checks.push({
+    checkId: "RLB-10",
+    label: "writes-remain-disabled",
+    status: "passed",
+    message:
+      "Restore write execution is not enabled. Verifying this policy does not start any write operation.",
+  });
+
+  const hasBlocked = checks.some((c) => c.status === "failed");
+  const hasWarning = checks.some((c) => c.status === "warning");
+  const status: RateLimitBackoffPolicyStatus = hasBlocked
+    ? "blocked"
+    : hasWarning
+      ? "warning"
+      : "compliant";
+
+  const targetName = request.targetLabel ?? "the restore target";
+  const message =
+    status === "compliant"
+      ? `Rate-limit and backoff policy for ${targetName} is compliant. All required fields are within safe bounds. Restore writes remain disabled.`
+      : status === "warning"
+        ? `Rate-limit and backoff policy for ${targetName} has warnings. No unsafe threshold is exceeded, but some fields are incomplete or partial. Restore writes remain disabled.`
+        : `Rate-limit and backoff policy for ${targetName} is blocked. One or more required fields are missing or exceed safe thresholds. Restore writes remain disabled.`;
+
+  return Promise.resolve({
+    status,
+    checks,
+    message,
+    planSummary: {
+      maxRequestsPerSecond: plan.maxRequestsPerSecond,
+      batchSize: plan.batchSize,
+      handles429: plan.handles429,
+      maxRetries: plan.maxRetries,
+      hasBackoffStrategy: plan.hasBackoffStrategy,
+      hasStopCondition: plan.hasStopCondition,
+      checkpointCompatibility: plan.checkpointCompatibility,
+    },
+    noChangesMade: true,
+    networkWritesAttempted: false,
+    writesEnabled: false,
+  });
+}
+
 export const mockAirBridgeService: AirBridgeService = {
   listConnections,
   listWorkspaces,
@@ -2852,4 +3089,5 @@ export const mockAirBridgeService: AirBridgeService = {
   verifySchemaRecordOrderPolicy: verifySchemaRecordOrderPolicyImpl,
   verifySandboxWriteTestingPolicy: verifySandboxWriteTestingPolicyImpl,
   verifyLiveWriteConfirmationPolicy: verifyLiveWriteConfirmationPolicyImpl,
+  verifyRateLimitBackoffPolicy: verifyRateLimitBackoffPolicyImpl,
 };

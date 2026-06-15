@@ -587,6 +587,63 @@ After completing a restore, perform the following manual checks in Airtable:
 
 ---
 
+## Restore Rate-Limit and Backoff Policy Checklist (Gate 9)
+
+### Before testing
+
+- [ ] Confirm `verify_rate_limit_backoff_policy_gate` is registered in the Tauri invoke handler.
+- [ ] Confirm `RestoreRateLimitBackoffPolicyPanel` is rendered on the Restore page after the live write confirmation policy section.
+- [ ] Confirm no execute button is present in the panel.
+- [ ] Confirm no token input field (`type="password"` or `name="token"`) is present.
+
+### Panel behavior
+
+- [ ] A writes-disabled notice is always shown in the rate-limit and backoff policy section.
+- [ ] The verify button is enabled and calls `verifyRateLimitBackoffPolicy` when clicked.
+- [ ] While loading, the verify button is disabled and shows a loading label.
+
+### Result display
+
+- [ ] Status badge shows `compliant`, `warning`, or `blocked` correctly.
+- [ ] The result message is shown beside the status badge.
+- [ ] The checks table shows 10 check rows for a complete plan.
+- [ ] The checks table shows 2 check rows when no plan is declared (short-circuit).
+- [ ] Each check row shows the check ID, status badge, and message.
+- [ ] Plan summary panel shows max RPS, batch size, 429 handling, max retries, backoff strategy, stop condition, and checkpoint compatibility when a plan is declared.
+- [ ] Plan summary is not shown when no plan is declared.
+- [ ] A safety summary showing `noChangesMade`, `writesEnabled`, and `networkWritesAttempted` is shown.
+- [ ] A "No changes made." notice is shown.
+
+### Status scenarios
+
+- [ ] Safe plan (RPS ≤ 5, batch ≤ 10, 429 handled, retries bounded, backoff declared, stop declared, checkpoint full) returns `compliant`.
+- [ ] No plan declared returns `blocked` with 2 checks.
+- [ ] RPS = 6 returns `blocked`.
+- [ ] Batch size = 11 returns `blocked`.
+- [ ] `handles429: false` returns `blocked`.
+- [ ] `maxRetries: undefined` (unbounded) returns `blocked`.
+- [ ] `hasBackoffStrategy: false` returns `blocked`.
+- [ ] `hasStopCondition: false` returns `blocked`.
+- [ ] `checkpointCompatibility: "partial"` returns `warning` (not blocked).
+- [ ] `checkpointCompatibility: "none"` returns `warning`.
+- [ ] `checkpointCompatibility: "full"` returns `compliant`.
+- [ ] A `compliant` result shows the `rlb-compliant-notice`, which says "writes remain disabled".
+- [ ] A `warning` result shows the `rlb-warning-notice`.
+- [ ] A `blocked` result shows the `rlb-blocked-notice`.
+
+### Safety invariants
+
+- [ ] `noChangesMade` is `true` in every rate-limit policy result.
+- [ ] `writesEnabled` is `false` in every rate-limit policy result — including `compliant`.
+- [ ] `networkWritesAttempted` is `false` in every rate-limit policy result.
+- [ ] The policy request type has no `token` field.
+- [ ] The policy result has no `token` field.
+- [ ] The policy result contains no full filesystem path.
+- [ ] The policy result contains no record payload field.
+- [ ] A `compliant` result does NOT enable restore writes.
+
+---
+
 ## Write Engine Skeleton Checklist
 
 ### Before testing

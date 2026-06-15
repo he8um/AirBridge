@@ -1202,6 +1202,52 @@ These test cases cover the command contract layer: confirmation enforcement, out
 
 ---
 
+## Rate-Limit and Backoff Policy (Gate 9)
+
+**TC-RLB-01: Writes-disabled notice always visible**
+
+- Preconditions: Restore page open.
+- Steps:
+  1. Scroll to the "Rate-Limit and Backoff Policy" section.
+- Expected result: A notice reads "Live restore writes are disabled." The notice is visible before any verification has been run.
+
+**TC-RLB-02: No plan declared returns blocked (2 checks)**
+
+- Preconditions: Restore page open.
+- Steps:
+  1. Click "Verify rate-limit policy" without providing a plan.
+- Expected result: Status badge shows `blocked`. Only 2 check rows are shown (RLB-01 and RLB-02). A blocked notice is shown saying "writes remain disabled".
+
+**TC-RLB-03: Safe plan returns compliant (10 checks)**
+
+- Preconditions: Restore page with a valid rate-limit plan (RPS ≤ 5, batch ≤ 10, 429 handled, retries bounded, backoff declared, stop declared, checkpoint full).
+- Steps:
+  1. Click "Verify rate-limit policy".
+- Expected result: Status badge shows `compliant`. 10 check rows are shown. Plan summary is shown. A compliant notice says "writes remain disabled".
+
+**TC-RLB-04: Checkpoint compatibility warning**
+
+- Preconditions: Restore page with a plan where `checkpointCompatibility` is `"partial"`.
+- Steps:
+  1. Click "Verify rate-limit policy".
+- Expected result: Status badge shows `warning` (not `blocked`). RLB-09 shows a warning status. A warning notice is shown saying "writes remain disabled".
+
+**TC-RLB-05: No execute button or token input**
+
+- Preconditions: Restore page open with a rate-limit policy result (any status).
+- Steps:
+  1. Inspect the Rate-Limit and Backoff Policy section for buttons and input fields.
+- Expected result: No "Execute", "Run Restore", or similar button. No password or token input field (`type="password"` or `name="token"`).
+
+**TC-RLB-06: Compliant result does not enable writes**
+
+- Preconditions: Restore page; safe plan returns `compliant`.
+- Steps:
+  1. Observe the safety summary and compliant notice.
+- Expected result: "Writes enabled: no" is shown. Compliant notice explicitly states "compliance does not start any write operation".
+
+---
+
 ## Write Engine Skeleton
 
 **TC-WE-01: Write engine disabled notice is always visible**

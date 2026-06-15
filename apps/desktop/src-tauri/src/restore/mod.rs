@@ -9,6 +9,7 @@ pub mod linked_record_updates;
 pub mod live_write_confirmation_policy;
 pub mod ordering;
 pub mod plan;
+pub mod rate_limit_backoff_policy;
 pub mod record_import_batches;
 pub mod record_import_plan;
 pub mod record_import_planner;

@@ -14,6 +14,7 @@ import { RestoreAttachmentUploadPolicyPanel } from "../features/backups/RestoreA
 import { RestoreSchemaRecordOrderPolicyPanel } from "../features/backups/RestoreSchemaRecordOrderPolicyPanel";
 import { RestoreSandboxWriteTestingPolicyPanel } from "../features/backups/RestoreSandboxWriteTestingPolicyPanel";
 import { RestoreLiveWriteConfirmationPolicyPanel } from "../features/backups/RestoreLiveWriteConfirmationPolicyPanel";
+import { RestoreRateLimitBackoffPolicyPanel } from "../features/backups/RestoreRateLimitBackoffPolicyPanel";
 import { RestoreWriteEnginePanel } from "../features/backups/RestoreWriteEnginePanel";
 import { liveAirBridgeService } from "../services/liveAirBridgeService";
 import type { BackupPackageInspectionResult } from "../backend/types";
@@ -33,6 +34,7 @@ import type {
   SchemaRecordOrderPolicyResult,
   SandboxWriteTestingPolicyResult,
   LiveWriteConfirmationPolicyResult,
+  RateLimitBackoffPolicyResult,
 } from "../backend/types";
 
 export function RestorePage() {
@@ -73,6 +75,8 @@ export function RestorePage() {
   const [swtLoading, setSwtLoading] = useState(false);
   const [lwcResult, setLwcResult] = useState<LiveWriteConfirmationPolicyResult | null>(null);
   const [lwcLoading, setLwcLoading] = useState(false);
+  const [rlbResult, setRlbResult] = useState<RateLimitBackoffPolicyResult | null>(null);
+  const [rlbLoading, setRlbLoading] = useState(false);
 
   return (
     <div className="page">
@@ -460,6 +464,30 @@ export function RestorePage() {
                   })
                   .finally(() => {
                     setLwcLoading(false);
+                  });
+              }}
+            />
+
+            <div className="divider" style={{ margin: 0 }} />
+
+            {/* Rate-limit and backoff policy — Gate 9. No writes. No token. No record payload. */}
+            <RestoreRateLimitBackoffPolicyPanel
+              result={rlbResult}
+              loading={rlbLoading}
+              onVerify={() => {
+                setRlbLoading(true);
+                liveAirBridgeService
+                  .verifyRateLimitBackoffPolicy({
+                    targetLabel: targetBaseName ?? undefined,
+                  })
+                  .then((r) => {
+                    setRlbResult(r);
+                  })
+                  .catch(() => {
+                    setRlbResult(null);
+                  })
+                  .finally(() => {
+                    setRlbLoading(false);
                   });
               }}
             />
