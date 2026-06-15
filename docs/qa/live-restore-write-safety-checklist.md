@@ -274,7 +274,34 @@ The `verify_destructive_operation_policy_gate` Tauri command verifies that no de
 
 ---
 
-## Gate 12 — No Destructive Operations
+## Gate 12 — Write Phase Ordering Policy (implemented)
+
+- [x] **`verify_write_phase_ordering_policy()` implemented.** Runs 10 checks: WPO-01 through WPO-10.
+- [x] **WPO-01 (write gate disabled) always passes.** `evaluate_write_gate()` unconditionally returns `Disabled`.
+- [x] **WPO-02 (phase list declared) checked.** Missing phase list causes immediate `Blocked` with 2 checks only (short-circuit).
+- [x] **WPO-03 (canonical ordering) enforced.** Any phase appearing before an earlier canonical phase causes `Blocked`.
+- [x] **WPO-04 (prerequisite phases present) enforced.** Active dependent phase without its prerequisite declared causes `Blocked`.
+- [x] **WPO-05 (record_create after schema_verify) enforced.** `record_create` active with `schema_verify` not completed causes `Blocked`.
+- [x] **WPO-06 (linked_record_update after record_verify) enforced.** `linked_record_update` active with `record_verify` not completed causes `Blocked`.
+- [x] **WPO-07 (final_validation after linked_record_verify) enforced.** `final_validation` active with `linked_record_verify` not completed causes `Blocked`.
+- [x] **WPO-08 (no attachment upload or binary phase) enforced.** Upload, binary, or download language in a skip reason causes `Blocked`.
+- [x] **WPO-09 (attachment_metadata_verify skip) checked.** Skipped with metadata-only reason produces `Warning`; not `Blocked`.
+- [x] **WPO-10 (writes remain disabled) always passes.** Compliant policy never enables writes.
+- [x] **`Compliant` status does NOT enable writes.** `writesEnabled` is always `false` in every result branch.
+- [x] **`Compliant` status does NOT introduce a restore success state.** Verified by message and serialization tests.
+- [x] **No token field anywhere in request or result.** Verified by serialization test.
+- [x] **No filesystem path field anywhere in request or result.** Verified by serialization test.
+- [x] **No record payload field anywhere in result.** Verified by serialization test.
+- [x] **`noChangesMade` always `true`.** Checked in all status branches.
+- [x] **`networkWritesAttempted` always `false`.** Checked across all status branches.
+- [x] **No execute button in Gate 12 panel.** Panel renders no execute or write-start control.
+- [x] **No "succeeded" language in panel.** Checked by UI test.
+- [x] **35+ Rust unit tests pass** for write phase ordering policy module.
+- [x] **40+ frontend tests pass** for write phase ordering policy service contract and panel rendering.
+
+---
+
+## Gate 13 — No Destructive Operations
 
 - [ ] **No delete record calls.** Grep confirms no `DELETE /v0/` record endpoint is called anywhere in the write path.
 - [ ] **No delete table calls.** Grep confirms no table deletion API call exists.
@@ -284,7 +311,7 @@ The `verify_destructive_operation_policy_gate` Tauri command verifies that no de
 
 ---
 
-## Gate 11 — Write Phase Ordering
+## Gate 14 — Live Write Phase Sequencing
 
 - [ ] **Tables created before fields.** `CreateTable` operations all complete before any `CreateField` operation begins.
 - [ ] **Fields created before records.** `CreateField` and `DeferLinkedField` operations complete before any `CreateRecordBatch` begins.
@@ -294,7 +321,7 @@ The `verify_destructive_operation_policy_gate` Tauri command verifies that no de
 
 ---
 
-## Gate 12 — Checkpoint Safety
+## Gate 15 — Checkpoint Safety
 
 - [ ] **Checkpoint before each batch.** A durable checkpoint is written before each `CreateRecordBatch` operation begins.
 - [ ] **Checkpoint before second pass.** A durable checkpoint records first-pass completion before `UpdateLinkedRecordBatch` begins.
@@ -303,7 +330,7 @@ The `verify_destructive_operation_policy_gate` Tauri command verifies that no de
 
 ---
 
-## Gate 13 — Rate Limit and Backoff
+## Gate 16 — Rate Limit and Backoff
 
 - [ ] **429 triggers backoff.** A 429 response from the Airtable API pauses the write engine and waits before retrying.
 - [ ] **Initial backoff ≥ 1 000 ms.** The first retry waits at least one second.
@@ -315,7 +342,7 @@ The `verify_destructive_operation_policy_gate` Tauri command verifies that no de
 
 ---
 
-## Gate 14 — Failure Modes
+## Gate 17 — Failure Modes
 
 - [ ] **401 stops execution.** An authentication error stops all further writes. "Token invalid" message shown. No further API calls.
 - [ ] **403 stops execution.** A permission error stops all further writes. "Permission denied" message shown.
@@ -327,7 +354,7 @@ The `verify_destructive_operation_policy_gate` Tauri command verifies that no de
 
 ---
 
-## Gate 15 — Rollback Limitation Notice
+## Gate 18 — Rollback Limitation Notice
 
 - [ ] **Notice shown in UI before confirmation.** Before the user types `"RESTORE BACKUP"`, a notice reads: "Restore cannot be automatically rolled back. If execution fails partway through, the partially-created base must be cleaned up manually."
 - [ ] **Notice not dismissable.** The notice is always visible when the confirmation input is shown — it is not collapsible or behind a toggle.
@@ -335,7 +362,7 @@ The `verify_destructive_operation_policy_gate` Tauri command verifies that no de
 
 ---
 
-## Gate 16 — Final Validation
+## Gate 19 — Final Validation (live execution)
 
 - [ ] **`FinalValidation` phase implemented.** A `FinalValidation` phase exists in the write engine and runs after all record writes complete.
 - [ ] **Record count check.** `FinalValidation` verifies the record count in the target base matches the count in the backup manifest.
@@ -345,7 +372,7 @@ The `verify_destructive_operation_policy_gate` Tauri command verifies that no de
 
 ---
 
-## Gate 17 — Token Safety During Live Writes
+## Gate 20 — Token Safety During Live Writes
 
 - [ ] **Token not in any write engine result.** `RestoreWriteEngineResult` has no token field. `JSON.stringify(result)` does not contain the token string.
 - [ ] **Token not in any job history item.** After a live restore, `list_job_history` response does not contain the token.
@@ -355,7 +382,7 @@ The `verify_destructive_operation_policy_gate` Tauri command verifies that no de
 
 ---
 
-## Gate 18 — Path Safety During Live Writes
+## Gate 21 — Path Safety During Live Writes
 
 - [ ] **Full path not in any result.** `RestoreWriteEngineResult.filename` contains only the basename.
 - [ ] **`Path::file_name()` applied.** Confirmed by code review that all result filenames are derived via `Path::file_name()`.
@@ -364,7 +391,7 @@ The `verify_destructive_operation_policy_gate` Tauri command verifies that no de
 
 ---
 
-## Gate 19 — Attachment Phase Disabled
+## Gate 22 — Attachment Phase Disabled
 
 - [ ] **`AttachmentHandling` phase remains disabled.** The phase produces a disabled-status summary with zero operations.
 - [ ] **No attachment upload API call.** Grep confirms no attachment upload endpoint (`/v0/{baseId}/{tableId}/{recordId}/files` or similar) is called.
@@ -373,7 +400,7 @@ The `verify_destructive_operation_policy_gate` Tauri command verifies that no de
 
 ---
 
-## Gate 20 — No Prohibited Terms in Public Files
+## Gate 23 — No Prohibited Terms in Public Files
 
 - [ ] **Full prohibited terms scan passes.** `grep -RniE 'claude|anthropic|chatgpt|openai|ai-generated|ai-assisted|agent|llm|co-authored|generated with|generated by'` returns no hits in source, docs, or config files.
 

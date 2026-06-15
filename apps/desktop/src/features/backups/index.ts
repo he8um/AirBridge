@@ -10,6 +10,7 @@ export { RestoreLiveWriteConfirmationPolicyPanel } from "./RestoreLiveWriteConfi
 export { RestoreRateLimitBackoffPolicyPanel } from "./RestoreRateLimitBackoffPolicyPanel";
 export { RestoreCheckpointDurabilityPolicyPanel } from "./RestoreCheckpointDurabilityPolicyPanel";
 export { RestoreFinalValidationPolicyPanel } from "./RestoreFinalValidationPolicyPanel";
+export { RestoreWritePhaseOrderingPolicyPanel } from "./RestoreWritePhaseOrderingPolicyPanel";
 export { JobHistoryPanel } from "./JobHistoryPanel";
 export { RestoreRecordImportPlanPanel } from "./RestoreRecordImportPlanPanel";
 export { BackupConfirmationBox } from "./BackupConfirmationBox";

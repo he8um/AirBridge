@@ -9,6 +9,8 @@ export default defineConfig({
     globals: true,
     include: ["src/**/*.{test,spec}.{ts,tsx}"],
     exclude: ["node_modules", "dist", "src-tauri"],
+    maxWorkers: 1,
+    minWorkers: 1,
     coverage: {
       provider: "v8",
       reporter: ["text", "json", "html"],

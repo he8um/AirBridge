@@ -61,6 +61,10 @@ use crate::restore::target_empty_verification::{
 };
 use crate::restore::write_engine::{preview_write_engine, RestoreWriteEngineRequest};
 use crate::restore::write_gate::evaluate_write_gate;
+use crate::restore::write_phase_ordering_policy::{
+    verify_write_phase_ordering_policy, WritePhaseOrderingPolicyRequest,
+    WritePhaseOrderingPolicyResult,
+};
 use crate::restore::write_result::RestoreWriteEngineResult;
 
 #[tauri::command]
@@ -608,6 +612,24 @@ pub fn verify_final_validation_policy_gate(
     request: FinalValidationPolicyRequest,
 ) -> FinalValidationPolicyResult {
     verify_final_validation_policy(&request)
+}
+
+/// Verify write phase ordering policy (Gate 12).
+///
+/// Safety invariants:
+/// - No Airtable API calls are made.
+/// - No token accepted or returned.
+/// - No record payload accepted or returned.
+/// - no_changes_made is always true.
+/// - network_writes_attempted is always false.
+/// - writes_enabled is always false.
+/// - Compliant status does NOT enable restore writes.
+/// - Compliant status does NOT introduce a restore success state.
+#[tauri::command]
+pub fn verify_write_phase_ordering_policy_gate(
+    request: WritePhaseOrderingPolicyRequest,
+) -> WritePhaseOrderingPolicyResult {
+    verify_write_phase_ordering_policy(&request)
 }
 
 #[cfg(test)]

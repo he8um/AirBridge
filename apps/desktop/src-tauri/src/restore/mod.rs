@@ -38,6 +38,7 @@ pub mod target_empty_verification;
 pub mod warnings;
 pub mod write_engine;
 pub mod write_gate;
+pub mod write_phase_ordering_policy;
 pub mod write_result;
 pub mod write_safety;
 pub mod write_safety_contract;

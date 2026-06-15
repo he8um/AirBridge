@@ -771,6 +771,59 @@ If AirBridge supports user-configured field redaction:
 
 ---
 
+## Restore Write Phase Ordering Policy Safety (Gate 12)
+
+**WPO-SEC-01: No token accepted.**
+- The `verify_write_phase_ordering_policy_gate` Tauri command accepts `WritePhaseOrderingPolicyRequest` which has no `token` field.
+- The `RestoreWritePhaseOrderingPolicyPanel` component renders no token input field.
+- No token flows through the write phase ordering policy code path.
+
+**WPO-SEC-02: No Airtable API calls.**
+- The policy evaluator reads only from the declared phase list in memory.
+- No HTTP client is constructed or called during policy verification.
+- Network monitoring during a phase ordering policy check shows zero connections to `api.airtable.com`.
+
+**WPO-SEC-03: No write operations.**
+- The `verify_write_phase_ordering_policy` function performs no Airtable writes, no filesystem writes, and no database writes.
+- `noChangesMade` is always `true`. `networkWritesAttempted` is always `false`.
+
+**WPO-SEC-04: No record payload in any result field.**
+- `WritePhaseOrderingPolicyResult` has no `fields`, `records`, `recordId`, or `payload` field.
+- The per-phase summary entries contain only kind, status, canonical position, and optional skip reason — no record data.
+- Rust unit tests assert the serialized JSON contains no `"fields"` or `"recordId"` keys.
+
+**WPO-SEC-05: No full path in any field.**
+- `WritePhaseOrderingPolicyRequest` has no filesystem path field.
+- `WritePhaseOrderingPolicyResult` has no filesystem path field.
+- Skip reasons in declared phases are not validated as paths — they are free-form human-readable strings.
+- Rust unit tests assert the serialized JSON contains no `/Users/` or `/home/` patterns.
+
+**WPO-SEC-06: `noChangesMade` always true.**
+- All result branches (Compliant, Warning, Blocked) set `no_changes_made: true`.
+- Rust unit tests assert this for every code path.
+
+**WPO-SEC-07: No execute button.**
+- The `RestoreWritePhaseOrderingPolicyPanel` renders only a "Verify write phase ordering policy" button.
+- No "Execute restore", "Start restore", or "Run restore" button exists in this panel.
+- Frontend tests assert all button labels do not match execute/start/run restore patterns.
+
+**WPO-SEC-08: Compliant status does not enable writes.**
+- A `Compliant` result from `verify_write_phase_ordering_policy` does not change `evaluate_write_gate()` behavior.
+- `writesEnabled` is always `false` in `WritePhaseOrderingPolicyResult`.
+- Rust unit tests assert `writesEnabled: false` in every result branch including `Compliant`.
+
+**WPO-SEC-09: Compliant status does not introduce a restore success state.**
+- The compliant result message explicitly states writes remain disabled.
+- No "succeeded" or "restore complete" language appears in any result branch.
+- Frontend tests assert no "succeeded" text is visible in the panel for any status.
+
+**WPO-SEC-10: No-phase-list causes immediate blocked (short-circuit).**
+- When no `phases` field is provided, the function returns after WPO-02 with 2 checks and `Blocked` status.
+- No subsequent check fields are evaluated.
+- Rust unit tests assert `checks.len() == 2` in the no-phases case.
+
+---
+
 ## Restore Schema Creation Plan Safety (V0.1)
 
 **Goal:** Confirm that the schema creation planning flow makes no Airtable API calls, requires no token, creates no Airtable tables or fields, and always returns `noChangesMade: true`.

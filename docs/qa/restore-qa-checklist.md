@@ -759,6 +759,62 @@ After completing a restore, perform the following manual checks in Airtable:
 
 ---
 
+## Restore Write Phase Ordering Policy Checklist (Gate 12)
+
+### Before testing
+
+- [ ] Confirm `verify_write_phase_ordering_policy_gate` is registered in the Tauri invoke handler.
+- [ ] Confirm `RestoreWritePhaseOrderingPolicyPanel` is rendered on the Restore page after the final validation policy section.
+- [ ] Confirm no execute button is present in the panel.
+- [ ] Confirm no token input field (`type="password"` or `name="token"`) is present.
+
+### Panel behavior
+
+- [ ] A writes-disabled notice is always shown in the write phase ordering policy section.
+- [ ] The verify button is enabled and calls `verifyWritePhaseOrderingPolicy` when clicked.
+- [ ] While loading, the verify button is disabled and shows a loading label.
+
+### Result display
+
+- [ ] Status badge shows `compliant`, `warning`, or `blocked` correctly.
+- [ ] The result message is shown beside the status badge.
+- [ ] The checks table shows 10 check rows for a complete canonical phase list.
+- [ ] The checks table shows 2 check rows when no phase list is declared (short-circuit).
+- [ ] Each check row shows the check ID, status badge, and message.
+- [ ] Phase summary table shows one row per declared phase, including kind, status, canonical position, and skip reason.
+- [ ] Phase summary is not shown when no phases are declared.
+- [ ] A safety summary showing `noChangesMade`, `writesEnabled`, and `networkWritesAttempted` is shown.
+- [ ] A "No changes made." notice is shown.
+
+### Status scenarios
+
+- [ ] Canonical phase list (all 9 phases, all completed) returns `compliant`.
+- [ ] No phases declared returns `blocked` with 2 checks.
+- [ ] Out-of-order phases return `blocked` (WPO-03 failed).
+- [ ] `record_create` active without `schema_verify` completed returns `blocked` (WPO-05 failed).
+- [ ] `linked_record_update` active without `record_verify` completed returns `blocked` (WPO-06 failed).
+- [ ] `final_validation` active without `linked_record_verify` completed returns `blocked` (WPO-07 failed).
+- [ ] Attachment upload language in a skip reason returns `blocked` (WPO-08 failed).
+- [ ] `attachment_metadata_verify` skipped with metadata-only reason returns `warning` (WPO-09 warning).
+- [ ] `attachment_metadata_verify` skipped without reason returns `warning`.
+- [ ] A `compliant` result shows the `wpo-compliant-notice`, which says "writes remain disabled".
+- [ ] A `warning` result shows the `wpo-warning-notice`.
+- [ ] A `blocked` result shows the `wpo-blocked-notice`.
+
+### Safety invariants
+
+- [ ] `noChangesMade` is `true` in every write phase ordering policy result.
+- [ ] `writesEnabled` is `false` in every write phase ordering policy result — including `compliant`.
+- [ ] `networkWritesAttempted` is `false` in every write phase ordering policy result.
+- [ ] The policy request type has no `token` field.
+- [ ] The policy result has no `token` field.
+- [ ] The policy result contains no full filesystem path.
+- [ ] The policy result contains no record payload field.
+- [ ] A `compliant` result does NOT enable restore writes.
+- [ ] A `compliant` result does NOT introduce a restore success state.
+
+---
+
 ## Write Engine Skeleton Checklist
 
 ### Before testing

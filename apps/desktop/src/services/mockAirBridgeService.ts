@@ -72,6 +72,9 @@ import type {
   FinalValidationPolicyRequest,
   FinalValidationPolicyResult,
   FinalValidationPolicyStatus,
+  WritePhaseOrderingPolicyRequest,
+  WritePhaseOrderingPolicyResult,
+  WritePhaseOrderingPolicyStatus,
   RunBackupCommandResponse,
   RecordWriteRequestPlanRequest,
   RecordWriteRequestPlanResult,
@@ -3533,6 +3536,326 @@ function verifyFinalValidationPolicyImpl(
   });
 }
 
+function verifyWritePhaseOrderingPolicyImpl(
+  request: WritePhaseOrderingPolicyRequest,
+): Promise<WritePhaseOrderingPolicyResult> {
+  const checks: WritePhaseOrderingPolicyResult["checks"] = [];
+
+  // WPO-01: Write gate disabled (always passes)
+  checks.push({
+    checkId: "WPO-01",
+    label: "write-gate-disabled",
+    status: "passed",
+    message: "Restore write gate is disabled. No live writes are possible.",
+  });
+
+  // WPO-02: Phase list declared
+  const phases = request.phases;
+  if (!phases) {
+    checks.push({
+      checkId: "WPO-02",
+      label: "phase-list-declared",
+      status: "failed",
+      message:
+        "No write phase list declared. A phase list is required before any live write path is considered.",
+      remediation: "Declare a list of WritePhaseOrderingPolicyRequest phases in canonical order.",
+    });
+    return Promise.resolve({
+      status: "blocked" as WritePhaseOrderingPolicyStatus,
+      checks,
+      message:
+        "Write phase ordering is blocked. Resolve all phase ordering violations before any live write is considered. Restore writes remain disabled.",
+      noChangesMade: true,
+      networkWritesAttempted: false,
+      writesEnabled: false,
+    });
+  }
+
+  checks.push({
+    checkId: "WPO-02",
+    label: "phase-list-declared",
+    status: "passed",
+    message: `Write phase list is declared with ${phases.length} phases.`,
+  });
+
+  const CANONICAL_ORDER = [
+    "preflight",
+    "schemaCreate",
+    "schemaVerify",
+    "recordCreate",
+    "recordVerify",
+    "linkedRecordUpdate",
+    "linkedRecordVerify",
+    "attachmentMetadataVerify",
+    "finalValidation",
+  ] as const;
+
+  const canonicalPos = (kind: string): number =>
+    CANONICAL_ORDER.indexOf(kind as (typeof CANONICAL_ORDER)[number]);
+
+  const isActive = (status: string) => status === "ready" || status === "completed";
+  const findStatus = (kind: string) => phases.find((p) => p.kind === kind)?.status;
+
+  // WPO-03: Canonical ordering
+  let orderingViolation: string | null = null;
+  let lastPos = -1;
+  for (const phase of phases) {
+    const pos = canonicalPos(phase.kind);
+    if (pos >= 0) {
+      if (pos < lastPos) {
+        orderingViolation = `Phase '${phase.kind}' (canonical position ${pos + 1}) appears after a later canonical phase, which violates the required order.`;
+        break;
+      }
+      lastPos = pos;
+    }
+  }
+
+  if (orderingViolation) {
+    checks.push({
+      checkId: "WPO-03",
+      label: "canonical-order",
+      status: "failed",
+      message: orderingViolation,
+      remediation:
+        "Reorder the phase list to match the canonical sequence: preflight → schema_create → schema_verify → record_create → record_verify → linked_record_update → linked_record_verify → attachment_metadata_verify → final_validation.",
+    });
+  } else {
+    checks.push({
+      checkId: "WPO-03",
+      label: "canonical-order",
+      status: "passed",
+      message: "Declared phases respect the canonical ordering.",
+    });
+  }
+
+  // WPO-04: Prerequisite phases present
+  const prereqPairs: Array<[string, string, string]> = [
+    ["schemaCreate", "schemaVerify", "schema_verify requires schema_create"],
+    ["schemaVerify", "recordCreate", "record_create requires schema_verify"],
+    ["recordCreate", "recordVerify", "record_verify requires record_create"],
+    ["recordVerify", "linkedRecordUpdate", "linked_record_update requires record_verify"],
+    [
+      "linkedRecordUpdate",
+      "linkedRecordVerify",
+      "linked_record_verify requires linked_record_update",
+    ],
+    ["linkedRecordVerify", "finalValidation", "final_validation requires linked_record_verify"],
+  ];
+
+  let prereqViolation: string | null = null;
+  for (const [prereq, dependent, description] of prereqPairs) {
+    const depStatus = findStatus(dependent);
+    if (depStatus && isActive(depStatus) && !findStatus(prereq)) {
+      prereqViolation = `Phase '${dependent}' is active but its prerequisite '${prereq}' is not declared. ${description}.`;
+      break;
+    }
+  }
+
+  if (prereqViolation) {
+    checks.push({
+      checkId: "WPO-04",
+      label: "prerequisite-phases-present",
+      status: "failed",
+      message: prereqViolation,
+      remediation: "Ensure all prerequisite phases are declared before their dependent phases.",
+    });
+  } else {
+    checks.push({
+      checkId: "WPO-04",
+      label: "prerequisite-phases-present",
+      status: "passed",
+      message: "All active phases have their prerequisites declared.",
+    });
+  }
+
+  // WPO-05: record_create not active before schema_verify completed
+  const recordCreateActive = isActive(findStatus("recordCreate") ?? "");
+  const schemaVerifyCompleted = findStatus("schemaVerify") === "completed";
+  if (recordCreateActive && !schemaVerifyCompleted) {
+    checks.push({
+      checkId: "WPO-05",
+      label: "record-create-after-schema-verify",
+      status: "failed",
+      message:
+        "record_create is active but schema_verify is not completed. Records cannot be created before the schema is verified.",
+      remediation:
+        "Ensure schema_verify reaches Completed status before record_create is set to Ready or Completed.",
+    });
+  } else {
+    checks.push({
+      checkId: "WPO-05",
+      label: "record-create-after-schema-verify",
+      status: "passed",
+      message: "record_create ordering relative to schema_verify is safe.",
+    });
+  }
+
+  // WPO-06: linked_record_update not active before record_verify completed
+  const linkedUpdateActive = isActive(findStatus("linkedRecordUpdate") ?? "");
+  const recordVerifyCompleted = findStatus("recordVerify") === "completed";
+  if (linkedUpdateActive && !recordVerifyCompleted) {
+    checks.push({
+      checkId: "WPO-06",
+      label: "linked-update-after-record-verify",
+      status: "failed",
+      message:
+        "linked_record_update is active but record_verify is not completed. Linked record updates cannot begin before first-pass records are verified.",
+      remediation:
+        "Ensure record_verify reaches Completed status before linked_record_update is set to Ready or Completed.",
+    });
+  } else {
+    checks.push({
+      checkId: "WPO-06",
+      label: "linked-update-after-record-verify",
+      status: "passed",
+      message: "linked_record_update ordering relative to record_verify is safe.",
+    });
+  }
+
+  // WPO-07: final_validation not active before linked_record_verify completed
+  const finalValidationActive = isActive(findStatus("finalValidation") ?? "");
+  const linkedVerifyCompleted = findStatus("linkedRecordVerify") === "completed";
+  if (finalValidationActive && !linkedVerifyCompleted) {
+    checks.push({
+      checkId: "WPO-07",
+      label: "final-validation-after-linked-verify",
+      status: "failed",
+      message:
+        "final_validation is active but linked_record_verify is not completed. Final validation cannot run before all linked record updates are verified.",
+      remediation:
+        "Ensure linked_record_verify reaches Completed status before final_validation is set to Ready or Completed.",
+    });
+  } else {
+    checks.push({
+      checkId: "WPO-07",
+      label: "final-validation-after-linked-verify",
+      status: "passed",
+      message: "final_validation ordering relative to linked_record_verify is safe.",
+    });
+  }
+
+  // WPO-08: No attachment upload or binary handling phase.
+  // For AttachmentMetadataVerify: only block on unsafe *required* language.
+  // For all other phases: block on any upload/binary/download language.
+  const unsafeMetadataLanguage = (r: string) => {
+    const l = r.toLowerCase();
+    return (
+      l.includes("upload required") ||
+      l.includes("binary upload") ||
+      l.includes("download required") ||
+      l.includes("binary download") ||
+      l.includes("file transfer") ||
+      l.includes("attachment body")
+    );
+  };
+  const unsafeGeneralLanguage = (r: string) => {
+    const l = r.toLowerCase();
+    return l.includes("upload") || l.includes("binary") || l.includes("download");
+  };
+  const hasUploadLanguage = phases.some((p) => {
+    const r = p.skipReason ?? "";
+    if (p.kind === "attachmentMetadataVerify") {
+      return unsafeMetadataLanguage(r);
+    }
+    return unsafeGeneralLanguage(r);
+  });
+  if (hasUploadLanguage) {
+    checks.push({
+      checkId: "WPO-08",
+      label: "no-attachment-upload-phase",
+      status: "failed",
+      message:
+        "A phase skip reason contains attachment upload, binary, or download language. Attachment file upload and binary handling are not permitted in the restore write pipeline.",
+      remediation:
+        "Remove any attachment upload or binary download phase. The restore pipeline supports only attachment metadata validation (no file download).",
+    });
+  } else {
+    checks.push({
+      checkId: "WPO-08",
+      label: "no-attachment-upload-phase",
+      status: "passed",
+      message: "No attachment upload or binary handling phase is declared.",
+    });
+  }
+
+  // WPO-09: attachment_metadata_verify skip warning
+  const attachmentPhase = phases.find((p) => p.kind === "attachmentMetadataVerify");
+  if (attachmentPhase?.status === "skipped") {
+    const hasMetadataReason =
+      attachmentPhase.skipReason?.toLowerCase().includes("metadata") ?? false;
+    if (hasMetadataReason) {
+      checks.push({
+        checkId: "WPO-09",
+        label: "attachment-metadata-verify-scope",
+        status: "warning",
+        message:
+          "attachment_metadata_verify is skipped with a metadata-only reason. Attachment file content integrity cannot be confirmed. Manual re-attachment is required after restore.",
+        remediation:
+          "Note that attachment file content is not validated. Plan for manual re-attachment of all attachment fields after restore.",
+      });
+    } else {
+      checks.push({
+        checkId: "WPO-09",
+        label: "attachment-metadata-verify-scope",
+        status: "warning",
+        message:
+          "attachment_metadata_verify is skipped without a metadata-only explanation. Provide a skip reason to document why attachment verification was omitted.",
+        remediation:
+          "Add a skip_reason to the attachment_metadata_verify phase explaining why it was skipped.",
+      });
+    }
+  } else {
+    checks.push({
+      checkId: "WPO-09",
+      label: "attachment-metadata-verify-scope",
+      status: "passed",
+      message: "attachment_metadata_verify is declared and not skipped.",
+    });
+  }
+
+  // WPO-10: Writes remain disabled (always passes)
+  checks.push({
+    checkId: "WPO-10",
+    label: "writes-remain-disabled",
+    status: "passed",
+    message:
+      "Restore write gate remains disabled. Write phase ordering policy compliance does not enable writes.",
+  });
+
+  const hasBlocked = checks.some((c) => c.status === "failed");
+  const hasWarning = checks.some((c) => c.status === "warning");
+  const status: WritePhaseOrderingPolicyStatus = hasBlocked
+    ? "blocked"
+    : hasWarning
+      ? "warning"
+      : "compliant";
+
+  const targetSuffix = request.targetLabel ? ` for target "${request.targetLabel}"` : "";
+  const message =
+    status === "compliant"
+      ? `Write phase ordering is compliant${targetSuffix}. All phases are declared in canonical order with no unsafe transitions. Restore writes remain disabled — compliance does not enable writes or introduce a restore success state.`
+      : status === "warning"
+        ? `Write phase ordering has warnings${targetSuffix}. Review skipped or incomplete phases before proceeding. Restore writes remain disabled.`
+        : `Write phase ordering is blocked${targetSuffix}. Resolve all phase ordering violations before any live write is considered. Restore writes remain disabled.`;
+
+  const phaseSummary = phases.map((p) => ({
+    kind: p.kind,
+    status: p.status,
+    canonicalPosition: canonicalPos(p.kind) + 1,
+    skipReason: p.skipReason,
+  }));
+
+  return Promise.resolve({
+    status,
+    checks,
+    message,
+    phaseSummary,
+    noChangesMade: true,
+    networkWritesAttempted: false,
+    writesEnabled: false,
+  });
+}
+
 export const mockAirBridgeService: AirBridgeService = {
   listConnections,
   listWorkspaces,
@@ -3575,4 +3898,5 @@ export const mockAirBridgeService: AirBridgeService = {
   verifyRateLimitBackoffPolicy: verifyRateLimitBackoffPolicyImpl,
   verifyCheckpointDurabilityPolicy: verifyCheckpointDurabilityPolicyImpl,
   verifyFinalValidationPolicy: verifyFinalValidationPolicyImpl,
+  verifyWritePhaseOrderingPolicy: verifyWritePhaseOrderingPolicyImpl,
 };

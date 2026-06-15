@@ -51,6 +51,8 @@ import type {
   CheckpointDurabilityPolicyResult,
   FinalValidationPolicyRequest,
   FinalValidationPolicyResult,
+  WritePhaseOrderingPolicyRequest,
+  WritePhaseOrderingPolicyResult,
   RunBackupCommandRequest,
   RunBackupCommandResponse,
   SandboxVerificationRequest,
@@ -509,6 +511,14 @@ export async function verifyFinalValidationPolicy(
   request: FinalValidationPolicyRequest,
 ): Promise<FinalValidationPolicyResult | null> {
   return safeInvoke<FinalValidationPolicyResult>("verify_final_validation_policy_gate", {
+    request,
+  });
+}
+
+export async function verifyWritePhaseOrderingPolicy(
+  request: WritePhaseOrderingPolicyRequest,
+): Promise<WritePhaseOrderingPolicyResult | null> {
+  return safeInvoke<WritePhaseOrderingPolicyResult>("verify_write_phase_ordering_policy_gate", {
     request,
   });
 }

@@ -1368,6 +1368,66 @@ These test cases cover the command contract layer: confirmation enforcement, out
 
 ---
 
+## Write Phase Ordering Policy (Gate 12)
+
+**TC-WPO-01: Writes-disabled notice always visible**
+
+- Preconditions: Restore page open.
+- Steps:
+  1. Scroll to the "Gate 12 — Write Phase Ordering Policy" section.
+- Expected result: A notice reading "Live restore writes are disabled" is shown. No execute button is present. No token field is present.
+
+**TC-WPO-02: No phase list declared returns blocked (2 checks)**
+
+- Preconditions: Restore page; invoke `verifyWritePhaseOrderingPolicy` with no `phases` field.
+- Steps:
+  1. Click verify; observe result.
+- Expected result: Status is `blocked`. Exactly 2 checks shown (WPO-01, WPO-02). WPO-01 passes. WPO-02 fails with "No write phase list declared" message.
+
+**TC-WPO-03: Canonical phase list returns compliant (10 checks)**
+
+- Preconditions: Restore page; invoke with all 9 phases in canonical order, all `completed` or `planned`.
+- Steps:
+  1. Click verify; observe result.
+- Expected result: Status is `compliant`. 10 checks shown. All check rows show `passed`. Phase summary shows 9 rows. Compliant notice says "writes remain disabled".
+
+**TC-WPO-04: Attachment_metadata_verify skipped with metadata-only reason produces warning**
+
+- Preconditions: Restore page; declare all 9 phases but set `attachmentMetadataVerify` to `skipped` with `skipReason: "metadata-only"`.
+- Steps:
+  1. Click verify; observe result.
+- Expected result: Status is `warning`. WPO-09 shows `warning`. Warning notice is shown. Safety summary shows `writesEnabled: no`.
+
+**TC-WPO-05: Unsafe ordering transition is blocked**
+
+- Preconditions: Restore page; declare phase list with `recordCreate` as `ready` and `schemaVerify` as `planned` (not completed).
+- Steps:
+  1. Click verify; observe result.
+- Expected result: Status is `blocked`. WPO-05 shows `failed` with message about schema_verify prerequisite. Blocked notice is shown.
+
+**TC-WPO-06: No execute button or token input**
+
+- Preconditions: Restore page; Gate 12 panel visible.
+- Steps:
+  1. Inspect all buttons and input fields in the panel.
+- Expected result: Only a "Verify write phase ordering policy" button is present. No "Execute", "Start restore", or "Run" button. No password or token input field.
+
+**TC-WPO-07: Compliant result does not enable writes**
+
+- Preconditions: Restore page; canonical phases return `compliant`.
+- Steps:
+  1. Observe the safety summary and compliant notice.
+- Expected result: "Writes enabled: no" is shown. Compliant notice explicitly states "compliance does not start any write operation".
+
+**TC-WPO-08: Compliant result does not introduce restore success state**
+
+- Preconditions: Restore page; canonical phases return `compliant`.
+- Steps:
+  1. Inspect the Write Phase Ordering Policy panel and all visible text.
+- Expected result: No text containing "Restore complete", "Restore succeeded", "succeeded", or "success" is visible anywhere in the write phase ordering policy area.
+
+---
+
 ## Write Engine Skeleton
 
 **TC-WE-01: Write engine disabled notice is always visible**

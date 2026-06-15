@@ -55,6 +55,8 @@ import type {
   CheckpointDurabilityPolicyResult,
   FinalValidationPolicyRequest,
   FinalValidationPolicyResult,
+  WritePhaseOrderingPolicyRequest,
+  WritePhaseOrderingPolicyResult,
   RestoreWriteEngineRequest,
   RestoreWriteEngineResult,
   RunBackupCommandRequest,
@@ -340,4 +342,18 @@ export interface AirBridgeService {
   verifyFinalValidationPolicy(
     request: FinalValidationPolicyRequest,
   ): Promise<FinalValidationPolicyResult>;
+  /**
+   * Verify write phase ordering policy (Gate 12).
+   * - No Airtable API calls.
+   * - No token accepted or returned.
+   * - No record payload accepted or returned.
+   * - writesEnabled is always false.
+   * - noChangesMade is always true.
+   * - networkWritesAttempted is always false.
+   * - Compliant does NOT enable restore writes.
+   * - Compliant does NOT introduce a restore success state.
+   */
+  verifyWritePhaseOrderingPolicy(
+    request: WritePhaseOrderingPolicyRequest,
+  ): Promise<WritePhaseOrderingPolicyResult>;
 }

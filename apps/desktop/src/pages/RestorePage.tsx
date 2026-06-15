@@ -17,6 +17,7 @@ import { RestoreLiveWriteConfirmationPolicyPanel } from "../features/backups/Res
 import { RestoreRateLimitBackoffPolicyPanel } from "../features/backups/RestoreRateLimitBackoffPolicyPanel";
 import { RestoreCheckpointDurabilityPolicyPanel } from "../features/backups/RestoreCheckpointDurabilityPolicyPanel";
 import { RestoreFinalValidationPolicyPanel } from "../features/backups/RestoreFinalValidationPolicyPanel";
+import { RestoreWritePhaseOrderingPolicyPanel } from "../features/backups/RestoreWritePhaseOrderingPolicyPanel";
 import { RestoreWriteEnginePanel } from "../features/backups/RestoreWriteEnginePanel";
 import { liveAirBridgeService } from "../services/liveAirBridgeService";
 import type { BackupPackageInspectionResult } from "../backend/types";
@@ -39,6 +40,7 @@ import type {
   RateLimitBackoffPolicyResult,
   CheckpointDurabilityPolicyResult,
   FinalValidationPolicyResult,
+  WritePhaseOrderingPolicyResult,
 } from "../backend/types";
 
 export function RestorePage() {
@@ -85,6 +87,8 @@ export function RestorePage() {
   const [cdpLoading, setCdpLoading] = useState(false);
   const [fvpResult, setFvpResult] = useState<FinalValidationPolicyResult | null>(null);
   const [fvpLoading, setFvpLoading] = useState(false);
+  const [wpoResult, setWpoResult] = useState<WritePhaseOrderingPolicyResult | null>(null);
+  const [wpoLoading, setWpoLoading] = useState(false);
 
   return (
     <div className="page">
@@ -544,6 +548,30 @@ export function RestorePage() {
                   })
                   .finally(() => {
                     setFvpLoading(false);
+                  });
+              }}
+            />
+
+            <div className="divider" style={{ margin: 0 }} />
+
+            {/* Write phase ordering policy — Gate 12. No writes. No token. No record payload. No success state. */}
+            <RestoreWritePhaseOrderingPolicyPanel
+              result={wpoResult}
+              loading={wpoLoading}
+              onVerify={() => {
+                setWpoLoading(true);
+                liveAirBridgeService
+                  .verifyWritePhaseOrderingPolicy({
+                    targetLabel: targetBaseName ?? undefined,
+                  })
+                  .then((r) => {
+                    setWpoResult(r);
+                  })
+                  .catch(() => {
+                    setWpoResult(null);
+                  })
+                  .finally(() => {
+                    setWpoLoading(false);
                   });
               }}
             />

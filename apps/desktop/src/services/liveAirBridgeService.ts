@@ -55,6 +55,8 @@ import type {
   CheckpointDurabilityPolicyResult,
   FinalValidationPolicyRequest,
   FinalValidationPolicyResult,
+  WritePhaseOrderingPolicyRequest,
+  WritePhaseOrderingPolicyResult,
   RestoreWriteEngineRequest,
   RestoreWriteEngineResult,
   RunBackupCommandRequest,
@@ -654,6 +656,23 @@ async function verifyFinalValidationPolicy(
   return result;
 }
 
+async function verifyWritePhaseOrderingPolicy(
+  request: WritePhaseOrderingPolicyRequest,
+): Promise<WritePhaseOrderingPolicyResult> {
+  const result = await commands.verifyWritePhaseOrderingPolicy(request);
+  if (result === null) {
+    return {
+      status: "blocked",
+      checks: [],
+      message: "Write phase ordering policy check is not available in this context.",
+      noChangesMade: true,
+      networkWritesAttempted: false,
+      writesEnabled: false,
+    };
+  }
+  return result;
+}
+
 export const liveAirBridgeService: AirBridgeService = {
   listConnections,
   listWorkspaces,
@@ -696,4 +715,5 @@ export const liveAirBridgeService: AirBridgeService = {
   verifyRateLimitBackoffPolicy,
   verifyCheckpointDurabilityPolicy,
   verifyFinalValidationPolicy,
+  verifyWritePhaseOrderingPolicy,
 };

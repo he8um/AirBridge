@@ -2035,3 +2035,88 @@ export interface FinalValidationPolicyResult {
   networkWritesAttempted: boolean;
   writesEnabled: boolean;
 }
+
+// ── Gate 12 — Write Phase Ordering Policy ─────────────────────────────────────
+
+export type WritePhaseOrderingPolicyStatus = "compliant" | "warning" | "blocked";
+export type WritePhaseOrderingCheckStatus = "passed" | "warning" | "failed";
+
+/** The canonical write phases for the WPO gate, in execution order. */
+export type WpoPhaseKind =
+  | "preflight"
+  | "schemaCreate"
+  | "schemaVerify"
+  | "recordCreate"
+  | "recordVerify"
+  | "linkedRecordUpdate"
+  | "linkedRecordVerify"
+  | "attachmentMetadataVerify"
+  | "finalValidation";
+
+export type WpoPhaseStatus =
+  | "notStarted"
+  | "planned"
+  | "ready"
+  | "blocked"
+  | "completed"
+  | "skipped";
+
+/**
+ * One declared phase entry in the write phase ordering request.
+ * - No token field.
+ * - No filesystem path field.
+ * - No record payload field.
+ */
+export interface WpoPhaseDeclaration {
+  kind: WpoPhaseKind;
+  status: WpoPhaseStatus;
+  skipReason?: string;
+}
+
+/**
+ * Input to the write phase ordering policy gate.
+ * - No token field.
+ * - No filesystem path field.
+ * - No record payload field.
+ */
+export interface WritePhaseOrderingPolicyRequest {
+  phases?: WpoPhaseDeclaration[];
+  targetLabel?: string;
+}
+
+export interface WritePhaseOrderingCheck {
+  checkId: string;
+  label: string;
+  status: WritePhaseOrderingCheckStatus;
+  message: string;
+  remediation?: string;
+}
+
+/** Read-only per-phase summary, safe for display. */
+export interface WritePhaseOrderingSummaryEntry {
+  kind: WpoPhaseKind;
+  status: WpoPhaseStatus;
+  canonicalPosition: number;
+  skipReason?: string;
+}
+
+/**
+ * Result from verify_write_phase_ordering_policy_gate.
+ * - No token field.
+ * - No filesystem path field.
+ * - No record payload field.
+ * - writesEnabled is always false.
+ * - noChangesMade is always true.
+ * - networkWritesAttempted is always false.
+ * - Compliant status does NOT enable restore writes.
+ * - Compliant status does NOT introduce a restore success state.
+ */
+export interface WritePhaseOrderingPolicyResult {
+  status: WritePhaseOrderingPolicyStatus;
+  checks: WritePhaseOrderingCheck[];
+  message: string;
+  phaseSummary?: WritePhaseOrderingSummaryEntry[];
+  noChangesMade: boolean;
+  networkWritesAttempted: boolean;
+  writesEnabled: boolean;
+}
