@@ -65,6 +65,8 @@ import type {
   FinalValidationEnforcementPolicyResult,
   SensitiveDataSafetyPolicyRequest,
   SensitiveDataSafetyPolicyResult,
+  AttachmentPhaseDisabledPolicyRequest,
+  AttachmentPhaseDisabledPolicyResult,
   RestoreWriteEngineRequest,
   RestoreWriteEngineResult,
   RunBackupCommandRequest,
@@ -749,6 +751,23 @@ async function verifySensitiveDataSafetyPolicy(
   return result;
 }
 
+async function verifyAttachmentPhaseDisabledPolicy(
+  request: AttachmentPhaseDisabledPolicyRequest,
+): Promise<AttachmentPhaseDisabledPolicyResult> {
+  const result = await commands.verifyAttachmentPhaseDisabledPolicy(request);
+  if (result === null) {
+    return {
+      status: "blocked",
+      checks: [],
+      message: "Attachment phase disabled policy check is not available in this context.",
+      noChangesMade: true,
+      networkWritesAttempted: false,
+      writesEnabled: false,
+    };
+  }
+  return result;
+}
+
 export const liveAirBridgeService: AirBridgeService = {
   listConnections,
   listWorkspaces,
@@ -796,4 +815,5 @@ export const liveAirBridgeService: AirBridgeService = {
   verifyRollbackLimitationPolicy,
   verifyFinalValidationEnforcementPolicy,
   verifySensitiveDataSafetyPolicy,
+  verifyAttachmentPhaseDisabledPolicy,
 };

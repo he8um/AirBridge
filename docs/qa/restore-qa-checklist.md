@@ -1062,6 +1062,73 @@ After completing a restore, perform the following manual checks in Airtable:
 
 ---
 
+## Restore Attachment Phase Disabled Policy Checklist (Gate 17)
+
+### Before testing
+
+- [ ] Confirm `verify_attachment_phase_disabled_policy_gate` is registered in the Tauri invoke handler.
+- [ ] Confirm `RestoreAttachmentPhaseDisabledPolicyPanel` is rendered on the Restore page after the sensitive data safety policy section.
+- [ ] Confirm no execute button is present in the panel.
+- [ ] Confirm no token input field (`type="password"` or `name="token"`) is present.
+- [ ] Confirm no binary download, upload, URL fetch, or transfer button is present.
+
+### Panel behavior
+
+- [ ] A writes-disabled notice is always shown in the attachment phase disabled policy section.
+- [ ] The notice mentions that binary attachment download, upload, fetch, and transfer are not permitted.
+- [ ] A metadata-only notice is always shown, stating that attachment handling is metadata-only.
+- [ ] The verify button is enabled and calls `verifyAttachmentPhaseDisabledPolicy` when clicked.
+- [ ] While loading, the verify button is disabled and shows a loading label.
+
+### Result display
+
+- [ ] Status badge shows `compliant`, `warning`, or `blocked` correctly.
+- [ ] The result message is shown beside the status badge.
+- [ ] A "Writes disabled" tag is always shown.
+- [ ] A "Metadata only" tag is always shown.
+- [ ] The checks list shows 16 check rows for a complete plan.
+- [ ] The checks list shows 2 check rows when no plan is declared (short-circuit).
+- [ ] Each check row shows the check ID, status badge, label, and message.
+- [ ] Remediation text is shown for any check with a `remediation` field.
+- [ ] Phase summary section is shown when the plan is present (non-short-circuit).
+- [ ] Phase summary shows all 8 boolean flags and blocked-operations count.
+- [ ] Phase summary is not shown when no plan is declared.
+- [ ] Operation class table is shown listing all 10 operations with permitted/blocked badges.
+- [ ] A "No changes made" footer is shown.
+
+### Status scenarios
+
+- [ ] Complete plan (all flags set correctly) returns `compliant`.
+- [ ] No plan declared returns `blocked` with 2 checks.
+- [ ] `metadataInspectionEnabled: false` returns `blocked` (APD-03 failed).
+- [ ] `metadataVerificationEnabled: false` without skip reason returns `blocked` (APD-04 failed).
+- [ ] `metadataVerificationEnabled: false` with skip reason returns `warning` (APD-04 warning — not blocked).
+- [ ] `binaryHandlingDisabled: false` returns `blocked` (APD-05 through APD-10 failed).
+- [ ] `fieldMutationDisabled: false` returns `blocked` (APD-11 failed).
+- [ ] `urlExposureDisabled: false` returns `blocked` (APD-12 failed).
+- [ ] `phaseRequiredForCompletionDisabled: false` returns `blocked` (APD-13 failed).
+- [ ] `finalValidationTreatsAsMetadataOnly: false` returns `blocked` (APD-14 failed).
+- [ ] Declared binary operation with `planned: true` returns `blocked` (APD-15 failed).
+- [ ] Declared binary operation with `requiredForCompletion: true` returns `blocked` (APD-16 failed).
+- [ ] A `compliant` result message says "writes remain disabled".
+- [ ] A `blocked` result message says "binary attachment operations must remain disabled".
+
+### Safety invariants
+
+- [ ] `noChangesMade` is `true` in every attachment phase disabled policy result.
+- [ ] `writesEnabled` is `false` in every attachment phase disabled policy result — including `compliant`.
+- [ ] `networkWritesAttempted` is `false` in every attachment phase disabled policy result.
+- [ ] The policy request type has no `token` field.
+- [ ] The policy result has no `token` field.
+- [ ] The policy result contains no attachment binary data.
+- [ ] The policy result contains no attachment URL field.
+- [ ] The policy result contains no record payload field.
+- [ ] A `compliant` result does NOT enable restore writes.
+- [ ] A `compliant` result does NOT introduce a restore success state.
+- [ ] A `compliant` result does NOT download, upload, fetch, or transfer any attachment binary.
+
+---
+
 ## Write Engine Skeleton Checklist
 
 ### Before testing

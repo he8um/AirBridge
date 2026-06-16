@@ -1,3 +1,4 @@
+pub mod attachment_phase_disabled_policy;
 pub mod attachment_restore_policy;
 pub mod attachment_upload_policy;
 pub mod checkpoint_durability_policy;

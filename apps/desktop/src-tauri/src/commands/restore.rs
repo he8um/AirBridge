@@ -3,6 +3,10 @@ use crate::models::restore::{
     RestoreCompatibilityWarning, RestoreMode, RestorePlanStatus, RestorePlanSummary,
     WarningSeverity,
 };
+use crate::restore::attachment_phase_disabled_policy::{
+    verify_attachment_phase_disabled_policy, AttachmentPhaseDisabledPolicyRequest,
+    AttachmentPhaseDisabledPolicyResult,
+};
 use crate::restore::attachment_upload_policy::{
     verify_attachment_upload_policy, AttachmentUploadPolicyRequest, AttachmentUploadPolicyResult,
 };
@@ -725,6 +729,29 @@ pub fn verify_sensitive_data_safety_policy_gate(
     request: SensitiveDataSafetyPolicyRequest,
 ) -> SensitiveDataSafetyPolicyResult {
     verify_sensitive_data_safety_policy(&request)
+}
+
+/// Verifies the attachment phase disabled policy for a planned restore write operation.
+///
+/// Safety invariants:
+/// - No Airtable API calls are made.
+/// - No token accepted or returned.
+/// - No filesystem path accepted or returned.
+/// - No attachment URL accepted or returned.
+/// - No record payload accepted or returned.
+/// - No raw HTTP data accepted or returned.
+/// - No attachment binary download, upload, fetch, or transfer is performed.
+/// - writesEnabled is always false.
+/// - noChangesMade is always true.
+/// - networkWritesAttempted is always false.
+/// - Compliant does NOT enable restore writes.
+/// - Compliant does NOT introduce a restore success state.
+/// - Binary attachment restore is out of scope.
+#[tauri::command]
+pub fn verify_attachment_phase_disabled_policy_gate(
+    request: AttachmentPhaseDisabledPolicyRequest,
+) -> AttachmentPhaseDisabledPolicyResult {
+    verify_attachment_phase_disabled_policy(&request)
 }
 
 #[cfg(test)]

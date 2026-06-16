@@ -1745,6 +1745,80 @@ These test cases cover the command contract layer: confirmation enforcement, out
 
 ---
 
+## Restore Attachment Phase Disabled Policy (Gate 17)
+
+**TC-APD-01: Writes-disabled notice always visible**
+
+- Preconditions: Restore page open.
+- Steps:
+  1. Scroll to the "Gate 17 — Attachment Phase Disabled Policy" section.
+- Expected result: A writes-disabled notice is visible, mentioning that binary attachment download, upload, fetch, and transfer are not permitted.
+
+**TC-APD-02: Metadata-only notice always visible**
+
+- Preconditions: Restore page open.
+- Steps:
+  1. Observe the metadata-only notice in the attachment phase disabled policy section.
+- Expected result: A notice states that attachment handling is metadata-only. No binary content is downloaded, uploaded, fetched, or transferred.
+
+**TC-APD-03: No plan declared returns blocked (2 checks)**
+
+- Preconditions: Restore page; mock service configured to return no plan.
+- Steps:
+  1. Click "Verify attachment phase disabled policy".
+- Expected result: Status badge shows `blocked`. Exactly 2 checks are shown. APD-01 passed. APD-02 failed with "No attachment metadata plan declared." No phase summary section. `writesEnabled` is `false`.
+
+**TC-APD-04: Complete plan returns compliant (16 checks)**
+
+- Preconditions: Restore page; complete `AttachmentMetadataOnlyPlan` with all flags set correctly.
+- Steps:
+  1. Click "Verify attachment phase disabled policy".
+- Expected result: Status badge shows `compliant`. 16 check rows appear. Phase summary section visible. All 8 boolean flags shown. "Writes disabled" and "Metadata only" tags visible. Message says "writes remain disabled".
+
+**TC-APD-05: binaryHandlingDisabled false returns blocked**
+
+- Preconditions: Plan with `binaryHandlingDisabled: false`.
+- Steps:
+  1. Click "Verify attachment phase disabled policy".
+- Expected result: Status badge shows `blocked`. APD-05 (or later binary check) shows `failed`. Remediation text visible.
+
+**TC-APD-06: Metadata verification disabled without reason returns blocked**
+
+- Preconditions: Plan with `metadataVerificationEnabled: false` and no skip reason.
+- Steps:
+  1. Click "Verify attachment phase disabled policy".
+- Expected result: Status badge shows `blocked`. APD-04 shows `failed`.
+
+**TC-APD-07: Metadata verification disabled with reason returns warning only**
+
+- Preconditions: Plan with `metadataVerificationEnabled: false` and a non-empty skip reason.
+- Steps:
+  1. Click "Verify attachment phase disabled policy".
+- Expected result: Status badge shows `warning`. APD-04 shows `warning`. Message does not say "blocked".
+
+**TC-APD-08: Operation class table shows permitted/blocked correctly**
+
+- Preconditions: Restore page; any result present.
+- Steps:
+  1. Observe the "Attachment Operation Classes" table.
+- Expected result: `metadataInspect` and `metadataVerify` rows show "permitted". All other 8 rows show "blocked".
+
+**TC-APD-09: No execute button or token input**
+
+- Preconditions: Restore page with compliant result.
+- Steps:
+  1. Inspect all buttons and input fields in the attachment phase disabled policy panel.
+- Expected result: No button labeled "Execute", "Start restore", or similar. No `type="password"` or `name="token"` input field. No binary download or upload button.
+
+**TC-APD-10: Compliant result does not enable writes or introduce restore success state**
+
+- Preconditions: Restore page; complete plan returns `compliant`.
+- Steps:
+  1. Inspect the Attachment Phase Disabled Policy panel and all visible text.
+- Expected result: `writesEnabled` is `false`. "Writes disabled" and "Metadata only" tags are visible. No text containing "Restore complete", "Restore succeeded", "succeeded", or "success" is visible. The message explicitly says "writes remain disabled".
+
+---
+
 ## Write Engine Skeleton
 
 **TC-WE-01: Write engine disabled notice is always visible**

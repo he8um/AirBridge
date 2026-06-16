@@ -88,6 +88,9 @@ import type {
   SensitiveDataSafetyPolicyResult,
   SensitiveDataSafetyPolicyStatus,
   SensitiveDataExposureSurface,
+  AttachmentPhaseDisabledPolicyRequest,
+  AttachmentPhaseDisabledPolicyResult,
+  AttachmentPhaseDisabledPolicyStatus,
   RunBackupCommandResponse,
   RecordWriteRequestPlanRequest,
   RecordWriteRequestPlanResult,
@@ -5205,6 +5208,404 @@ function verifySensitiveDataSafetyPolicyImpl(
   });
 }
 
+function verifyAttachmentPhaseDisabledPolicyImpl(
+  request: AttachmentPhaseDisabledPolicyRequest,
+): Promise<AttachmentPhaseDisabledPolicyResult> {
+  const checks: AttachmentPhaseDisabledPolicyResult["checks"] = [];
+
+  // APD-01: Write gate disabled (always passes)
+  checks.push({
+    checkId: "APD-01",
+    label: "write-gate-disabled",
+    status: "passed",
+    message: "Write gate is disabled. No restore writes are attempted.",
+  });
+
+  // APD-02: Plan declared — short-circuit if absent
+  const plan = request.plan;
+  if (!plan) {
+    checks.push({
+      checkId: "APD-02",
+      label: "attachment-phase-plan-declared",
+      status: "failed",
+      message:
+        "No attachment phase plan declared. A plan explicitly disabling all binary attachment operations is required before any live restore write can proceed.",
+      remediation:
+        "Declare an AttachmentMetadataOnlyPlan with all binary operations disabled and metadata-only flags set.",
+    });
+    return Promise.resolve({
+      status: "blocked" as AttachmentPhaseDisabledPolicyStatus,
+      checks,
+      message:
+        "Attachment phase disabled policy is blocked. No plan was declared. Binary attachment download, upload, fetch, and transfer are not permitted. Restore writes remain disabled.",
+      noChangesMade: true,
+      networkWritesAttempted: false,
+      writesEnabled: false,
+    });
+  }
+
+  checks.push({
+    checkId: "APD-02",
+    label: "attachment-phase-plan-declared",
+    status: "passed",
+    message: "Attachment phase plan is declared.",
+  });
+
+  let blocked = false;
+  let hasWarning = false;
+
+  // APD-03: Metadata inspection allowed
+  if (!plan.metadataInspectionEnabled) {
+    checks.push({
+      checkId: "APD-03",
+      label: "metadata-inspection-allowed",
+      status: "failed",
+      message:
+        "metadataInspectionEnabled is not set. Metadata inspection must be explicitly enabled to confirm it is the only attachment operation.",
+      remediation: "Set metadataInspectionEnabled to true in the attachment phase plan.",
+    });
+    blocked = true;
+  } else {
+    checks.push({
+      checkId: "APD-03",
+      label: "metadata-inspection-allowed",
+      status: "passed",
+      message:
+        "Metadata inspection is enabled. Attachment field names, MIME types, and sizes may be read.",
+    });
+  }
+
+  // APD-04: Metadata verification (Warning if skipped with reason)
+  if (plan.metadataVerificationEnabled) {
+    checks.push({
+      checkId: "APD-04",
+      label: "metadata-verification-allowed",
+      status: "passed",
+      message: "Metadata verification is enabled. Attachment metadata completeness is checked.",
+    });
+  } else if (plan.metadataVerificationSkipReason) {
+    checks.push({
+      checkId: "APD-04",
+      label: "metadata-verification-allowed",
+      status: "warning",
+      message:
+        "Metadata verification is not enabled. A skip reason is provided, but metadata verification is preferred.",
+      remediation:
+        "Enable metadataVerificationEnabled or confirm that the skip reason is valid for this restore target.",
+    });
+    hasWarning = true;
+  } else {
+    checks.push({
+      checkId: "APD-04",
+      label: "metadata-verification-allowed",
+      status: "failed",
+      message:
+        "Metadata verification is not enabled and no skip reason is provided. Either enable metadata verification or provide a metadataVerificationSkipReason.",
+      remediation:
+        "Set metadataVerificationEnabled to true, or provide a metadataVerificationSkipReason.",
+    });
+    blocked = true;
+  }
+
+  // APD-05: Binary download blocked
+  if (!plan.binaryHandlingDisabled) {
+    checks.push({
+      checkId: "APD-05",
+      label: "binary-download-blocked",
+      status: "failed",
+      message:
+        "binaryHandlingDisabled is not set. Binary attachment download must be explicitly disabled.",
+      remediation: "Set binaryHandlingDisabled to true in the attachment phase plan.",
+    });
+    blocked = true;
+  } else {
+    checks.push({
+      checkId: "APD-05",
+      label: "binary-download-blocked",
+      status: "passed",
+      message: "Binary attachment download is explicitly disabled.",
+    });
+  }
+
+  // APD-06: Binary upload blocked
+  if (!plan.binaryHandlingDisabled) {
+    checks.push({
+      checkId: "APD-06",
+      label: "binary-upload-blocked",
+      status: "failed",
+      message:
+        "binaryHandlingDisabled is not set. Binary attachment upload must be explicitly disabled.",
+      remediation: "Set binaryHandlingDisabled to true in the attachment phase plan.",
+    });
+    blocked = true;
+  } else {
+    checks.push({
+      checkId: "APD-06",
+      label: "binary-upload-blocked",
+      status: "passed",
+      message: "Binary attachment upload is explicitly disabled.",
+    });
+  }
+
+  // APD-07: URL fetch blocked
+  if (!plan.urlExposureDisabled) {
+    checks.push({
+      checkId: "APD-07",
+      label: "url-fetch-blocked",
+      status: "failed",
+      message:
+        "urlExposureDisabled is not set. Attachment URL fetching must be explicitly disabled.",
+      remediation: "Set urlExposureDisabled to true in the attachment phase plan.",
+    });
+    blocked = true;
+  } else {
+    checks.push({
+      checkId: "APD-07",
+      label: "url-fetch-blocked",
+      status: "passed",
+      message: "Attachment URL fetching is explicitly disabled.",
+    });
+  }
+
+  // APD-08: File read/write blocked
+  if (!plan.binaryHandlingDisabled) {
+    checks.push({
+      checkId: "APD-08",
+      label: "file-read-write-blocked",
+      status: "failed",
+      message:
+        "binaryHandlingDisabled is not set. File read and write of attachment binaries must be explicitly disabled.",
+      remediation: "Set binaryHandlingDisabled to true in the attachment phase plan.",
+    });
+    blocked = true;
+  } else {
+    checks.push({
+      checkId: "APD-08",
+      label: "file-read-write-blocked",
+      status: "passed",
+      message: "File read and write of attachment binaries is explicitly disabled.",
+    });
+  }
+
+  // APD-09: Raw attachment transfer blocked
+  if (!plan.binaryHandlingDisabled) {
+    checks.push({
+      checkId: "APD-09",
+      label: "raw-attachment-transfer-blocked",
+      status: "failed",
+      message:
+        "binaryHandlingDisabled is not set. Raw attachment transfer must be explicitly disabled.",
+      remediation: "Set binaryHandlingDisabled to true in the attachment phase plan.",
+    });
+    blocked = true;
+  } else {
+    checks.push({
+      checkId: "APD-09",
+      label: "raw-attachment-transfer-blocked",
+      status: "passed",
+      message: "Raw attachment transfer is explicitly disabled.",
+    });
+  }
+
+  // APD-10: Attachment field mutation blocked
+  if (!plan.fieldMutationDisabled) {
+    checks.push({
+      checkId: "APD-10",
+      label: "attachment-field-mutation-blocked",
+      status: "failed",
+      message:
+        "fieldMutationDisabled is not set. Attachment field mutation in Airtable must be explicitly disabled.",
+      remediation: "Set fieldMutationDisabled to true in the attachment phase plan.",
+    });
+    blocked = true;
+  } else {
+    checks.push({
+      checkId: "APD-10",
+      label: "attachment-field-mutation-blocked",
+      status: "passed",
+      message: "Attachment field mutation is explicitly disabled.",
+    });
+  }
+
+  // APD-11: Attachment URL exposure blocked
+  if (!plan.urlExposureDisabled) {
+    checks.push({
+      checkId: "APD-11",
+      label: "attachment-url-exposure-blocked",
+      status: "failed",
+      message:
+        "urlExposureDisabled is not set. Attachment URL exposure in results, logs, or diagnostics must be explicitly disabled.",
+      remediation: "Set urlExposureDisabled to true in the attachment phase plan.",
+    });
+    blocked = true;
+  } else {
+    checks.push({
+      checkId: "APD-11",
+      label: "attachment-url-exposure-blocked",
+      status: "passed",
+      message: "Attachment URL exposure is explicitly disabled.",
+    });
+  }
+
+  // APD-12: Attachment phase not required for completion
+  if (!plan.phaseRequiredForCompletionDisabled) {
+    checks.push({
+      checkId: "APD-12",
+      label: "phase-not-required-for-completion",
+      status: "failed",
+      message:
+        "phaseRequiredForCompletionDisabled is not set. Restore completion must not require attachment phase execution. Binary attachment restore is out of scope.",
+      remediation:
+        "Set phaseRequiredForCompletionDisabled to true. Binary attachment restore is out of scope.",
+    });
+    blocked = true;
+  } else {
+    checks.push({
+      checkId: "APD-12",
+      label: "phase-not-required-for-completion",
+      status: "passed",
+      message:
+        "Attachment phase is not required for restore completion. Binary attachment restore is out of scope.",
+    });
+  }
+
+  // APD-13: Final validation treats attachments as metadata-only
+  if (!plan.finalValidationTreatsAsMetadataOnly) {
+    checks.push({
+      checkId: "APD-13",
+      label: "final-validation-metadata-only",
+      status: "failed",
+      message:
+        "finalValidationTreatsAsMetadataOnly is not set. Final validation must treat attachment fields as metadata-only.",
+      remediation:
+        "Set finalValidationTreatsAsMetadataOnly to true. Final validation must not require binary attachment content.",
+    });
+    blocked = true;
+  } else {
+    checks.push({
+      checkId: "APD-13",
+      label: "final-validation-metadata-only",
+      status: "passed",
+      message: "Final validation treats attachment fields as metadata-only.",
+    });
+  }
+
+  // Check declared operations for blocked ones
+  if (request.declaredOperations) {
+    const BLOCKED_OPS = [
+      "binaryDownload",
+      "binaryUpload",
+      "urlFetch",
+      "fileRead",
+      "fileWrite",
+      "rawAttachmentTransfer",
+      "attachmentFieldMutation",
+      "attachmentUrlExposure",
+    ];
+    for (const op of request.declaredOperations) {
+      if (BLOCKED_OPS.includes(op.operation) && op.planned) {
+        checks.push({
+          checkId: "APD-05",
+          label: "declared-operation-blocked",
+          status: "failed",
+          message: `Declared operation ${op.operation} is planned but is blocked. Binary attachment operations are not permitted.`,
+          remediation: `Remove ${op.operation} from declared operations or set planned to false.`,
+        });
+        blocked = true;
+      }
+      if (BLOCKED_OPS.includes(op.operation) && op.requiredForCompletion) {
+        checks.push({
+          checkId: "APD-12",
+          label: "declared-operation-required-blocked",
+          status: "failed",
+          message: `Declared operation ${op.operation} is marked as required for completion but is blocked.`,
+          remediation: `Set requiredForCompletion to false for ${op.operation} or remove this operation.`,
+        });
+        blocked = true;
+      }
+    }
+  }
+
+  // APD-14: No success state introduced (always passes)
+  checks.push({
+    checkId: "APD-14",
+    label: "no-success-state",
+    status: "passed",
+    message: "No restore success or completion state is introduced by this policy check.",
+  });
+
+  // APD-15: No writes attempted (always passes)
+  checks.push({
+    checkId: "APD-15",
+    label: "no-writes-attempted",
+    status: "passed",
+    message:
+      "No write operations are attempted. No Airtable API calls are made. No attachment binary is downloaded, uploaded, fetched, or transferred.",
+  });
+
+  // APD-16: Writes remain disabled (always passes)
+  checks.push({
+    checkId: "APD-16",
+    label: "writes-remain-disabled",
+    status: "passed",
+    message:
+      "Restore writes remain disabled. Policy compliance does not enable write execution. Binary attachment restore is out of scope.",
+  });
+
+  const blockedOpsDeclared = request.declaredOperations
+    ? request.declaredOperations.filter((o) =>
+        [
+          "binaryDownload",
+          "binaryUpload",
+          "urlFetch",
+          "fileRead",
+          "fileWrite",
+          "rawAttachmentTransfer",
+          "attachmentFieldMutation",
+          "attachmentUrlExposure",
+        ].includes(o.operation),
+      ).length
+    : 0;
+
+  const status: AttachmentPhaseDisabledPolicyStatus = blocked
+    ? "blocked"
+    : hasWarning
+      ? "warning"
+      : "compliant";
+
+  const phaseSummary =
+    status !== "blocked" || checks.length > 2
+      ? {
+          metadataInspectionEnabled: plan.metadataInspectionEnabled,
+          metadataVerificationEnabled: plan.metadataVerificationEnabled,
+          binaryHandlingDisabled: plan.binaryHandlingDisabled,
+          urlExposureDisabled: plan.urlExposureDisabled,
+          fieldMutationDisabled: plan.fieldMutationDisabled,
+          phaseRequiredForCompletionDisabled: plan.phaseRequiredForCompletionDisabled,
+          finalValidationTreatsAsMetadataOnly: plan.finalValidationTreatsAsMetadataOnly,
+          blockedOperationsDeclared: blockedOpsDeclared,
+        }
+      : undefined;
+
+  const label = request.targetLabel ? ` for '${request.targetLabel}'` : "";
+  const message =
+    status === "compliant"
+      ? `Attachment phase disabled policy is compliant${label}. All attachment operations are metadata-only. Binary attachment download, upload, fetch, transfer, field mutation, and URL exposure are explicitly disabled. Binary attachment restore is out of scope. Restore writes remain disabled.`
+      : status === "warning"
+        ? `Attachment phase disabled policy has warnings${label}. Core binary attachment safeguards are in place, but metadata verification is not enabled. Restore writes remain disabled.`
+        : `Attachment phase disabled policy is blocked${label}. Binary attachment download, upload, fetch, transfer, field mutation, or URL exposure is not explicitly disabled, or the attachment phase is required for completion. Binary attachment restore is out of scope. Restore writes remain disabled.`;
+
+  return Promise.resolve({
+    status,
+    checks,
+    message,
+    phaseSummary,
+    noChangesMade: true,
+    networkWritesAttempted: false,
+    writesEnabled: false,
+  });
+}
+
 export const mockAirBridgeService: AirBridgeService = {
   listConnections,
   listWorkspaces,
@@ -5252,4 +5653,5 @@ export const mockAirBridgeService: AirBridgeService = {
   verifyRollbackLimitationPolicy: verifyRollbackLimitationPolicyImpl,
   verifyFinalValidationEnforcementPolicy: verifyFinalValidationEnforcementPolicyImpl,
   verifySensitiveDataSafetyPolicy: verifySensitiveDataSafetyPolicyImpl,
+  verifyAttachmentPhaseDisabledPolicy: verifyAttachmentPhaseDisabledPolicyImpl,
 };

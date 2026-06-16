@@ -1089,6 +1089,79 @@ If AirBridge supports user-configured field redaction:
 
 ---
 
+## Restore Attachment Phase Disabled Policy Safety (Gate 17)
+
+**Goal:** Confirm that the attachment phase disabled policy gate makes no Airtable API calls, downloads no attachment binaries, performs no URL fetch, transfers no attachment data, and always returns `writesEnabled: false` and `noChangesMade: true`.
+
+**APD-SEC-01: No token accepted.**
+- The `AttachmentPhaseDisabledPolicyRequest` type has no `token` field.
+- The `RestoreAttachmentPhaseDisabledPolicyPanel` component renders no token input field.
+- No Airtable credential flows through this code path.
+
+**APD-SEC-02: No Airtable API calls.**
+- `verify_attachment_phase_disabled_policy()` makes no network requests.
+- No HTTP client, fetch, or Tauri HTTP plugin call is present in the module.
+- Rust unit tests confirm no `networkWritesAttempted` side effect.
+
+**APD-SEC-03: No write operations.**
+- `evaluate_write_gate()` always returns `Disabled`.
+- `verify_attachment_phase_disabled_policy()` never calls any write function.
+- `writesEnabled` is always `false` in every result.
+
+**APD-SEC-04: No attachment binary download or upload.**
+- `BinaryDownload` and `BinaryUpload` operations are unconditionally blocked.
+- `binaryHandlingDisabled: false` causes `Blocked` at APD-05 and APD-06.
+- No function in the module downloads or uploads any attachment binary.
+
+**APD-SEC-05: No URL fetch.**
+- `UrlFetch` operation is unconditionally blocked.
+- `binaryHandlingDisabled: false` causes `Blocked` at APD-07.
+- No attachment URL is fetched or resolved by this module.
+
+**APD-SEC-06: No file read or write.**
+- `FileRead` and `FileWrite` operations are unconditionally blocked.
+- `binaryHandlingDisabled: false` causes `Blocked` at APD-08 and APD-09.
+
+**APD-SEC-07: No raw attachment transfer.**
+- `RawAttachmentTransfer` is unconditionally blocked.
+- `binaryHandlingDisabled: false` causes `Blocked` at APD-10.
+
+**APD-SEC-08: No attachment field mutation.**
+- `AttachmentFieldMutation` is unconditionally blocked.
+- `fieldMutationDisabled: false` causes `Blocked` at APD-11.
+
+**APD-SEC-09: No attachment URL exposure.**
+- `AttachmentUrlExposure` is unconditionally blocked.
+- `urlExposureDisabled: false` causes `Blocked` at APD-12.
+- No attachment URL appears in any result field.
+
+**APD-SEC-10: `noChangesMade` always true.**
+- Every code path sets `no_changes_made: true` unconditionally.
+- Rust unit tests assert `noChangesMade` for all status variants.
+
+**APD-SEC-11: No execute button.**
+- `RestoreAttachmentPhaseDisabledPolicyPanel` renders a verify button only.
+- Frontend tests assert no button with "execute" or "start restore" label is present.
+
+**APD-SEC-12: Compliant status does not enable writes.**
+- A `Compliant` result has `writesEnabled: false`.
+- No restore execution is triggered by this gate check.
+
+**APD-SEC-13: Compliant status does not introduce a restore success state.**
+- A `Compliant` result message says "writes remain disabled".
+- Frontend tests assert no "restore complete" or "succeeded" wording.
+
+**APD-SEC-14: No-plan causes immediate blocked (short-circuit).**
+- When no `plan` field is provided, the function returns after APD-02 with 2 checks and `Blocked` status.
+- No subsequent check fields are evaluated.
+- Rust unit tests assert `checks.len() == 2` in the no-plan case.
+
+**APD-SEC-15: APD-04 warning only — disabled verification with reason does not block.**
+- Disabled metadata verification with a skip reason produces `Warning` only — auditability is reduced but binary-blocked invariant is maintained.
+- Rust unit tests assert `Warning` (not `Blocked`) for disabled verification with reason.
+
+---
+
 ## Restore Schema Creation Plan Safety (V0.1)
 
 **Goal:** Confirm that the schema creation planning flow makes no Airtable API calls, requires no token, creates no Airtable tables or fields, and always returns `noChangesMade: true`.

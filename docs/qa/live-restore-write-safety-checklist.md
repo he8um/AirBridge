@@ -429,6 +429,33 @@ The `verify_destructive_operation_policy_gate` Tauri command verifies that no de
 
 ---
 
+## Gate 17 — Attachment Phase Disabled Policy (implemented)
+
+- [x] **`verify_attachment_phase_disabled_policy()` implemented.** Runs 16 checks: APD-01 through APD-16.
+- [x] **APD-01 (write gate disabled) always passes.** `evaluate_write_gate()` unconditionally returns `Disabled`. If gate is unexpectedly enabled, returns immediately `Blocked` after 1 check.
+- [x] **APD-02 (plan declared) checked.** Missing plan causes immediate `Blocked` with 2 checks only (short-circuit).
+- [x] **APD-03 (metadata inspection flag) checked.** `metadataInspectionEnabled: false` causes `Blocked`.
+- [x] **APD-04 (metadata verification flag) checked.** Disabled with reason produces `Warning`; disabled without reason produces `Blocked`.
+- [x] **APD-05 through APD-09 (binary operations blocked) enforced.** All covered by `binaryHandlingDisabled`. `binaryHandlingDisabled: false` causes `Blocked`.
+- [x] **APD-10 (raw attachment transfer blocked) enforced.** `binaryHandlingDisabled: false` causes `Blocked`.
+- [x] **APD-11 (field mutation blocked) enforced.** `fieldMutationDisabled: false` causes `Blocked`.
+- [x] **APD-12 (URL exposure blocked) enforced.** `urlExposureDisabled: false` causes `Blocked`.
+- [x] **APD-13 (phase not required for completion) enforced.** `phaseRequiredForCompletionDisabled: false` causes `Blocked`.
+- [x] **APD-14 (final validation metadata-only) enforced.** `finalValidationTreatsAsMetadataOnly: false` causes `Blocked`.
+- [x] **APD-15 (no binary operations declared) enforced.** Any declared binary operation with `planned: true` causes `Blocked`.
+- [x] **APD-16 (no blocked ops required for completion) enforced.** Any declared binary operation with `requiredForCompletion: true` causes `Blocked`.
+- [x] **Safety invariants.** `writesEnabled` always `false`. `noChangesMade` always `true`. `networkWritesAttempted` always `false`.
+- [x] **10 attachment operation classes defined.** MetadataInspect and MetadataVerify permitted; remaining 8 classes blocked.
+- [x] **AttachmentMetadataOnlyPlan with 8 boolean flags.** Fully serialised and checked.
+- [x] **Phase summary returned** when plan is present and not immediately short-circuited.
+- [x] **No execute button in Gate 17 panel.** Panel renders no execute or write-start control.
+- [x] **No "succeeded" language in panel.** Checked by UI test.
+- [x] **No binary attachment download, upload, URL fetch, or transfer button.** Panel contains no such control.
+- [x] **30+ Rust unit tests pass** for attachment phase disabled policy module.
+- [x] **36 frontend tests pass** for attachment phase disabled policy panel rendering.
+
+---
+
 ## Gate 17 — No Destructive Operations
 
 - [ ] **No delete record calls.** Grep confirms no `DELETE /v0/` record endpoint is called anywhere in the write path.

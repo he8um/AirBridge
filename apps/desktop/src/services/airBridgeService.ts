@@ -65,6 +65,8 @@ import type {
   FinalValidationEnforcementPolicyResult,
   SensitiveDataSafetyPolicyRequest,
   SensitiveDataSafetyPolicyResult,
+  AttachmentPhaseDisabledPolicyRequest,
+  AttachmentPhaseDisabledPolicyResult,
   RestoreWriteEngineRequest,
   RestoreWriteEngineResult,
   RunBackupCommandRequest,
@@ -432,4 +434,25 @@ export interface AirBridgeService {
   verifySensitiveDataSafetyPolicy(
     request: SensitiveDataSafetyPolicyRequest,
   ): Promise<SensitiveDataSafetyPolicyResult>;
+  /**
+   * Verifies the attachment phase disabled policy for a planned restore write operation.
+   *
+   * Safety invariants:
+   * - No Airtable API calls are made.
+   * - No token accepted or returned.
+   * - No filesystem path accepted or returned.
+   * - No attachment URL accepted or returned.
+   * - No record payload accepted or returned.
+   * - No raw HTTP data accepted or returned.
+   * - No attachment binary download, upload, fetch, or transfer is performed.
+   * - writesEnabled is always false.
+   * - noChangesMade is always true.
+   * - networkWritesAttempted is always false.
+   * - Compliant does NOT enable restore writes.
+   * - Compliant does NOT introduce a restore success state.
+   * - Binary attachment restore is out of scope.
+   */
+  verifyAttachmentPhaseDisabledPolicy(
+    request: AttachmentPhaseDisabledPolicyRequest,
+  ): Promise<AttachmentPhaseDisabledPolicyResult>;
 }

@@ -22,6 +22,7 @@ import { RestoreFailureModesPolicyPanel } from "../features/backups/RestoreFailu
 import { RestoreRollbackLimitationPolicyPanel } from "../features/backups/RestoreRollbackLimitationPolicyPanel";
 import { RestoreFinalValidationEnforcementPolicyPanel } from "../features/backups/RestoreFinalValidationEnforcementPolicyPanel";
 import { RestoreSensitiveDataSafetyPolicyPanel } from "../features/backups/RestoreSensitiveDataSafetyPolicyPanel";
+import { RestoreAttachmentPhaseDisabledPolicyPanel } from "../features/backups/RestoreAttachmentPhaseDisabledPolicyPanel";
 import { RestoreWriteEnginePanel } from "../features/backups/RestoreWriteEnginePanel";
 import { liveAirBridgeService } from "../services/liveAirBridgeService";
 import type { BackupPackageInspectionResult } from "../backend/types";
@@ -49,6 +50,7 @@ import type {
   RollbackLimitationPolicyResult,
   FinalValidationEnforcementPolicyResult,
   SensitiveDataSafetyPolicyResult,
+  AttachmentPhaseDisabledPolicyResult,
 } from "../backend/types";
 
 export function RestorePage() {
@@ -105,6 +107,8 @@ export function RestorePage() {
   const [fveLoading, setFveLoading] = useState(false);
   const [sdsResult, setSdsResult] = useState<SensitiveDataSafetyPolicyResult | null>(null);
   const [sdsLoading, setSdsLoading] = useState(false);
+  const [apdResult, setApdResult] = useState<AttachmentPhaseDisabledPolicyResult | null>(null);
+  const [apdLoading, setApdLoading] = useState(false);
 
   return (
     <div className="page">
@@ -684,6 +688,30 @@ export function RestorePage() {
                   })
                   .finally(() => {
                     setSdsLoading(false);
+                  });
+              }}
+            />
+
+            <div className="divider" style={{ margin: 0 }} />
+
+            {/* Attachment phase disabled policy — Gate 17. No writes. No binary download. No upload. No URL fetch. No attachment transfer. No token. No record payload. No attachment URL. */}
+            <RestoreAttachmentPhaseDisabledPolicyPanel
+              result={apdResult}
+              loading={apdLoading}
+              onVerify={() => {
+                setApdLoading(true);
+                liveAirBridgeService
+                  .verifyAttachmentPhaseDisabledPolicy({
+                    targetLabel: targetBaseName ?? undefined,
+                  })
+                  .then((r) => {
+                    setApdResult(r);
+                  })
+                  .catch(() => {
+                    setApdResult(null);
+                  })
+                  .finally(() => {
+                    setApdLoading(false);
                   });
               }}
             />

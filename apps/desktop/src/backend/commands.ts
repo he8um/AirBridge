@@ -61,6 +61,8 @@ import type {
   FinalValidationEnforcementPolicyResult,
   SensitiveDataSafetyPolicyRequest,
   SensitiveDataSafetyPolicyResult,
+  AttachmentPhaseDisabledPolicyRequest,
+  AttachmentPhaseDisabledPolicyResult,
   RunBackupCommandRequest,
   RunBackupCommandResponse,
   SandboxVerificationRequest,
@@ -560,4 +562,13 @@ export async function verifySensitiveDataSafetyPolicy(
   return safeInvoke<SensitiveDataSafetyPolicyResult>("verify_sensitive_data_safety_policy_gate", {
     request,
   });
+}
+
+export async function verifyAttachmentPhaseDisabledPolicy(
+  request: AttachmentPhaseDisabledPolicyRequest,
+): Promise<AttachmentPhaseDisabledPolicyResult | null> {
+  return safeInvoke<AttachmentPhaseDisabledPolicyResult>(
+    "verify_attachment_phase_disabled_policy_gate",
+    { request },
+  );
 }

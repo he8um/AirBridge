@@ -2513,3 +2513,90 @@ export interface SensitiveDataSafetyPolicyResult {
   networkWritesAttempted: boolean;
   writesEnabled: boolean;
 }
+
+// ── Gate 17 — Attachment Phase Disabled Policy ───────────────────────────────
+
+export type AttachmentPhaseDisabledPolicyStatus = "compliant" | "warning" | "blocked";
+export type AttachmentPhaseDisabledCheckStatus = "passed" | "warning" | "failed";
+
+export type AttachmentPhaseOperation =
+  | "metadataInspect"
+  | "metadataVerify"
+  | "binaryDownload"
+  | "binaryUpload"
+  | "urlFetch"
+  | "fileRead"
+  | "fileWrite"
+  | "rawAttachmentTransfer"
+  | "attachmentFieldMutation"
+  | "attachmentUrlExposure";
+
+export interface AttachmentPhasePlan {
+  operation: AttachmentPhaseOperation;
+  planned: boolean;
+  requiredForCompletion: boolean;
+  justification?: string;
+}
+
+export interface AttachmentMetadataOnlyPlan {
+  metadataInspectionEnabled: boolean;
+  metadataVerificationEnabled: boolean;
+  metadataVerificationSkipReason?: string;
+  binaryHandlingDisabled: boolean;
+  urlExposureDisabled: boolean;
+  fieldMutationDisabled: boolean;
+  phaseRequiredForCompletionDisabled: boolean;
+  finalValidationTreatsAsMetadataOnly: boolean;
+}
+
+export interface AttachmentPhaseDisabledPolicyRequest {
+  plan?: AttachmentMetadataOnlyPlan;
+  declaredOperations?: AttachmentPhasePlan[];
+  targetLabel?: string;
+}
+
+export interface AttachmentPhaseDisabledCheck {
+  checkId: string;
+  label: string;
+  status: AttachmentPhaseDisabledCheckStatus;
+  message: string;
+  remediation?: string;
+}
+
+export interface AttachmentPhaseDisabledSummary {
+  metadataInspectionEnabled: boolean;
+  metadataVerificationEnabled: boolean;
+  binaryHandlingDisabled: boolean;
+  urlExposureDisabled: boolean;
+  fieldMutationDisabled: boolean;
+  phaseRequiredForCompletionDisabled: boolean;
+  finalValidationTreatsAsMetadataOnly: boolean;
+  blockedOperationsDeclared: number;
+}
+
+/**
+ * Gate 17 — Attachment Phase Disabled Policy result.
+ *
+ * Safety invariants:
+ * - No token field.
+ * - No filesystem path field.
+ * - No attachment URL field.
+ * - No record payload field.
+ * - No raw HTTP data field.
+ * - writesEnabled is always false.
+ * - noChangesMade is always true.
+ * - networkWritesAttempted is always false.
+ * - Compliant status does NOT enable restore writes.
+ * - Compliant status does NOT introduce a restore success state.
+ * - No attachment binary download, upload, fetch, or transfer is ever performed.
+ * - Binary attachment restore is out of scope.
+ */
+export interface AttachmentPhaseDisabledPolicyResult {
+  status: AttachmentPhaseDisabledPolicyStatus;
+  checks: AttachmentPhaseDisabledCheck[];
+  message: string;
+  phaseSummary?: AttachmentPhaseDisabledSummary;
+  noChangesMade: boolean;
+  networkWritesAttempted: boolean;
+  writesEnabled: boolean;
+}
