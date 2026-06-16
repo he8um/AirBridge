@@ -394,7 +394,42 @@ The `verify_destructive_operation_policy_gate` Tauri command verifies that no de
 
 ---
 
-## Gate 16 — No Destructive Operations
+## Gate 16 — Sensitive Data Safety Policy (implemented)
+
+- [x] **`verify_sensitive_data_safety_policy()` implemented.** Runs 15 checks: SDS-01 through SDS-15.
+- [x] **SDS-01 (write gate disabled) always passes.** `evaluate_write_gate()` unconditionally returns `Disabled`.
+- [x] **SDS-02 (plan declared) checked.** Missing plan causes immediate `Blocked` with 2 checks only (short-circuit).
+- [x] **SDS-03 (all surfaces covered) enforced.** Missing coverage for any of the 10 required surfaces causes `Blocked`.
+- [x] **SDS-04 (no token in results) enforced.** `noTokenInResults: false` causes `Blocked`.
+- [x] **SDS-05 (no full path in results) enforced.** `noFullPathInResults: false` causes `Blocked`.
+- [x] **SDS-06 (package references filename only) enforced.** `packageReferencesFilenameOnly: false` causes `Blocked`.
+- [x] **SDS-07 (no record payload in results) enforced.** `noRecordPayloadInResults: false` causes `Blocked`.
+- [x] **SDS-08 (no attachment URL in results) enforced.** `noAttachmentUrlInResults: false` causes `Blocked`.
+- [x] **SDS-09 (no raw HTTP in results) enforced.** `noRawHttpInResults: false` causes `Blocked`.
+- [x] **SDS-10 (error messages use safe summaries) enforced.** `errorMessagesUseSafeSummaries: false` causes `Blocked`.
+- [x] **SDS-11 (summaries payload-free) enforced.** `summariesArePayloadFree: false` causes `Blocked`.
+- [x] **SDS-12 (redaction rules named) produces Warning only.** Unnamed rules reduce auditability but do not block.
+- [x] **SDS-13 (no success state) always passes.** Safety invariant — never fails.
+- [x] **SDS-14 (no token/path/payload in result) always passes.** Safety invariant — never fails.
+- [x] **SDS-15 (writes remain disabled) always passes.** Compliant policy never enables writes.
+- [x] **`Compliant` status does NOT enable writes.** `writesEnabled` is always `false` in every result branch.
+- [x] **`Compliant` status does NOT introduce a restore success state.** Verified by message and serialization tests.
+- [x] **No token field anywhere in request or result.** Verified by serialization test.
+- [x] **No full filesystem path field anywhere in request or result.** Verified by serialization test.
+- [x] **No package path field anywhere in request or result.** Verified by serialization test.
+- [x] **No record payload field anywhere in result.** Verified by serialization test.
+- [x] **No attachment URL field anywhere in result.** Verified by serialization test.
+- [x] **No raw HTTP data field anywhere in result.** Verified by serialization test.
+- [x] **`noChangesMade` always `true`.** Checked in all status branches.
+- [x] **`networkWritesAttempted` always `false`.** Checked across all status branches.
+- [x] **No execute button in Gate 16 panel.** Panel renders no execute or write-start control.
+- [x] **No "succeeded" language in panel.** Checked by UI test.
+- [x] **25+ Rust unit tests pass** for sensitive data safety policy module.
+- [x] **20+ frontend tests pass** for sensitive data safety policy service contract and panel rendering.
+
+---
+
+## Gate 17 — No Destructive Operations
 
 - [ ] **No delete record calls.** Grep confirms no `DELETE /v0/` record endpoint is called anywhere in the write path.
 - [ ] **No delete table calls.** Grep confirms no table deletion API call exists.

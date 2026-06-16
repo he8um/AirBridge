@@ -84,6 +84,10 @@ import type {
   FinalValidationEnforcementPolicyRequest,
   FinalValidationEnforcementPolicyResult,
   FinalValidationEnforcementPolicyStatus,
+  SensitiveDataSafetyPolicyRequest,
+  SensitiveDataSafetyPolicyResult,
+  SensitiveDataSafetyPolicyStatus,
+  SensitiveDataExposureSurface,
   RunBackupCommandResponse,
   RecordWriteRequestPlanRequest,
   RecordWriteRequestPlanResult,
@@ -4871,6 +4875,336 @@ function verifyFinalValidationEnforcementPolicyImpl(
   });
 }
 
+function verifySensitiveDataSafetyPolicyImpl(
+  request: SensitiveDataSafetyPolicyRequest,
+): Promise<SensitiveDataSafetyPolicyResult> {
+  const checks: SensitiveDataSafetyPolicyResult["checks"] = [];
+
+  // SDS-01: Write gate disabled (always passes)
+  checks.push({
+    checkId: "SDS-01",
+    label: "write-gate-disabled",
+    status: "passed",
+    message: "Write gate is disabled. No restore writes are attempted.",
+  });
+
+  // SDS-02: Plan declared — short-circuit if absent
+  const plan = request.plan;
+  if (!plan) {
+    checks.push({
+      checkId: "SDS-02",
+      label: "safety-plan-declared",
+      status: "failed",
+      message:
+        "No sensitive data safety plan declared. A plan declaring redaction coverage for all exposure surfaces is required before any live restore write can proceed.",
+      remediation:
+        "Declare a SensitiveDataSafetyPlan with redactionCoverage entries for all required surfaces and all safety boolean flags set to true.",
+    });
+    return Promise.resolve({
+      status: "blocked" as SensitiveDataSafetyPolicyStatus,
+      checks,
+      message:
+        "Sensitive data safety policy is blocked. No plan was declared. Sensitive material must never be exposed through any restore write surface. Restore writes remain disabled.",
+      noChangesMade: true,
+      networkWritesAttempted: false,
+      writesEnabled: false,
+    });
+  }
+
+  checks.push({
+    checkId: "SDS-02",
+    label: "safety-plan-declared",
+    status: "passed",
+    message: "Sensitive data safety plan is declared.",
+  });
+
+  let blocked = false;
+  let hasWarning = false;
+
+  const ALL_SURFACES: SensitiveDataExposureSurface[] = [
+    "commandResult",
+    "uiPanel",
+    "diagnosticMessage",
+    "checkpointSummary",
+    "validationSummary",
+    "failureSummary",
+    "logMessage",
+    "errorMessage",
+    "packageReference",
+    "recordReference",
+  ];
+
+  // SDS-03: All exposure surfaces covered
+  const coveredSurfaces = new Set(plan.redactionCoverage.map((r) => r.surface));
+  const missingSurfaces = ALL_SURFACES.filter((s) => !coveredSurfaces.has(s));
+  if (missingSurfaces.length > 0) {
+    checks.push({
+      checkId: "SDS-03",
+      label: "all-surfaces-covered",
+      status: "failed",
+      message: `Redaction coverage is missing for surfaces: ${missingSurfaces.join(", ")}. All exposure surfaces must have at least one redaction rule.`,
+      remediation:
+        "Add redactionCoverage entries for all missing surfaces with named redaction rules confirmed by tests.",
+    });
+    blocked = true;
+  } else {
+    checks.push({
+      checkId: "SDS-03",
+      label: "all-surfaces-covered",
+      status: "passed",
+      message: "All required exposure surfaces have redaction coverage declared.",
+    });
+  }
+
+  // SDS-04: No token in results
+  if (!plan.noTokenInResults) {
+    checks.push({
+      checkId: "SDS-04",
+      label: "no-token-in-results",
+      status: "failed",
+      message:
+        "noTokenInResults is not set. Airtable tokens, API keys, and bearer tokens must never appear in any restore write result.",
+      remediation: "Set noTokenInResults to true in the safety plan.",
+    });
+    blocked = true;
+  } else {
+    checks.push({
+      checkId: "SDS-04",
+      label: "no-token-in-results",
+      status: "passed",
+      message: "No token values are returned in restore write results.",
+    });
+  }
+
+  // SDS-05: No full path in results
+  if (!plan.noFullPathInResults) {
+    checks.push({
+      checkId: "SDS-05",
+      label: "no-full-path-in-results",
+      status: "failed",
+      message:
+        "noFullPathInResults is not set. Full filesystem paths must never be returned in any restore write result.",
+      remediation: "Set noFullPathInResults to true in the safety plan.",
+    });
+    blocked = true;
+  } else {
+    checks.push({
+      checkId: "SDS-05",
+      label: "no-full-path-in-results",
+      status: "passed",
+      message: "No full filesystem paths are returned in restore write results.",
+    });
+  }
+
+  // SDS-06: Package references filename only
+  if (!plan.packageReferencesFilenameOnly) {
+    checks.push({
+      checkId: "SDS-06",
+      label: "package-references-filename-only",
+      status: "failed",
+      message:
+        "packageReferencesFilenameOnly is not set. Package references must use filename only, never full paths.",
+      remediation: "Set packageReferencesFilenameOnly to true in the safety plan.",
+    });
+    blocked = true;
+  } else {
+    checks.push({
+      checkId: "SDS-06",
+      label: "package-references-filename-only",
+      status: "passed",
+      message: "Package references use filename only, not full paths.",
+    });
+  }
+
+  // SDS-07: No record payload in results
+  if (!plan.noRecordPayloadInResults) {
+    checks.push({
+      checkId: "SDS-07",
+      label: "no-record-payload-in-results",
+      status: "failed",
+      message:
+        "noRecordPayloadInResults is not set. Record payloads and field values must never be returned in any restore write result.",
+      remediation: "Set noRecordPayloadInResults to true in the safety plan.",
+    });
+    blocked = true;
+  } else {
+    checks.push({
+      checkId: "SDS-07",
+      label: "no-record-payload-in-results",
+      status: "passed",
+      message: "No record payloads are returned in restore write results.",
+    });
+  }
+
+  // SDS-08: No attachment URL in results
+  if (!plan.noAttachmentUrlInResults) {
+    checks.push({
+      checkId: "SDS-08",
+      label: "no-attachment-url-in-results",
+      status: "failed",
+      message:
+        "noAttachmentUrlInResults is not set. Attachment URLs must never be returned in any restore write result.",
+      remediation: "Set noAttachmentUrlInResults to true in the safety plan.",
+    });
+    blocked = true;
+  } else {
+    checks.push({
+      checkId: "SDS-08",
+      label: "no-attachment-url-in-results",
+      status: "passed",
+      message: "No attachment URLs are returned in restore write results.",
+    });
+  }
+
+  // SDS-09: No raw HTTP in results
+  if (!plan.noRawHttpInResults) {
+    checks.push({
+      checkId: "SDS-09",
+      label: "no-raw-http-in-results",
+      status: "failed",
+      message:
+        "noRawHttpInResults is not set. Raw HTTP request or response bodies must never be returned in any restore write result.",
+      remediation: "Set noRawHttpInResults to true in the safety plan.",
+    });
+    blocked = true;
+  } else {
+    checks.push({
+      checkId: "SDS-09",
+      label: "no-raw-http-in-results",
+      status: "passed",
+      message: "No raw HTTP request or response bodies are returned in restore write results.",
+    });
+  }
+
+  // SDS-10: Error messages use safe summaries
+  if (!plan.errorMessagesUseSafeSummaries) {
+    checks.push({
+      checkId: "SDS-10",
+      label: "error-messages-safe-summaries",
+      status: "failed",
+      message:
+        "errorMessagesUseSafeSummaries is not set. Error messages must use safe summaries that do not include sensitive data.",
+      remediation: "Set errorMessagesUseSafeSummaries to true in the safety plan.",
+    });
+    blocked = true;
+  } else {
+    checks.push({
+      checkId: "SDS-10",
+      label: "error-messages-safe-summaries",
+      status: "passed",
+      message: "Error messages use safe summaries without sensitive data.",
+    });
+  }
+
+  // SDS-11: Summaries are payload-free
+  if (!plan.summariesArePayloadFree) {
+    checks.push({
+      checkId: "SDS-11",
+      label: "summaries-payload-free",
+      status: "failed",
+      message:
+        "summariesArePayloadFree is not set. Checkpoint, validation, and failure summaries must not include record payloads or sensitive field values.",
+      remediation: "Set summariesArePayloadFree to true in the safety plan.",
+    });
+    blocked = true;
+  } else {
+    checks.push({
+      checkId: "SDS-11",
+      label: "summaries-payload-free",
+      status: "passed",
+      message: "All summaries are payload-free.",
+    });
+  }
+
+  // SDS-12: All redaction rules named (Warning only — unnamed rules reduce auditability)
+  const unnamedRules = plan.redactionCoverage.filter(
+    (r) => !r.redactionRule || r.redactionRule.trim() === "",
+  );
+  if (unnamedRules.length > 0) {
+    checks.push({
+      checkId: "SDS-12",
+      label: "redaction-rules-named",
+      status: "warning",
+      message: `${unnamedRules.length} redaction rule(s) have no named rule. Named rules improve auditability and test coverage tracking.`,
+      remediation: "Provide a named redaction rule string for every redactionCoverage entry.",
+    });
+    hasWarning = true;
+  } else {
+    checks.push({
+      checkId: "SDS-12",
+      label: "redaction-rules-named",
+      status: "passed",
+      message: "All redaction rules are named.",
+    });
+  }
+
+  // SDS-13: No success state introduced (always passes)
+  checks.push({
+    checkId: "SDS-13",
+    label: "no-success-state",
+    status: "passed",
+    message: "No restore success or completion state is introduced by this policy check.",
+  });
+
+  // SDS-14: No token/path/payload in result (always passes)
+  checks.push({
+    checkId: "SDS-14",
+    label: "no-token-path-payload-in-result",
+    status: "passed",
+    message:
+      "No token, filesystem path, record payload, attachment URL, or raw HTTP data is present in any field of this policy result.",
+  });
+
+  // SDS-15: Writes remain disabled (always passes)
+  checks.push({
+    checkId: "SDS-15",
+    label: "writes-remain-disabled",
+    status: "passed",
+    message: "Restore writes remain disabled. Policy compliance does not enable write execution.",
+  });
+
+  const status: SensitiveDataSafetyPolicyStatus = blocked
+    ? "blocked"
+    : hasWarning
+      ? "warning"
+      : "compliant";
+
+  const safetySummary =
+    status !== "blocked" || checks.length > 2
+      ? {
+          totalRedactionRules: plan.redactionCoverage.length,
+          surfacesCovered: coveredSurfaces.size,
+          allRulesNamed: unnamedRules.length === 0,
+          noTokenInResults: plan.noTokenInResults,
+          noFullPathInResults: plan.noFullPathInResults,
+          packageReferencesFilenameOnly: plan.packageReferencesFilenameOnly,
+          noRecordPayloadInResults: plan.noRecordPayloadInResults,
+          noAttachmentUrlInResults: plan.noAttachmentUrlInResults,
+          noRawHttpInResults: plan.noRawHttpInResults,
+          errorMessagesUseSafeSummaries: plan.errorMessagesUseSafeSummaries,
+          summariesArePayloadFree: plan.summariesArePayloadFree,
+        }
+      : undefined;
+
+  const label = request.targetLabel ? ` for '${request.targetLabel}'` : "";
+  const message =
+    status === "compliant"
+      ? `Sensitive data safety policy is compliant${label}. All exposure surfaces have redaction coverage and all safety invariants are declared. No sensitive material will be exposed through any restore write surface. Restore writes remain disabled.`
+      : status === "warning"
+        ? `Sensitive data safety policy has warnings${label}. Core safety invariants are satisfied but some redaction rules are unnamed, reducing auditability. Restore writes remain disabled.`
+        : `Sensitive data safety policy is blocked${label}. Sensitive material must never be exposed through any restore write surface. Resolve all violations before any live write is considered. Restore writes remain disabled.`;
+
+  return Promise.resolve({
+    status,
+    checks,
+    message,
+    safetySummary,
+    noChangesMade: true,
+    networkWritesAttempted: false,
+    writesEnabled: false,
+  });
+}
+
 export const mockAirBridgeService: AirBridgeService = {
   listConnections,
   listWorkspaces,
@@ -4917,4 +5251,5 @@ export const mockAirBridgeService: AirBridgeService = {
   verifyFailureModesPolicy: verifyFailureModesPolicyImpl,
   verifyRollbackLimitationPolicy: verifyRollbackLimitationPolicyImpl,
   verifyFinalValidationEnforcementPolicy: verifyFinalValidationEnforcementPolicyImpl,
+  verifySensitiveDataSafetyPolicy: verifySensitiveDataSafetyPolicyImpl,
 };

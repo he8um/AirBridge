@@ -1014,6 +1014,81 @@ If AirBridge supports user-configured field redaction:
 
 ---
 
+## Restore Sensitive Data Safety Policy Safety (Gate 16)
+
+**Goal:** Confirm that the sensitive data safety policy gate makes no Airtable API calls, requires no token, never exposes sensitive material through any restore write surface, never introduces a restore success state, and always returns `writesEnabled: false`.
+
+**SDS-SEC-01: No token accepted.**
+- `SensitiveDataSafetyPolicyRequest` has no `token` field in its Rust struct definition.
+- `SensitiveDataSafetyPolicyResult` has no `token` field in any result variant.
+- `SensitiveDataSafetyPlan` has no `token` field.
+- Rust unit test `no_token_or_path_in_serialized_result` asserts no `pat_` or `token` string appears in the serialized result.
+
+**SDS-SEC-02: No Airtable API calls.**
+- `verify_sensitive_data_safety_policy` calls only `evaluate_write_gate()` and in-memory logic.
+- No HTTP client is constructed or called.
+- No Airtable endpoint is referenced in the function.
+
+**SDS-SEC-03: No write operations.**
+- `verify_sensitive_data_safety_policy` produces no writes to any storage system, file, or network endpoint.
+- `no_changes_made` is always `true`. `network_writes_attempted` is always `false`.
+- Rust unit tests assert both invariants across all result branches.
+
+**SDS-SEC-04: No record payload in any result field.**
+- `SensitiveDataSafetyPolicyResult` contains status, checks, message, safety summary (counts and boolean flags only), and safety invariant fields.
+- `SensitiveDataSafetyPlan` contains redaction coverage entries and boolean flags — no record IDs, no field values, no base IDs.
+- The safety summary mirrors only safe counts and boolean flags.
+
+**SDS-SEC-05: No full path in any field.**
+- No filesystem path appears in any request or result field.
+- Rust unit test `no_token_or_path_in_serialized_result` asserts no `/Users/` or `/home/` string appears in the serialized result.
+
+**SDS-SEC-06: No package path in any field.**
+- Package references are filename-only. No package path appears in any request or result field.
+- `SDS-06` check enforces `package_references_filename_only: true`.
+
+**SDS-SEC-07: No attachment URL in any field.**
+- No attachment URL appears in any request or result field.
+- `SDS-08` check enforces `no_attachment_url_in_results: true`.
+
+**SDS-SEC-08: No raw HTTP data in any field.**
+- No raw HTTP request or response body appears in any request or result field.
+- `SDS-09` check enforces `no_raw_http_in_results: true`.
+
+**SDS-SEC-09: `noChangesMade` always true.**
+- Every code path in `verify_sensitive_data_safety_policy` sets `no_changes_made: true`.
+- Rust unit tests assert `no_changes_made` across compliant, warning, and blocked results.
+
+**SDS-SEC-10: No execute button.**
+- `RestoreSensitiveDataSafetyPolicyPanel` renders no execute, restore, or write-start control.
+- Frontend tests assert no "execute" or "start restore" text is visible in the panel.
+
+**SDS-SEC-11: Compliant status does not enable writes.**
+- `writes_enabled` is always `false` — independent of policy status.
+- Rust unit tests assert `!result.writes_enabled` for all result branches.
+
+**SDS-SEC-12: Compliant status does not introduce a restore success state.**
+- The compliant result message explicitly states writes remain disabled.
+- No "succeeded" or "restore complete" language appears in any result branch.
+- Rust unit test `no_success_state_in_result_message` asserts no success language in any result.
+- Frontend tests assert no "succeeded" text is visible in the panel for any status.
+
+**SDS-SEC-13: All 10 exposure surfaces must have redaction coverage.**
+- `SDS-03` checks that all 10 required surfaces are present in `redaction_coverage`.
+- Missing surface causes `Blocked`.
+- Rust unit tests assert `Blocked` for each missing surface variant.
+
+**SDS-SEC-14: No-plan causes immediate blocked (short-circuit).**
+- When no `plan` field is provided, the function returns after SDS-02 with 2 checks and `Blocked` status.
+- No subsequent check fields are evaluated.
+- Rust unit tests assert `checks.len() == 2` in the no-plan case.
+
+**SDS-SEC-15: SDS-12 warning only — unnamed rules do not block.**
+- Unnamed redaction rules produce `Warning` only — this is intentional; auditability is reduced but safety invariants are not violated.
+- Rust unit tests assert `Warning` (not `Blocked`) for unnamed rules with all other flags compliant.
+
+---
+
 ## Restore Schema Creation Plan Safety (V0.1)
 
 **Goal:** Confirm that the schema creation planning flow makes no Airtable API calls, requires no token, creates no Airtable tables or fields, and always returns `noChangesMade: true`.

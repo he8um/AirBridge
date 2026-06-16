@@ -2413,3 +2413,103 @@ export interface FinalValidationEnforcementPolicyResult {
   networkWritesAttempted: boolean;
   writesEnabled: boolean;
 }
+
+// ── Gate 16 — Sensitive Data Safety Policy ───────────────────────────────────
+
+export type SensitiveDataSafetyPolicyStatus = "compliant" | "warning" | "blocked";
+export type SensitiveDataSafetyCheckStatus = "passed" | "warning" | "failed";
+
+export type SensitiveDataExposureSurface =
+  | "commandResult"
+  | "uiPanel"
+  | "diagnosticMessage"
+  | "checkpointSummary"
+  | "validationSummary"
+  | "failureSummary"
+  | "logMessage"
+  | "errorMessage"
+  | "packageReference"
+  | "recordReference";
+
+export type SensitiveDataPatternClass =
+  | "airtableToken"
+  | "apiKey"
+  | "bearerToken"
+  | "fullLocalPath"
+  | "packagePath"
+  | "recordPayload"
+  | "fieldPayload"
+  | "attachmentUrl"
+  | "rawHttpResponse"
+  | "rawRequestBody";
+
+export interface SensitiveDataRedactionPlan {
+  surface: SensitiveDataExposureSurface;
+  patternClass: SensitiveDataPatternClass;
+  redactionRule: string;
+  confirmedByTest: boolean;
+}
+
+export interface SensitiveDataSafetyPlan {
+  redactionCoverage: SensitiveDataRedactionPlan[];
+  noTokenInResults: boolean;
+  noFullPathInResults: boolean;
+  packageReferencesFilenameOnly: boolean;
+  noRecordPayloadInResults: boolean;
+  noAttachmentUrlInResults: boolean;
+  noRawHttpInResults: boolean;
+  errorMessagesUseSafeSummaries: boolean;
+  summariesArePayloadFree: boolean;
+}
+
+export interface SensitiveDataSafetyPolicyRequest {
+  plan?: SensitiveDataSafetyPlan;
+  targetLabel?: string;
+}
+
+export interface SensitiveDataSafetyCheck {
+  checkId: string;
+  label: string;
+  status: SensitiveDataSafetyCheckStatus;
+  message: string;
+  remediation?: string;
+}
+
+export interface SensitiveDataSafetySummary {
+  totalRedactionRules: number;
+  surfacesCovered: number;
+  allRulesNamed: boolean;
+  noTokenInResults: boolean;
+  noFullPathInResults: boolean;
+  packageReferencesFilenameOnly: boolean;
+  noRecordPayloadInResults: boolean;
+  noAttachmentUrlInResults: boolean;
+  noRawHttpInResults: boolean;
+  errorMessagesUseSafeSummaries: boolean;
+  summariesArePayloadFree: boolean;
+}
+
+/**
+ * Gate 16 — Sensitive Data Safety Policy result.
+ *
+ * Safety invariants:
+ * - No token field.
+ * - No filesystem path field.
+ * - No record payload field.
+ * - writesEnabled is always false.
+ * - noChangesMade is always true.
+ * - networkWritesAttempted is always false.
+ * - Compliant status does NOT enable restore writes.
+ * - Compliant status does NOT introduce a restore success state.
+ * - Tokens, full paths, package paths, record payloads, attachment URLs,
+ *   and raw HTTP data are blocked from all result fields, diagnostics, and logs.
+ */
+export interface SensitiveDataSafetyPolicyResult {
+  status: SensitiveDataSafetyPolicyStatus;
+  checks: SensitiveDataSafetyCheck[];
+  message: string;
+  safetySummary?: SensitiveDataSafetySummary;
+  noChangesMade: boolean;
+  networkWritesAttempted: boolean;
+  writesEnabled: boolean;
+}

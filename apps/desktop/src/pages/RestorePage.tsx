@@ -21,6 +21,7 @@ import { RestoreWritePhaseOrderingPolicyPanel } from "../features/backups/Restor
 import { RestoreFailureModesPolicyPanel } from "../features/backups/RestoreFailureModesPolicyPanel";
 import { RestoreRollbackLimitationPolicyPanel } from "../features/backups/RestoreRollbackLimitationPolicyPanel";
 import { RestoreFinalValidationEnforcementPolicyPanel } from "../features/backups/RestoreFinalValidationEnforcementPolicyPanel";
+import { RestoreSensitiveDataSafetyPolicyPanel } from "../features/backups/RestoreSensitiveDataSafetyPolicyPanel";
 import { RestoreWriteEnginePanel } from "../features/backups/RestoreWriteEnginePanel";
 import { liveAirBridgeService } from "../services/liveAirBridgeService";
 import type { BackupPackageInspectionResult } from "../backend/types";
@@ -47,6 +48,7 @@ import type {
   FailureModesPolicyResult,
   RollbackLimitationPolicyResult,
   FinalValidationEnforcementPolicyResult,
+  SensitiveDataSafetyPolicyResult,
 } from "../backend/types";
 
 export function RestorePage() {
@@ -101,6 +103,8 @@ export function RestorePage() {
   const [rlpLoading, setRlpLoading] = useState(false);
   const [fveResult, setFveResult] = useState<FinalValidationEnforcementPolicyResult | null>(null);
   const [fveLoading, setFveLoading] = useState(false);
+  const [sdsResult, setSdsResult] = useState<SensitiveDataSafetyPolicyResult | null>(null);
+  const [sdsLoading, setSdsLoading] = useState(false);
 
   return (
     <div className="page">
@@ -656,6 +660,30 @@ export function RestorePage() {
                   })
                   .finally(() => {
                     setFveLoading(false);
+                  });
+              }}
+            />
+
+            <div className="divider" style={{ margin: 0 }} />
+
+            {/* Sensitive data safety policy — Gate 16. No writes. No token. No full path. No package path. No record payload. No attachment URL. No raw HTTP. */}
+            <RestoreSensitiveDataSafetyPolicyPanel
+              result={sdsResult}
+              loading={sdsLoading}
+              onVerify={() => {
+                setSdsLoading(true);
+                liveAirBridgeService
+                  .verifySensitiveDataSafetyPolicy({
+                    targetLabel: targetBaseName ?? undefined,
+                  })
+                  .then((r) => {
+                    setSdsResult(r);
+                  })
+                  .catch(() => {
+                    setSdsResult(null);
+                  })
+                  .finally(() => {
+                    setSdsLoading(false);
                   });
               }}
             />

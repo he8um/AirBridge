@@ -67,6 +67,10 @@ use crate::restore::schema_write_requests::build_schema_write_request_plan;
 use crate::restore::schema_write_result::{
     SchemaWriteRequestPlanRequest, SchemaWriteRequestPlanResult,
 };
+use crate::restore::sensitive_data_safety_policy::{
+    verify_sensitive_data_safety_policy, SensitiveDataSafetyPolicyRequest,
+    SensitiveDataSafetyPolicyResult,
+};
 use crate::restore::target_empty_verification::{
     verify_target_empty, TargetEmptyVerificationRequest, TargetEmptyVerificationResult,
 };
@@ -700,6 +704,27 @@ pub fn verify_final_validation_enforcement_policy_gate(
     request: FinalValidationEnforcementPolicyRequest,
 ) -> FinalValidationEnforcementPolicyResult {
     verify_final_validation_enforcement_policy(&request)
+}
+
+/// Verifies the sensitive data safety policy for a planned restore write operation.
+///
+/// Safety invariants:
+/// - No Airtable API calls are made.
+/// - No token accepted or returned.
+/// - No filesystem path accepted or returned.
+/// - No record payload accepted or returned.
+/// - no_changes_made is always true.
+/// - network_writes_attempted is always false.
+/// - writes_enabled is always false.
+/// - Compliant status does NOT enable restore writes.
+/// - Compliant status does NOT introduce a restore success state.
+/// - Tokens, full paths, record payloads, attachment URLs, and raw HTTP data
+///   are blocked from all result fields, diagnostics, and logs.
+#[tauri::command]
+pub fn verify_sensitive_data_safety_policy_gate(
+    request: SensitiveDataSafetyPolicyRequest,
+) -> SensitiveDataSafetyPolicyResult {
+    verify_sensitive_data_safety_policy(&request)
 }
 
 #[cfg(test)]

@@ -63,6 +63,8 @@ import type {
   RollbackLimitationPolicyResult,
   FinalValidationEnforcementPolicyRequest,
   FinalValidationEnforcementPolicyResult,
+  SensitiveDataSafetyPolicyRequest,
+  SensitiveDataSafetyPolicyResult,
   RestoreWriteEngineRequest,
   RestoreWriteEngineResult,
   RunBackupCommandRequest,
@@ -730,6 +732,23 @@ async function verifyFinalValidationEnforcementPolicy(
   return result;
 }
 
+async function verifySensitiveDataSafetyPolicy(
+  request: SensitiveDataSafetyPolicyRequest,
+): Promise<SensitiveDataSafetyPolicyResult> {
+  const result = await commands.verifySensitiveDataSafetyPolicy(request);
+  if (result === null) {
+    return {
+      status: "blocked",
+      checks: [],
+      message: "Sensitive data safety policy check is not available in this context.",
+      noChangesMade: true,
+      networkWritesAttempted: false,
+      writesEnabled: false,
+    };
+  }
+  return result;
+}
+
 export const liveAirBridgeService: AirBridgeService = {
   listConnections,
   listWorkspaces,
@@ -776,4 +795,5 @@ export const liveAirBridgeService: AirBridgeService = {
   verifyFailureModesPolicy,
   verifyRollbackLimitationPolicy,
   verifyFinalValidationEnforcementPolicy,
+  verifySensitiveDataSafetyPolicy,
 };

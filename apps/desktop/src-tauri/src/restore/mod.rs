@@ -37,6 +37,7 @@ pub mod schema_write_executor;
 pub mod schema_write_requests;
 pub mod schema_write_result;
 pub mod schema_write_skeleton;
+pub mod sensitive_data_safety_policy;
 pub mod target_empty_verification;
 pub mod warnings;
 pub mod write_engine;

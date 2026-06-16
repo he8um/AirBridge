@@ -63,6 +63,8 @@ import type {
   RollbackLimitationPolicyResult,
   FinalValidationEnforcementPolicyRequest,
   FinalValidationEnforcementPolicyResult,
+  SensitiveDataSafetyPolicyRequest,
+  SensitiveDataSafetyPolicyResult,
   RestoreWriteEngineRequest,
   RestoreWriteEngineResult,
   RunBackupCommandRequest,
@@ -411,4 +413,23 @@ export interface AirBridgeService {
   verifyFinalValidationEnforcementPolicy(
     request: FinalValidationEnforcementPolicyRequest,
   ): Promise<FinalValidationEnforcementPolicyResult>;
+  /**
+   * Verifies the sensitive data safety policy for a planned restore write operation.
+   *
+   * Safety invariants:
+   * - No Airtable API calls are made.
+   * - No token accepted or returned.
+   * - No filesystem path accepted or returned.
+   * - No record payload accepted or returned.
+   * - writesEnabled is always false.
+   * - noChangesMade is always true.
+   * - networkWritesAttempted is always false.
+   * - Compliant does NOT enable restore writes.
+   * - Compliant does NOT introduce a restore success state.
+   * - Tokens, full paths, package paths, record payloads, attachment URLs,
+   *   and raw HTTP data are blocked from all result fields, diagnostics, and logs.
+   */
+  verifySensitiveDataSafetyPolicy(
+    request: SensitiveDataSafetyPolicyRequest,
+  ): Promise<SensitiveDataSafetyPolicyResult>;
 }

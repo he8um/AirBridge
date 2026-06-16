@@ -998,6 +998,70 @@ After completing a restore, perform the following manual checks in Airtable:
 
 ---
 
+## Restore Sensitive Data Safety Policy Checklist (Gate 16)
+
+### Before testing
+
+- [ ] Confirm `verify_sensitive_data_safety_policy_gate` is registered in the Tauri invoke handler.
+- [ ] Confirm `RestoreSensitiveDataSafetyPolicyPanel` is rendered on the Restore page after the final validation enforcement policy section.
+- [ ] Confirm no execute button is present in the panel.
+- [ ] Confirm no token input field (`type="password"` or `name="token"`) is present.
+
+### Panel behavior
+
+- [ ] A writes-disabled notice is always shown in the sensitive data safety policy section.
+- [ ] The notice mentions that sensitive material must never be exposed through any restore write surface.
+- [ ] The verify button is enabled and calls `verifySensitiveDataSafetyPolicy` when clicked.
+- [ ] While loading, the verify button is disabled and shows a loading label.
+
+### Result display
+
+- [ ] Status badge shows `compliant`, `warning`, or `blocked` correctly.
+- [ ] The result message is shown beside the status badge.
+- [ ] A "Writes disabled" tag is always shown.
+- [ ] The checks list shows 15 check rows for a complete plan.
+- [ ] The checks list shows 2 check rows when no plan is declared (short-circuit).
+- [ ] Each check row shows the check ID, status badge, label, and message.
+- [ ] Remediation text is shown for any check with a `remediation` field.
+- [ ] Safety summary section is shown when the plan is present (non-short-circuit).
+- [ ] Safety summary shows surfaces covered count, total redaction rules, all-rules-named flag, and all 8 safety boolean flags.
+- [ ] Safety summary is not shown when no plan is declared.
+- [ ] A "No changes made" footer is shown.
+
+### Status scenarios
+
+- [ ] Complete safe plan (all flags `true`, all 10 surfaces covered, all rules named) returns `compliant`.
+- [ ] No plan declared returns `blocked` with 2 checks.
+- [ ] Missing any of the 10 required exposure surfaces returns `blocked` (SDS-03 failed).
+- [ ] `noTokenInResults: false` returns `blocked` (SDS-04 failed).
+- [ ] `noFullPathInResults: false` returns `blocked` (SDS-05 failed).
+- [ ] `packageReferencesFilenameOnly: false` returns `blocked` (SDS-06 failed).
+- [ ] `noRecordPayloadInResults: false` returns `blocked` (SDS-07 failed).
+- [ ] `noAttachmentUrlInResults: false` returns `blocked` (SDS-08 failed).
+- [ ] `noRawHttpInResults: false` returns `blocked` (SDS-09 failed).
+- [ ] `errorMessagesUseSafeSummaries: false` returns `blocked` (SDS-10 failed).
+- [ ] `summariesArePayloadFree: false` returns `blocked` (SDS-11 failed).
+- [ ] Unnamed redaction rules return `warning` (SDS-12 warning — not blocked).
+- [ ] A `compliant` result message says "writes remain disabled".
+- [ ] A `blocked` result message says "sensitive material must never be exposed".
+
+### Safety invariants
+
+- [ ] `noChangesMade` is `true` in every sensitive data safety policy result.
+- [ ] `writesEnabled` is `false` in every sensitive data safety policy result — including `compliant`.
+- [ ] `networkWritesAttempted` is `false` in every sensitive data safety policy result.
+- [ ] The policy request type has no `token` field.
+- [ ] The policy result has no `token` field.
+- [ ] The policy result contains no full filesystem path.
+- [ ] The policy result contains no package path.
+- [ ] The policy result contains no record payload field.
+- [ ] The policy result contains no attachment URL field.
+- [ ] The policy result contains no raw HTTP data field.
+- [ ] A `compliant` result does NOT enable restore writes.
+- [ ] A `compliant` result does NOT introduce a restore success state.
+
+---
+
 ## Write Engine Skeleton Checklist
 
 ### Before testing

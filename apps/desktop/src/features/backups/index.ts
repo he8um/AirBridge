@@ -14,6 +14,7 @@ export { RestoreWritePhaseOrderingPolicyPanel } from "./RestoreWritePhaseOrderin
 export { RestoreFailureModesPolicyPanel } from "./RestoreFailureModesPolicyPanel";
 export { RestoreRollbackLimitationPolicyPanel } from "./RestoreRollbackLimitationPolicyPanel";
 export { RestoreFinalValidationEnforcementPolicyPanel } from "./RestoreFinalValidationEnforcementPolicyPanel";
+export { RestoreSensitiveDataSafetyPolicyPanel } from "./RestoreSensitiveDataSafetyPolicyPanel";
 export { JobHistoryPanel } from "./JobHistoryPanel";
 export { RestoreRecordImportPlanPanel } from "./RestoreRecordImportPlanPanel";
 export { BackupConfirmationBox } from "./BackupConfirmationBox";

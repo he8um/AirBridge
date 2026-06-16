@@ -59,6 +59,8 @@ import type {
   RollbackLimitationPolicyResult,
   FinalValidationEnforcementPolicyRequest,
   FinalValidationEnforcementPolicyResult,
+  SensitiveDataSafetyPolicyRequest,
+  SensitiveDataSafetyPolicyResult,
   RunBackupCommandRequest,
   RunBackupCommandResponse,
   SandboxVerificationRequest,
@@ -550,4 +552,12 @@ export async function verifyFinalValidationEnforcementPolicy(
     "verify_final_validation_enforcement_policy_gate",
     { request },
   );
+}
+
+export async function verifySensitiveDataSafetyPolicy(
+  request: SensitiveDataSafetyPolicyRequest,
+): Promise<SensitiveDataSafetyPolicyResult | null> {
+  return safeInvoke<SensitiveDataSafetyPolicyResult>("verify_sensitive_data_safety_policy_gate", {
+    request,
+  });
 }

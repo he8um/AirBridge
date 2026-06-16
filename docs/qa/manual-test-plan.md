@@ -1671,6 +1671,80 @@ These test cases cover the command contract layer: confirmation enforcement, out
 
 ---
 
+## Restore Sensitive Data Safety Policy (Gate 16)
+
+**TC-SDS-01: Writes-disabled notice always visible**
+
+- Preconditions: Restore page open.
+- Steps:
+  1. Scroll to the "Gate 16 — Sensitive Data Safety Policy" section.
+- Expected result: A notice is always visible stating that live restore writes are disabled and sensitive material must never be exposed through any restore write surface. No execute button is shown. No token input is shown.
+
+**TC-SDS-02: No plan declared returns blocked (2 checks)**
+
+- Preconditions: Restore page open.
+- Steps:
+  1. Invoke `verifySensitiveDataSafetyPolicy` with no `plan` field.
+- Expected result: Status badge shows `blocked`. Exactly 2 checks are shown. SDS-01 passed. SDS-02 failed with "No sensitive data safety plan declared." No safety summary section. `writesEnabled` is `false`.
+
+**TC-SDS-03: Complete safe plan returns compliant (15 checks)**
+
+- Preconditions: Restore page open.
+- Steps:
+  1. Invoke `verifySensitiveDataSafetyPolicy` with a complete safe plan (all 10 surfaces covered, all 8 boolean flags `true`, all rules named).
+- Expected result: Status badge shows `compliant`. 15 checks shown, all passed. Safety summary visible. Message says "writes remain disabled".
+
+**TC-SDS-04: Missing exposure surface returns blocked**
+
+- Preconditions: Restore page open.
+- Steps:
+  1. Invoke `verifySensitiveDataSafetyPolicy` with `redactionCoverage` missing one required surface (e.g. `uiPanel`).
+- Expected result: Status badge shows `blocked`. SDS-03 shows `failed`. Remediation text visible.
+
+**TC-SDS-05: noTokenInResults false returns blocked**
+
+- Preconditions: Restore page open.
+- Steps:
+  1. Invoke `verifySensitiveDataSafetyPolicy` with `noTokenInResults: false`.
+- Expected result: Status badge shows `blocked`. SDS-04 shows `failed`.
+
+**TC-SDS-06: noFullPathInResults false returns blocked**
+
+- Preconditions: Restore page open.
+- Steps:
+  1. Invoke `verifySensitiveDataSafetyPolicy` with `noFullPathInResults: false`.
+- Expected result: Status badge shows `blocked`. SDS-05 shows `failed`.
+
+**TC-SDS-07: packageReferencesFilenameOnly false returns blocked**
+
+- Preconditions: Restore page open.
+- Steps:
+  1. Invoke `verifySensitiveDataSafetyPolicy` with `packageReferencesFilenameOnly: false`.
+- Expected result: Status badge shows `blocked`. SDS-06 shows `failed`.
+
+**TC-SDS-08: Unnamed redaction rules return warning only**
+
+- Preconditions: Restore page open.
+- Steps:
+  1. Invoke `verifySensitiveDataSafetyPolicy` with all surfaces covered, all flags `true`, but one or more redaction rules with an empty `redactionRule` string.
+- Expected result: Status badge shows `warning`. SDS-12 shows `warning`. No blocking failure. Message does not say "blocked".
+
+**TC-SDS-09: No execute button or token input**
+
+- Preconditions: Restore page open; `compliant` result shown.
+- Steps:
+  1. Inspect the Sensitive Data Safety Policy panel for interactive controls.
+- Expected result: No execute or restore button is present. No token or password input field is present.
+
+**TC-SDS-10: Compliant result does not enable writes or introduce restore success state**
+
+- Preconditions: Restore page; complete safe plan returns `compliant`.
+- Steps:
+  1. Inspect the Sensitive Data Safety Policy panel and all visible text.
+- Expected result: `writesEnabled` is `false`. "Writes disabled" tag is visible. No text containing "Restore complete", "Restore succeeded", "succeeded", or "success" is visible. The message explicitly says "writes remain disabled".
+
+---
+
 ## Write Engine Skeleton
 
 **TC-WE-01: Write engine disabled notice is always visible**
