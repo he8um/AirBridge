@@ -1576,6 +1576,101 @@ These test cases cover the command contract layer: confirmation enforcement, out
 
 ---
 
+## Restore Final Validation Enforcement Policy (Gate 15)
+
+**TC-FVE-01: Writes-disabled notice always visible**
+
+- Preconditions: Restore page open.
+- Steps:
+  1. Scroll to the "Gate 15 — Final Validation Enforcement Policy" section.
+- Expected result: A notice is always visible stating that live restore writes are disabled and no result may be labeled complete or successful without final validation explicitly passing. No execute button is shown. No token input is shown.
+
+**TC-FVE-02: No plan declared returns blocked (2 checks)**
+
+- Preconditions: Restore page open.
+- Steps:
+  1. Invoke `verifyFinalValidationEnforcementPolicy` with no `plan` field.
+- Expected result: Status badge shows `blocked`. Exactly 2 checks are shown. FVE-01 passed. FVE-02 failed with "No final validation enforcement plan declared." No enforcement summary section. `writesEnabled` is `false`.
+
+**TC-FVE-03: Complete safe plan returns compliant (15 checks)**
+
+- Preconditions: Restore page open.
+- Steps:
+  1. Invoke `verifyFinalValidationEnforcementPolicy` with a complete safe plan (all required states `passed`, full completion guard with all three invariants `true`).
+- Expected result: Status badge shows `compliant`. 15 checks shown, all passed. Enforcement summary visible. Message says "writes remain disabled".
+
+**TC-FVE-04: Missing completion guard returns blocked**
+
+- Preconditions: Restore page open.
+- Steps:
+  1. Invoke `verifyFinalValidationEnforcementPolicy` with a plan that has no `completionGuard`.
+- Expected result: Status badge shows `blocked`. FVE-03 shows `failed`. Remediation text visible.
+
+**TC-FVE-05: Incomplete completion guard returns blocked**
+
+- Preconditions: Restore page open.
+- Steps:
+  1. Invoke `verifyFinalValidationEnforcementPolicy` with a plan where `completionGuard.blocksPartialValidationAsCompletion` is `false`.
+- Expected result: Status badge shows `blocked`. FVE-03 shows `failed`.
+
+**TC-FVE-06: Failed schema validation returns blocked**
+
+- Preconditions: Restore page open.
+- Steps:
+  1. Invoke `verifyFinalValidationEnforcementPolicy` with `schemaValidationState: failed`.
+- Expected result: Status badge shows `blocked`. FVE-04 shows `failed`.
+
+**TC-FVE-07: Skipped validation state returns blocked**
+
+- Preconditions: Restore page open.
+- Steps:
+  1. Invoke `verifyFinalValidationEnforcementPolicy` with any validation state set to `skipped`.
+- Expected result: Status badge shows `blocked`. FVE-12 shows `failed`.
+
+**TC-FVE-08: Attachment metadata-only returns warning**
+
+- Preconditions: Restore page open.
+- Steps:
+  1. Invoke `verifyFinalValidationEnforcementPolicy` with `attachmentValidationMetadataOnly: true`.
+- Expected result: Status badge shows `warning`. FVE-08 shows `warning`. No blocking failure.
+
+**TC-FVE-09: NotRequired with reason returns warning**
+
+- Preconditions: Restore page open.
+- Steps:
+  1. Invoke `verifyFinalValidationEnforcementPolicy` with `schemaValidationState: notRequired` and a `schemaValidationNonRequiredReason` provided.
+- Expected result: Status badge shows `warning`. FVE-04 shows `warning`. Message does not say blocked.
+
+**TC-FVE-10: NotRequired without reason returns blocked**
+
+- Preconditions: Restore page open.
+- Steps:
+  1. Invoke `verifyFinalValidationEnforcementPolicy` with `recordCountValidationState: notRequired` and no reason.
+- Expected result: Status badge shows `blocked`. FVE-05 shows `failed`.
+
+**TC-FVE-11: No manifest skips manifest check**
+
+- Preconditions: Restore page open.
+- Steps:
+  1. Invoke `verifyFinalValidationEnforcementPolicy` with `packageManifestPresent: false`.
+- Expected result: FVE-09 shows `passed` with "not applicable" message. No blocking from manifest check.
+
+**TC-FVE-12: No execute button or token input**
+
+- Preconditions: Restore page open; `compliant` result shown.
+- Steps:
+  1. Inspect the Final Validation Enforcement Policy panel for interactive controls.
+- Expected result: No execute or restore button is present. No token or password input field is present.
+
+**TC-FVE-13: Compliant result does not enable writes or introduce restore success state**
+
+- Preconditions: Restore page; complete safe plan returns `compliant`.
+- Steps:
+  1. Inspect the Final Validation Enforcement Policy panel and all visible text.
+- Expected result: `writesEnabled` is `false`. "Writes disabled" tag is visible. No text containing "Restore complete", "Restore succeeded", "succeeded", or "success" is visible. The message explicitly says "writes remain disabled".
+
+---
+
 ## Write Engine Skeleton
 
 **TC-WE-01: Write engine disabled notice is always visible**

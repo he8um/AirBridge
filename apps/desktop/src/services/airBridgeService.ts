@@ -61,6 +61,8 @@ import type {
   FailureModesPolicyResult,
   RollbackLimitationPolicyRequest,
   RollbackLimitationPolicyResult,
+  FinalValidationEnforcementPolicyRequest,
+  FinalValidationEnforcementPolicyResult,
   RestoreWriteEngineRequest,
   RestoreWriteEngineResult,
   RunBackupCommandRequest,
@@ -391,4 +393,22 @@ export interface AirBridgeService {
   verifyRollbackLimitationPolicy(
     request: RollbackLimitationPolicyRequest,
   ): Promise<RollbackLimitationPolicyResult>;
+  /**
+   * Verifies the final validation enforcement policy for a planned restore write operation.
+   *
+   * Safety invariants:
+   * - No Airtable API calls are made.
+   * - No token accepted or returned.
+   * - No filesystem path accepted or returned.
+   * - No record payload accepted or returned.
+   * - writesEnabled is always false.
+   * - noChangesMade is always true.
+   * - networkWritesAttempted is always false.
+   * - Compliant does NOT enable restore writes.
+   * - Compliant does NOT introduce a restore success state.
+   * - No result may be labeled complete or successful before final validation passes.
+   */
+  verifyFinalValidationEnforcementPolicy(
+    request: FinalValidationEnforcementPolicyRequest,
+  ): Promise<FinalValidationEnforcementPolicyResult>;
 }

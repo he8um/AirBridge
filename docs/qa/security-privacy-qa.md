@@ -948,6 +948,72 @@ If AirBridge supports user-configured field redaction:
 
 ---
 
+## Restore Final Validation Enforcement Policy Safety (Gate 15)
+
+**Goal:** Confirm that the final validation enforcement policy gate makes no Airtable API calls, requires no token, never labels any result complete without final validation explicitly passing, never introduces a restore success state, and always returns `writesEnabled: false`.
+
+**FVE-SEC-01: No token accepted.**
+- `FinalValidationEnforcementPolicyRequest` has no `token` field in its Rust struct definition.
+- `FinalValidationEnforcementPolicyResult` has no `token` field in any result variant.
+- `FinalValidationEnforcementPlan` has no `token` field.
+- No token is forwarded to any downstream function.
+- Rust unit test `no_token_or_path_in_serialized_result` asserts no `pat_` or `token` string appears in the serialized result.
+
+**FVE-SEC-02: No Airtable API calls.**
+- `verify_final_validation_enforcement_policy` calls only `evaluate_write_gate()` and in-memory logic.
+- No HTTP client is constructed or called.
+- No Airtable endpoint is referenced in the function.
+
+**FVE-SEC-03: No write operations.**
+- `verify_final_validation_enforcement_policy` produces no writes to any storage system, file, or network endpoint.
+- `no_changes_made` is always `true`. `network_writes_attempted` is always `false`.
+- Rust unit tests assert both invariants across all result branches.
+
+**FVE-SEC-04: No record payload in any result field.**
+- `FinalValidationEnforcementPolicyResult` contains status, checks, message, enforcement summary (validation state strings and boolean flags only), and safety invariant fields.
+- `FinalValidationEnforcementPlan` contains only enum validation states and boolean flags — no record IDs, no field values, no base IDs.
+- The enforcement summary mirrors only safe state strings and boolean flags.
+
+**FVE-SEC-05: No full path in any field.**
+- No filesystem path appears in any request or result field.
+- Rust unit test `no_token_or_path_in_serialized_result` asserts no `/Users/` or `/home/` string appears in the serialized result.
+
+**FVE-SEC-06: `noChangesMade` always true.**
+- Every code path in `verify_final_validation_enforcement_policy` sets `no_changes_made: true`.
+- Rust unit tests assert `no_changes_made` across compliant, warning, and blocked results.
+
+**FVE-SEC-07: No execute button.**
+- `RestoreFinalValidationEnforcementPolicyPanel` renders no execute, restore, or write-start control.
+- Frontend tests assert no "execute" or "start restore" text is visible in the panel.
+
+**FVE-SEC-08: Compliant status does not enable writes.**
+- `writes_enabled` is always `false` — independent of policy status.
+- Rust unit tests assert `!result.writes_enabled` for all result branches.
+
+**FVE-SEC-09: Compliant status does not introduce a restore success state.**
+- The compliant result message explicitly states writes remain disabled.
+- No "succeeded" or "restore complete" language appears in any result branch.
+- Rust unit test `no_success_state_in_result_message` asserts no success language in any result.
+- Frontend tests assert no "succeeded" text is visible in the panel for any status.
+
+**FVE-SEC-10: No result may be labeled complete without final validation passing.**
+- The completion guard invariant `blocks_completion_without_final_validation` must be `true` for FVE-03 to pass.
+- Any `ValidationCompletionState` other than `Passed` (or `NotRequired` with reason) blocks the policy.
+- `Skipped`, `Partial`, and `NotDeclared` states always produce `Blocked`.
+- Rust unit tests assert `Blocked` for each blocking validation state variant.
+
+**FVE-SEC-11: Completion guard fully declared.**
+- All three `RestoreCompletionGuard` invariants must be explicitly `true`: `blocks_completion_without_final_validation`, `blocks_partial_validation_as_completion`, `failedValidationBlocksCompletion`.
+- Missing guard or any invariant set to `false` causes `Blocked` on FVE-03.
+- Rust unit tests assert `Blocked` for missing guard and for incomplete guard.
+
+**FVE-SEC-12: No-plan causes immediate blocked (short-circuit).**
+- When no `plan` field is provided, the function returns after FVE-02 with 2 checks and `Blocked` status.
+- No subsequent check fields are evaluated.
+- Rust unit tests assert `checks.len() == 2` in the no-plan case.
+
+---
+
 ## Restore Schema Creation Plan Safety (V0.1)
 
 **Goal:** Confirm that the schema creation planning flow makes no Airtable API calls, requires no token, creates no Airtable tables or fields, and always returns `noChangesMade: true`.

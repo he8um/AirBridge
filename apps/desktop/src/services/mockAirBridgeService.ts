@@ -81,6 +81,9 @@ import type {
   RollbackLimitationPolicyRequest,
   RollbackLimitationPolicyResult,
   RollbackLimitationPolicyStatus,
+  FinalValidationEnforcementPolicyRequest,
+  FinalValidationEnforcementPolicyResult,
+  FinalValidationEnforcementPolicyStatus,
   RunBackupCommandResponse,
   RecordWriteRequestPlanRequest,
   RecordWriteRequestPlanResult,
@@ -4429,6 +4432,445 @@ function verifyRollbackLimitationPolicyImpl(
   });
 }
 
+function verifyFinalValidationEnforcementPolicyImpl(
+  request: FinalValidationEnforcementPolicyRequest,
+): Promise<FinalValidationEnforcementPolicyResult> {
+  const checks: FinalValidationEnforcementPolicyResult["checks"] = [];
+
+  // FVE-01: Write gate disabled (always passes)
+  checks.push({
+    checkId: "FVE-01",
+    label: "write-gate-disabled",
+    status: "passed",
+    message: "Write gate is disabled. No restore writes are attempted.",
+  });
+
+  // FVE-02: Plan declared — short-circuit if absent
+  const plan = request.plan;
+  if (!plan) {
+    checks.push({
+      checkId: "FVE-02",
+      label: "plan-declared",
+      status: "failed",
+      message:
+        "No final validation enforcement plan declared. A plan declaring the validation state for each required step is required before any live write result can be considered complete.",
+      remediation:
+        "Declare a FinalValidationEnforcementPlan with all required validation states and a fully declared RestoreCompletionGuard.",
+    });
+    return Promise.resolve({
+      status: "blocked" as FinalValidationEnforcementPolicyStatus,
+      checks,
+      message:
+        "Final validation enforcement policy is blocked. No plan was declared. No result may be labeled complete without explicit final validation. Restore writes remain disabled.",
+      noChangesMade: true,
+      networkWritesAttempted: false,
+      writesEnabled: false,
+    });
+  }
+
+  checks.push({
+    checkId: "FVE-02",
+    label: "plan-declared",
+    status: "passed",
+    message: "Final validation enforcement plan is declared.",
+  });
+
+  let blocked = false;
+  let hasWarning = false;
+
+  // FVE-03: Completion guard fully declared
+  const guard = plan.completionGuard;
+  if (!guard) {
+    checks.push({
+      checkId: "FVE-03",
+      label: "completion-guard-declared",
+      status: "failed",
+      message:
+        "No RestoreCompletionGuard declared. All three guard invariants must be explicitly set before any result can be labeled complete.",
+      remediation:
+        "Declare a completionGuard with blocksCompletionWithoutFinalValidation, blocksPartialValidationAsCompletion, and failedValidationBlocksCompletion all set to true.",
+    });
+    blocked = true;
+  } else if (
+    !guard.blocksCompletionWithoutFinalValidation ||
+    !guard.blocksPartialValidationAsCompletion ||
+    !guard.failedValidationBlocksCompletion
+  ) {
+    checks.push({
+      checkId: "FVE-03",
+      label: "completion-guard-declared",
+      status: "failed",
+      message:
+        "RestoreCompletionGuard is declared but one or more required invariants are false. All three invariants must be true.",
+      remediation:
+        "Set blocksCompletionWithoutFinalValidation, blocksPartialValidationAsCompletion, and failedValidationBlocksCompletion all to true in the completionGuard.",
+    });
+    blocked = true;
+  } else {
+    checks.push({
+      checkId: "FVE-03",
+      label: "completion-guard-declared",
+      status: "passed",
+      message: "RestoreCompletionGuard is fully declared with all required invariants set to true.",
+    });
+  }
+
+  // FVE-04: Schema validation
+  const schemaState = plan.schemaValidationState;
+  if (schemaState === "passed") {
+    checks.push({
+      checkId: "FVE-04",
+      label: "schema-validation-passed",
+      status: "passed",
+      message: "Schema validation has explicitly passed.",
+    });
+  } else if (schemaState === "notRequired" && plan.schemaValidationNonRequiredReason) {
+    checks.push({
+      checkId: "FVE-04",
+      label: "schema-validation-passed",
+      status: "warning",
+      message: `Schema validation is not required: ${plan.schemaValidationNonRequiredReason}`,
+    });
+    hasWarning = true;
+  } else if (schemaState === "notRequired") {
+    checks.push({
+      checkId: "FVE-04",
+      label: "schema-validation-passed",
+      status: "failed",
+      message:
+        "Schema validation is declared as not required but no reason is provided. A reason is required for any non-required validation state.",
+      remediation:
+        "Provide a schemaValidationNonRequiredReason explaining why validation is not required.",
+    });
+    blocked = true;
+  } else {
+    checks.push({
+      checkId: "FVE-04",
+      label: "schema-validation-passed",
+      status: "failed",
+      message: `Schema validation state '${schemaState}' is not acceptable. Validation must be passed or explicitly declared not required with a reason.`,
+      remediation: "Ensure schema validation passes before treating any result as complete.",
+    });
+    blocked = true;
+  }
+
+  // FVE-05: Record count validation
+  const recordCountState = plan.recordCountValidationState;
+  if (recordCountState === "passed") {
+    checks.push({
+      checkId: "FVE-05",
+      label: "record-count-validation-passed",
+      status: "passed",
+      message: "Record count validation has explicitly passed.",
+    });
+  } else if (recordCountState === "notRequired" && plan.recordCountNonRequiredReason) {
+    checks.push({
+      checkId: "FVE-05",
+      label: "record-count-validation-passed",
+      status: "warning",
+      message: `Record count validation is not required: ${plan.recordCountNonRequiredReason}`,
+    });
+    hasWarning = true;
+  } else if (recordCountState === "notRequired") {
+    checks.push({
+      checkId: "FVE-05",
+      label: "record-count-validation-passed",
+      status: "failed",
+      message: "Record count validation is declared as not required but no reason is provided.",
+      remediation: "Provide a recordCountNonRequiredReason.",
+    });
+    blocked = true;
+  } else {
+    checks.push({
+      checkId: "FVE-05",
+      label: "record-count-validation-passed",
+      status: "failed",
+      message: `Record count validation state '${recordCountState}' is not acceptable.`,
+      remediation: "Ensure record count validation passes before treating any result as complete.",
+    });
+    blocked = true;
+  }
+
+  // FVE-06: ID mapping validation (prerequisite for linked record validation)
+  const idMappingState = plan.idMappingValidationState;
+  const linkedState = plan.linkedRecordValidationState;
+  const linkedNeeded = linkedState !== "notRequired";
+
+  if (idMappingState === "passed") {
+    checks.push({
+      checkId: "FVE-06",
+      label: "id-mapping-validation-before-linked",
+      status: "passed",
+      message: "ID mapping validation has explicitly passed.",
+    });
+  } else if (idMappingState === "notRequired" && !linkedNeeded) {
+    checks.push({
+      checkId: "FVE-06",
+      label: "id-mapping-validation-before-linked",
+      status: "warning",
+      message:
+        "ID mapping validation is not required and linked record validation is also not required.",
+    });
+    hasWarning = true;
+  } else if (idMappingState === "notRequired" && linkedNeeded) {
+    checks.push({
+      checkId: "FVE-06",
+      label: "id-mapping-validation-before-linked",
+      status: "failed",
+      message:
+        "ID mapping validation is not required but linked record validation is required. ID mapping must pass before linked record validation can proceed.",
+      remediation: "Ensure ID mapping validation passes when linked record validation is required.",
+    });
+    blocked = true;
+  } else {
+    checks.push({
+      checkId: "FVE-06",
+      label: "id-mapping-validation-before-linked",
+      status: "failed",
+      message: `ID mapping validation state '${idMappingState}' is not acceptable.`,
+      remediation: "Ensure ID mapping validation passes.",
+    });
+    blocked = true;
+  }
+
+  // FVE-07: Linked record validation
+  if (linkedState === "passed") {
+    checks.push({
+      checkId: "FVE-07",
+      label: "linked-record-validation-passed",
+      status: "passed",
+      message: "Linked record validation has explicitly passed.",
+    });
+  } else if (linkedState === "notRequired") {
+    checks.push({
+      checkId: "FVE-07",
+      label: "linked-record-validation-passed",
+      status: "passed",
+      message: "Linked record validation is not required (no linked fields in this restore).",
+    });
+  } else {
+    checks.push({
+      checkId: "FVE-07",
+      label: "linked-record-validation-passed",
+      status: "failed",
+      message: `Linked record validation state '${linkedState}' is not acceptable.`,
+      remediation: "Ensure linked record validation passes before treating any result as complete.",
+    });
+    blocked = true;
+  }
+
+  // FVE-08: Attachment explicit state
+  const attachmentState = plan.attachmentMetadataValidationState;
+  if (attachmentState === "passed" && plan.attachmentValidationMetadataOnly) {
+    checks.push({
+      checkId: "FVE-08",
+      label: "attachment-validation-explicit",
+      status: "warning",
+      message:
+        "Attachment validation passed but is metadata-only. Full content validation is preferred.",
+    });
+    hasWarning = true;
+  } else if (attachmentState === "passed") {
+    checks.push({
+      checkId: "FVE-08",
+      label: "attachment-validation-explicit",
+      status: "passed",
+      message: "Attachment validation has explicitly passed.",
+    });
+  } else if (plan.attachmentValidationMetadataOnly) {
+    checks.push({
+      checkId: "FVE-08",
+      label: "attachment-validation-explicit",
+      status: "warning",
+      message:
+        "Attachment validation is metadata-only. Full content validation is preferred for production restores.",
+    });
+    hasWarning = true;
+  } else if (attachmentState === "notRequired" && plan.attachmentNonRequiredReason) {
+    checks.push({
+      checkId: "FVE-08",
+      label: "attachment-validation-explicit",
+      status: "warning",
+      message: `Attachment validation is not required: ${plan.attachmentNonRequiredReason}`,
+    });
+    hasWarning = true;
+  } else if (attachmentState === "notRequired") {
+    checks.push({
+      checkId: "FVE-08",
+      label: "attachment-validation-explicit",
+      status: "failed",
+      message: "Attachment validation is not required but no reason is provided.",
+      remediation: "Provide an attachmentNonRequiredReason.",
+    });
+    blocked = true;
+  } else {
+    checks.push({
+      checkId: "FVE-08",
+      label: "attachment-validation-explicit",
+      status: "failed",
+      message: `Attachment validation state '${attachmentState}' must be explicitly declared.`,
+      remediation: "Declare attachment validation state explicitly.",
+    });
+    blocked = true;
+  }
+
+  // FVE-09: Manifest checksum validation (conditional on packageManifestPresent)
+  const manifestState = plan.manifestChecksumValidationState;
+  if (!plan.packageManifestPresent) {
+    checks.push({
+      checkId: "FVE-09",
+      label: "manifest-validation-if-present",
+      status: "passed",
+      message: "No package manifest present; manifest checksum validation is not applicable.",
+    });
+  } else if (manifestState === "passed") {
+    checks.push({
+      checkId: "FVE-09",
+      label: "manifest-validation-if-present",
+      status: "passed",
+      message: "Manifest checksum validation has explicitly passed.",
+    });
+  } else if (manifestState === "notRequired" && plan.manifestNonRequiredReason) {
+    checks.push({
+      checkId: "FVE-09",
+      label: "manifest-validation-if-present",
+      status: "warning",
+      message: `Manifest validation is not required: ${plan.manifestNonRequiredReason}`,
+    });
+    hasWarning = true;
+  } else if (manifestState === "notRequired") {
+    checks.push({
+      checkId: "FVE-09",
+      label: "manifest-validation-if-present",
+      status: "failed",
+      message:
+        "Package manifest is present but manifest validation is declared not required without a reason.",
+      remediation: "Provide a manifestNonRequiredReason or ensure manifest validation passes.",
+    });
+    blocked = true;
+  } else {
+    checks.push({
+      checkId: "FVE-09",
+      label: "manifest-validation-if-present",
+      status: "failed",
+      message: `Manifest checksum validation state '${manifestState}' is not acceptable when a manifest is present.`,
+      remediation: "Ensure manifest checksum validation passes.",
+    });
+    blocked = true;
+  }
+
+  // FVE-10: No partial as completion (always passes — enforced by guard FVE-03)
+  checks.push({
+    checkId: "FVE-10",
+    label: "no-partial-as-completion",
+    status: "passed",
+    message: "Partial validation cannot be treated as completion. Enforced by completion guard.",
+  });
+
+  // FVE-11: Failed validation blocks (always passes — enforced by guard FVE-03)
+  checks.push({
+    checkId: "FVE-11",
+    label: "failed-validation-blocks",
+    status: "passed",
+    message: "Failed validation blocks completion. Enforced by completion guard.",
+  });
+
+  // FVE-12: No unsafe skip
+  const hasUnsafeSkip = [
+    plan.schemaValidationState,
+    plan.recordCountValidationState,
+    plan.idMappingValidationState,
+    plan.linkedRecordValidationState,
+    plan.attachmentMetadataValidationState,
+    plan.manifestChecksumValidationState,
+  ].some((s) => s === "skipped");
+
+  if (hasUnsafeSkip) {
+    checks.push({
+      checkId: "FVE-12",
+      label: "no-unsafe-skip",
+      status: "failed",
+      message:
+        "One or more validation steps are marked as skipped. Skipped validation always blocks completion.",
+      remediation: "Remove skipped states. Use notRequired with a reason for optional validations.",
+    });
+    blocked = true;
+  } else {
+    checks.push({
+      checkId: "FVE-12",
+      label: "no-unsafe-skip",
+      status: "passed",
+      message: "No validation steps are skipped.",
+    });
+  }
+
+  // FVE-13: No success state without validation (always passes)
+  checks.push({
+    checkId: "FVE-13",
+    label: "no-success-without-validation",
+    status: "passed",
+    message: "No success or completion state is introduced by this policy check.",
+  });
+
+  // FVE-14: No token/path/payload (always passes)
+  checks.push({
+    checkId: "FVE-14",
+    label: "no-token-path-payload",
+    status: "passed",
+    message: "No token, filesystem path, or record payload is present in any result field.",
+  });
+
+  // FVE-15: Writes remain disabled (always passes)
+  checks.push({
+    checkId: "FVE-15",
+    label: "writes-remain-disabled",
+    status: "passed",
+    message: "Restore writes remain disabled. Policy compliance does not enable write execution.",
+  });
+
+  const status: FinalValidationEnforcementPolicyStatus = blocked
+    ? "blocked"
+    : hasWarning
+      ? "warning"
+      : "compliant";
+
+  const enforcementSummary =
+    status !== "blocked" || checks.length > 2
+      ? {
+          schemaValidationState: plan.schemaValidationState,
+          recordCountValidationState: plan.recordCountValidationState,
+          idMappingValidationState: plan.idMappingValidationState,
+          linkedRecordValidationState: plan.linkedRecordValidationState,
+          attachmentMetadataValidationState: plan.attachmentMetadataValidationState,
+          attachmentValidationMetadataOnly: plan.attachmentValidationMetadataOnly,
+          manifestChecksumValidationState: plan.manifestChecksumValidationState,
+          packageManifestPresent: plan.packageManifestPresent,
+          completionGuardDeclared: !!guard,
+          blocksCompletionWithoutFinalValidation:
+            guard?.blocksCompletionWithoutFinalValidation ?? false,
+          failedValidationBlocksCompletion: guard?.failedValidationBlocksCompletion ?? false,
+        }
+      : undefined;
+
+  const label = request.targetLabel ? ` for '${request.targetLabel}'` : "";
+  const message =
+    status === "compliant"
+      ? `Final validation enforcement policy is compliant${label}. All required validation steps have explicitly passed or are declared not required with reasons. The completion guard is fully declared. No result may be labeled complete without final validation. Restore writes remain disabled.`
+      : status === "warning"
+        ? `Final validation enforcement policy has warnings${label}. Required validation steps are satisfied, but some optional validations are metadata-only or declared not required. Restore writes remain disabled.`
+        : `Final validation enforcement policy is blocked${label}. No result may be labeled complete or successful without final validation explicitly passing. Resolve all violations before any live write is considered. Restore writes remain disabled.`;
+
+  return Promise.resolve({
+    status,
+    checks,
+    message,
+    enforcementSummary,
+    noChangesMade: true,
+    networkWritesAttempted: false,
+    writesEnabled: false,
+  });
+}
+
 export const mockAirBridgeService: AirBridgeService = {
   listConnections,
   listWorkspaces,
@@ -4474,4 +4916,5 @@ export const mockAirBridgeService: AirBridgeService = {
   verifyWritePhaseOrderingPolicy: verifyWritePhaseOrderingPolicyImpl,
   verifyFailureModesPolicy: verifyFailureModesPolicyImpl,
   verifyRollbackLimitationPolicy: verifyRollbackLimitationPolicyImpl,
+  verifyFinalValidationEnforcementPolicy: verifyFinalValidationEnforcementPolicyImpl,
 };

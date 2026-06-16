@@ -13,6 +13,7 @@ export { RestoreFinalValidationPolicyPanel } from "./RestoreFinalValidationPolic
 export { RestoreWritePhaseOrderingPolicyPanel } from "./RestoreWritePhaseOrderingPolicyPanel";
 export { RestoreFailureModesPolicyPanel } from "./RestoreFailureModesPolicyPanel";
 export { RestoreRollbackLimitationPolicyPanel } from "./RestoreRollbackLimitationPolicyPanel";
+export { RestoreFinalValidationEnforcementPolicyPanel } from "./RestoreFinalValidationEnforcementPolicyPanel";
 export { JobHistoryPanel } from "./JobHistoryPanel";
 export { RestoreRecordImportPlanPanel } from "./RestoreRecordImportPlanPanel";
 export { BackupConfirmationBox } from "./BackupConfirmationBox";

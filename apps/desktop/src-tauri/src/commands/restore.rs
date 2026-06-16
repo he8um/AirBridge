@@ -20,6 +20,10 @@ use crate::restore::execution_gate::validate_restore_execution_gate;
 use crate::restore::failure_modes_policy::{
     verify_failure_modes_policy, FailureModesPolicyRequest, FailureModesPolicyResult,
 };
+use crate::restore::final_validation_enforcement_policy::{
+    verify_final_validation_enforcement_policy, FinalValidationEnforcementPolicyRequest,
+    FinalValidationEnforcementPolicyResult,
+};
 use crate::restore::final_validation_policy::{
     verify_final_validation_policy, FinalValidationPolicyRequest, FinalValidationPolicyResult,
 };
@@ -676,6 +680,26 @@ pub fn verify_rollback_limitation_policy_gate(
     request: RollbackLimitationPolicyRequest,
 ) -> RollbackLimitationPolicyResult {
     verify_rollback_limitation_policy(&request)
+}
+
+/// Verifies the final validation enforcement policy for a planned restore write operation.
+///
+/// Safety invariants:
+/// - No Airtable API calls are made.
+/// - No token accepted or returned.
+/// - No filesystem path accepted or returned.
+/// - No record payload accepted or returned.
+/// - no_changes_made is always true.
+/// - network_writes_attempted is always false.
+/// - writes_enabled is always false.
+/// - Compliant status does NOT enable restore writes.
+/// - Compliant status does NOT introduce a restore success state.
+/// - No result may be labeled complete or successful before final validation passes.
+#[tauri::command]
+pub fn verify_final_validation_enforcement_policy_gate(
+    request: FinalValidationEnforcementPolicyRequest,
+) -> FinalValidationEnforcementPolicyResult {
+    verify_final_validation_enforcement_policy(&request)
 }
 
 #[cfg(test)]

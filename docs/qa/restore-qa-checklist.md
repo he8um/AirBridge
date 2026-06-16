@@ -934,6 +934,70 @@ After completing a restore, perform the following manual checks in Airtable:
 
 ---
 
+## Restore Final Validation Enforcement Policy Checklist (Gate 15)
+
+### Before testing
+
+- [ ] Confirm `verify_final_validation_enforcement_policy_gate` is registered in the Tauri invoke handler.
+- [ ] Confirm `RestoreFinalValidationEnforcementPolicyPanel` is rendered on the Restore page after the rollback limitation policy section.
+- [ ] Confirm no execute button is present in the panel.
+- [ ] Confirm no token input field (`type="password"` or `name="token"`) is present.
+
+### Panel behavior
+
+- [ ] A writes-disabled notice is always shown in the final validation enforcement policy section.
+- [ ] The notice mentions that no result may be labeled complete or successful without final validation explicitly passing.
+- [ ] The verify button is enabled and calls `verifyFinalValidationEnforcementPolicy` when clicked.
+- [ ] While loading, the verify button is disabled and shows a loading label.
+
+### Result display
+
+- [ ] Status badge shows `compliant`, `warning`, or `blocked` correctly.
+- [ ] The result message is shown beside the status badge.
+- [ ] A "Writes disabled" tag is always shown.
+- [ ] The checks list shows 15 check rows for a complete plan.
+- [ ] The checks list shows 2 check rows when no plan is declared (short-circuit).
+- [ ] Each check row shows the check ID, status badge, label, and message.
+- [ ] Remediation text is shown for any check with a `remediation` field.
+- [ ] Enforcement summary section is shown when the plan is present (non-short-circuit).
+- [ ] Enforcement summary shows schema, record count, ID mapping, linked record, attachment, manifest validation states plus guard and completion guard flags.
+- [ ] Enforcement summary is not shown when no plan is declared.
+- [ ] A "No changes made" footer is shown.
+
+### Status scenarios
+
+- [ ] Complete safe plan (all required states `passed`, full completion guard) returns `compliant`.
+- [ ] No plan declared returns `blocked` with 2 checks.
+- [ ] Missing completion guard returns `blocked` (FVE-03 failed).
+- [ ] Completion guard with any invariant `false` returns `blocked` (FVE-03 failed).
+- [ ] `schemaValidationState: failed` returns `blocked` (FVE-04 failed).
+- [ ] `recordCountValidationState: partial` returns `blocked` (FVE-05 failed).
+- [ ] `idMappingValidationState: notDeclared` with linked validation needed returns `blocked` (FVE-06 failed).
+- [ ] `linkedRecordValidationState: skipped` returns `blocked` (FVE-12 failed).
+- [ ] `attachmentMetadataValidationState` with `attachmentValidationMetadataOnly: true` returns `warning` (FVE-08 warning).
+- [ ] `attachmentMetadataValidationState: notRequired` with reason returns `warning` (FVE-08 warning).
+- [ ] `attachmentMetadataValidationState: notRequired` without reason returns `blocked` (FVE-08 failed).
+- [ ] `packageManifestPresent: false` skips manifest check (FVE-09 auto-pass).
+- [ ] `packageManifestPresent: true` and `manifestChecksumValidationState: failed` returns `blocked` (FVE-09 failed).
+- [ ] A `notRequired` state with a reason on a non-attachment field returns `warning`.
+- [ ] A `compliant` result message says "writes remain disabled".
+- [ ] A `blocked` result message says "no result may be labeled complete".
+
+### Safety invariants
+
+- [ ] `noChangesMade` is `true` in every final validation enforcement policy result.
+- [ ] `writesEnabled` is `false` in every final validation enforcement policy result — including `compliant`.
+- [ ] `networkWritesAttempted` is `false` in every final validation enforcement policy result.
+- [ ] The policy request type has no `token` field.
+- [ ] The policy result has no `token` field.
+- [ ] The policy result contains no full filesystem path.
+- [ ] The policy result contains no record payload field.
+- [ ] A `compliant` result does NOT enable restore writes.
+- [ ] A `compliant` result does NOT introduce a restore success state.
+- [ ] No result in any status branch is labeled "complete" or "succeeded" before final validation passes.
+
+---
+
 ## Write Engine Skeleton Checklist
 
 ### Before testing

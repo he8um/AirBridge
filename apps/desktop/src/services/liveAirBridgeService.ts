@@ -61,6 +61,8 @@ import type {
   FailureModesPolicyResult,
   RollbackLimitationPolicyRequest,
   RollbackLimitationPolicyResult,
+  FinalValidationEnforcementPolicyRequest,
+  FinalValidationEnforcementPolicyResult,
   RestoreWriteEngineRequest,
   RestoreWriteEngineResult,
   RunBackupCommandRequest,
@@ -711,6 +713,23 @@ async function verifyRollbackLimitationPolicy(
   return result;
 }
 
+async function verifyFinalValidationEnforcementPolicy(
+  request: FinalValidationEnforcementPolicyRequest,
+): Promise<FinalValidationEnforcementPolicyResult> {
+  const result = await commands.verifyFinalValidationEnforcementPolicy(request);
+  if (result === null) {
+    return {
+      status: "blocked",
+      checks: [],
+      message: "Final validation enforcement policy check is not available in this context.",
+      noChangesMade: true,
+      networkWritesAttempted: false,
+      writesEnabled: false,
+    };
+  }
+  return result;
+}
+
 export const liveAirBridgeService: AirBridgeService = {
   listConnections,
   listWorkspaces,
@@ -756,4 +775,5 @@ export const liveAirBridgeService: AirBridgeService = {
   verifyWritePhaseOrderingPolicy,
   verifyFailureModesPolicy,
   verifyRollbackLimitationPolicy,
+  verifyFinalValidationEnforcementPolicy,
 };

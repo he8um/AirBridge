@@ -57,6 +57,8 @@ import type {
   FailureModesPolicyResult,
   RollbackLimitationPolicyRequest,
   RollbackLimitationPolicyResult,
+  FinalValidationEnforcementPolicyRequest,
+  FinalValidationEnforcementPolicyResult,
   RunBackupCommandRequest,
   RunBackupCommandResponse,
   SandboxVerificationRequest,
@@ -539,4 +541,13 @@ export async function verifyRollbackLimitationPolicy(
   return safeInvoke<RollbackLimitationPolicyResult>("verify_rollback_limitation_policy_gate", {
     request,
   });
+}
+
+export async function verifyFinalValidationEnforcementPolicy(
+  request: FinalValidationEnforcementPolicyRequest,
+): Promise<FinalValidationEnforcementPolicyResult | null> {
+  return safeInvoke<FinalValidationEnforcementPolicyResult>(
+    "verify_final_validation_enforcement_policy_gate",
+    { request },
+  );
 }

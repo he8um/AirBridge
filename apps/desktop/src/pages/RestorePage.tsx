@@ -20,6 +20,7 @@ import { RestoreFinalValidationPolicyPanel } from "../features/backups/RestoreFi
 import { RestoreWritePhaseOrderingPolicyPanel } from "../features/backups/RestoreWritePhaseOrderingPolicyPanel";
 import { RestoreFailureModesPolicyPanel } from "../features/backups/RestoreFailureModesPolicyPanel";
 import { RestoreRollbackLimitationPolicyPanel } from "../features/backups/RestoreRollbackLimitationPolicyPanel";
+import { RestoreFinalValidationEnforcementPolicyPanel } from "../features/backups/RestoreFinalValidationEnforcementPolicyPanel";
 import { RestoreWriteEnginePanel } from "../features/backups/RestoreWriteEnginePanel";
 import { liveAirBridgeService } from "../services/liveAirBridgeService";
 import type { BackupPackageInspectionResult } from "../backend/types";
@@ -45,6 +46,7 @@ import type {
   WritePhaseOrderingPolicyResult,
   FailureModesPolicyResult,
   RollbackLimitationPolicyResult,
+  FinalValidationEnforcementPolicyResult,
 } from "../backend/types";
 
 export function RestorePage() {
@@ -97,6 +99,8 @@ export function RestorePage() {
   const [fmpLoading, setFmpLoading] = useState(false);
   const [rlpResult, setRlpResult] = useState<RollbackLimitationPolicyResult | null>(null);
   const [rlpLoading, setRlpLoading] = useState(false);
+  const [fveResult, setFveResult] = useState<FinalValidationEnforcementPolicyResult | null>(null);
+  const [fveLoading, setFveLoading] = useState(false);
 
   return (
     <div className="page">
@@ -628,6 +632,30 @@ export function RestorePage() {
                   })
                   .finally(() => {
                     setRlpLoading(false);
+                  });
+              }}
+            />
+
+            <div className="divider" style={{ margin: 0 }} />
+
+            {/* Final validation enforcement policy — Gate 15. No writes. No token. No record payload. No success state. No result labeled complete without final validation passing. */}
+            <RestoreFinalValidationEnforcementPolicyPanel
+              result={fveResult}
+              loading={fveLoading}
+              onVerify={() => {
+                setFveLoading(true);
+                liveAirBridgeService
+                  .verifyFinalValidationEnforcementPolicy({
+                    targetLabel: targetBaseName ?? undefined,
+                  })
+                  .then((r) => {
+                    setFveResult(r);
+                  })
+                  .catch(() => {
+                    setFveResult(null);
+                  })
+                  .finally(() => {
+                    setFveLoading(false);
                   });
               }}
             />

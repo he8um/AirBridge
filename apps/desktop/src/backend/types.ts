@@ -2302,3 +2302,114 @@ export interface RollbackLimitationPolicyResult {
   networkWritesAttempted: boolean;
   writesEnabled: boolean;
 }
+
+// ── Gate 15: Final Validation Enforcement Policy ──────────────────────────────
+
+export type FinalValidationEnforcementPolicyStatus = "compliant" | "warning" | "blocked";
+
+export type FinalValidationEnforcementCheckStatus = "passed" | "warning" | "failed";
+
+/** The state of a specific validation step in the restore pipeline. */
+export type ValidationCompletionState =
+  | "passed"
+  | "failed"
+  | "notRequired"
+  | "skipped"
+  | "partial"
+  | "notDeclared";
+
+/**
+ * A guard that prevents any result from being labeled complete or successful
+ * unless final validation has explicitly passed.
+ */
+export interface RestoreCompletionGuard {
+  blocksCompletionWithoutFinalValidation: boolean;
+  blocksPartialValidationAsCompletion: boolean;
+  failedValidationBlocksCompletion: boolean;
+  note?: string;
+}
+
+/**
+ * Enforcement plan declaring the state of each required validation step
+ * and the completion guard for the restore write pipeline.
+ *
+ * Safety invariants:
+ * - No token field.
+ * - No filesystem path field.
+ * - No record payload field.
+ */
+export interface FinalValidationEnforcementPlan {
+  schemaValidationState: ValidationCompletionState;
+  schemaValidationNonRequiredReason?: string;
+  recordCountValidationState: ValidationCompletionState;
+  recordCountNonRequiredReason?: string;
+  idMappingValidationState: ValidationCompletionState;
+  linkedRecordValidationState: ValidationCompletionState;
+  attachmentMetadataValidationState: ValidationCompletionState;
+  attachmentValidationMetadataOnly: boolean;
+  attachmentNonRequiredReason?: string;
+  manifestChecksumValidationState: ValidationCompletionState;
+  packageManifestPresent: boolean;
+  manifestNonRequiredReason?: string;
+  completionGuard?: RestoreCompletionGuard;
+}
+
+/**
+ * Input to the final validation enforcement policy gate.
+ *
+ * Safety invariants:
+ * - No token field.
+ * - No filesystem path field.
+ * - No record payload field.
+ */
+export interface FinalValidationEnforcementPolicyRequest {
+  plan?: FinalValidationEnforcementPlan;
+  targetLabel?: string;
+}
+
+export interface FinalValidationEnforcementCheck {
+  checkId: string;
+  label: string;
+  status: FinalValidationEnforcementCheckStatus;
+  message: string;
+  remediation?: string;
+}
+
+/** Safe read-only summary of the evaluated plan (no sensitive values). */
+export interface FinalValidationEnforcementSummary {
+  schemaValidationState: string;
+  recordCountValidationState: string;
+  idMappingValidationState: string;
+  linkedRecordValidationState: string;
+  attachmentMetadataValidationState: string;
+  attachmentValidationMetadataOnly: boolean;
+  manifestChecksumValidationState: string;
+  packageManifestPresent: boolean;
+  completionGuardDeclared: boolean;
+  blocksCompletionWithoutFinalValidation: boolean;
+  failedValidationBlocksCompletion: boolean;
+}
+
+/**
+ * Result from `verify_final_validation_enforcement_policy`.
+ *
+ * Safety invariants:
+ * - No token field.
+ * - No filesystem path field.
+ * - No record payload field.
+ * - writesEnabled is always false.
+ * - noChangesMade is always true.
+ * - networkWritesAttempted is always false.
+ * - Compliant status does NOT enable restore writes.
+ * - Compliant status does NOT introduce a restore success state.
+ * - No result may be labeled complete or successful before final validation passes.
+ */
+export interface FinalValidationEnforcementPolicyResult {
+  status: FinalValidationEnforcementPolicyStatus;
+  checks: FinalValidationEnforcementCheck[];
+  message: string;
+  enforcementSummary?: FinalValidationEnforcementSummary;
+  noChangesMade: boolean;
+  networkWritesAttempted: boolean;
+  writesEnabled: boolean;
+}
