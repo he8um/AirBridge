@@ -67,6 +67,8 @@ import type {
   SensitiveDataSafetyPolicyResult,
   AttachmentPhaseDisabledPolicyRequest,
   AttachmentPhaseDisabledPolicyResult,
+  LiveWriteReadinessPolicyRequest,
+  LiveWriteReadinessPolicyResult,
   RestoreWriteEngineRequest,
   RestoreWriteEngineResult,
   RunBackupCommandRequest,
@@ -455,4 +457,24 @@ export interface AirBridgeService {
   verifyAttachmentPhaseDisabledPolicy(
     request: AttachmentPhaseDisabledPolicyRequest,
   ): Promise<AttachmentPhaseDisabledPolicyResult>;
+  /**
+   * Verifies the live-write readiness aggregate policy.
+   *
+   * Safety invariants:
+   * - No Airtable API calls are made.
+   * - No token accepted or returned.
+   * - No filesystem path accepted or returned.
+   * - No attachment URL accepted or returned.
+   * - No record payload accepted or returned.
+   * - No raw HTTP data accepted or returned.
+   * - writesEnabled is always false.
+   * - noChangesMade is always true.
+   * - networkWritesAttempted is always false.
+   * - Ready does NOT enable restore writes.
+   * - Ready does NOT introduce a restore success state.
+   * - This result is advisory only.
+   */
+  verifyLiveWriteReadinessPolicy(
+    request: LiveWriteReadinessPolicyRequest,
+  ): Promise<LiveWriteReadinessPolicyResult>;
 }

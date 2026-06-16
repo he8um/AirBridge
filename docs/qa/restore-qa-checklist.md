@@ -1129,6 +1129,72 @@ After completing a restore, perform the following manual checks in Airtable:
 
 ---
 
+## Restore Live Write Readiness Policy Checklist (Gate 18)
+
+### Before testing
+
+- [ ] Confirm `verify_live_write_readiness_policy_gate` is registered in the Tauri invoke handler.
+- [ ] Confirm `RestoreLiveWriteReadinessPolicyPanel` is rendered on the Restore page after the attachment phase disabled policy section.
+- [ ] Confirm no execute button is present in the panel.
+- [ ] Confirm no enable-writes button is present.
+- [ ] Confirm no token input field is present.
+
+### Panel behavior
+
+- [ ] A writes-disabled notice is always shown.
+- [ ] The notice states that verifying this policy does not enable writes or start any restore operation.
+- [ ] An advisory-only notice is always shown, stating that a Ready result does not enable write execution.
+- [ ] The notice states that restore completion remains unavailable.
+- [ ] The verify button is enabled and calls `verifyLiveWriteReadinessPolicy` when clicked.
+- [ ] While loading, the verify button is disabled and shows a loading label.
+
+### Result display
+
+- [ ] Status badge shows `ready (advisory only)`, `warning`, or `blocked` correctly.
+- [ ] The result message is shown beside the status badge.
+- [ ] A "Writes disabled" tag is always shown.
+- [ ] An "Advisory only" tag is always shown.
+- [ ] The checks list shows 10 check rows for a complete gates array.
+- [ ] The checks list shows 2 check rows when no gates are declared (short-circuit).
+- [ ] Each check row shows the check ID, status badge, label, and message.
+- [ ] Remediation text is shown for any check with a `remediation` field.
+- [ ] Gate summary section is shown when gates are declared.
+- [ ] Gate summary shows total gates, passed, warning, failed, not-evaluated, missing, all-declared, and live-execution-available.
+- [ ] Gate summary is not shown when no gates are declared.
+- [ ] A "No changes made" footer is shown.
+- [ ] The footer mentions advisory only.
+
+### Status scenarios
+
+- [ ] All 17 required gates declared and passed returns `ready`.
+- [ ] No gates declared returns `blocked` with 2 checks.
+- [ ] Any required gate missing returns `blocked`.
+- [ ] Any required gate with `failed` status returns `blocked` (LWR-03 failed).
+- [ ] Any required gate with `notEvaluated` status returns `blocked` (LWR-08 failed).
+- [ ] `liveExecutionAvailable: true` returns `blocked` (LWR-05 failed).
+- [ ] Gate note with success-equivalent wording returns `blocked` (LWR-06 failed).
+- [ ] Gate note with token material returns `blocked` (LWR-07 failed).
+- [ ] Gate note with full path returns `blocked` (LWR-07 failed).
+- [ ] Warning gate produces `warning` (LWR-04 warning — not blocked).
+- [ ] A `ready` result message says "writes remain disabled".
+- [ ] A `ready` result message says "advisory only".
+- [ ] A `blocked` result message says "writes remain disabled".
+
+### Safety invariants
+
+- [ ] `noChangesMade` is `true` in every live write readiness result.
+- [ ] `writesEnabled` is `false` in every live write readiness result — including `ready`.
+- [ ] `networkWritesAttempted` is `false` in every live write readiness result.
+- [ ] The policy request type has no `token` field.
+- [ ] The policy result has no `token` field.
+- [ ] The policy result contains no attachment URL field.
+- [ ] The policy result contains no record payload field.
+- [ ] A `ready` result does NOT enable restore writes.
+- [ ] A `ready` result does NOT introduce a restore success state.
+- [ ] A `ready` result does NOT start any restore operation.
+
+---
+
 ## Write Engine Skeleton Checklist
 
 ### Before testing

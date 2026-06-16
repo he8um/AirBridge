@@ -1162,6 +1162,62 @@ If AirBridge supports user-configured field redaction:
 
 ---
 
+## Restore Live Write Readiness Policy Safety (Gate 18)
+
+**Goal:** Confirm that the live write readiness aggregate policy makes no Airtable API calls, is advisory only, does not enable writes, and always returns `writesEnabled: false` and `noChangesMade: true`.
+
+**LWR-SEC-01: No token accepted.**
+- The `LiveWriteReadinessPolicyRequest` type has no `token` field.
+- The `RestoreLiveWriteReadinessPolicyPanel` component renders no token input field.
+- No Airtable credential flows through this code path.
+
+**LWR-SEC-02: No Airtable API calls.**
+- `verify_live_write_readiness_policy()` makes no network requests.
+- No HTTP client, fetch, or Tauri HTTP plugin call is present in the module.
+
+**LWR-SEC-03: No write operations.**
+- `evaluate_write_gate()` always returns `Disabled`.
+- `verify_live_write_readiness_policy()` never calls any write function.
+- `writesEnabled` is always `false` in every result.
+
+**LWR-SEC-04: `Ready` does NOT enable restore writes.**
+- A `Ready` result has `writesEnabled: false`.
+- No restore execution is triggered by this gate check.
+- The panel labels the Ready badge "advisory only".
+
+**LWR-SEC-05: `Ready` does NOT introduce a restore success state.**
+- A `Ready` result message says "writes remain disabled" and "advisory only".
+- Frontend tests assert no "restore complete" or "succeeded" wording.
+- The panel renders no success/completed state.
+
+**LWR-SEC-06: `noChangesMade` always true.**
+- Every code path sets `no_changes_made: true` unconditionally.
+- Rust unit tests assert this for all status variants.
+
+**LWR-SEC-07: No execute or enable button.**
+- `RestoreLiveWriteReadinessPolicyPanel` renders a verify button only.
+- Frontend tests assert no button with "execute", "enable writes", or "start restore" label.
+
+**LWR-SEC-08: Success-equivalent wording in gate notes causes blocked.**
+- Any gate note containing "restore complete", "restore succeeded", "restore success", or "writes enabled" causes LWR-06 to fail and the result to be `Blocked`.
+- Rust unit tests assert `Blocked` for each success-equivalent phrase.
+
+**LWR-SEC-09: Sensitive data in gate notes causes blocked.**
+- Any gate note containing token patterns (`pat_`), full paths (`/Users/`), or attachment URL patterns causes LWR-07 to fail and the result to be `Blocked`.
+- Rust unit tests assert `Blocked` for each sensitive pattern.
+
+**LWR-SEC-10: No gate note content is returned in result fields.**
+- Gate notes are used internally for policy checks only. They do not propagate into result message, check messages, or any serialized field visible to the UI.
+
+**LWR-SEC-11: No-gates causes immediate blocked (short-circuit).**
+- When no gates are provided, the function returns after LWR-02 with 2 checks and `Blocked` status.
+- Rust unit tests assert `checks.len() == 2` in the no-gates case.
+
+**LWR-SEC-12: Advisory notice always visible.**
+- The panel always shows both a writes-disabled notice and an advisory-only notice, regardless of result status.
+
+---
+
 ## Restore Schema Creation Plan Safety (V0.1)
 
 **Goal:** Confirm that the schema creation planning flow makes no Airtable API calls, requires no token, creates no Airtable tables or fields, and always returns `noChangesMade: true`.

@@ -16,6 +16,7 @@ export { RestoreRollbackLimitationPolicyPanel } from "./RestoreRollbackLimitatio
 export { RestoreFinalValidationEnforcementPolicyPanel } from "./RestoreFinalValidationEnforcementPolicyPanel";
 export { RestoreSensitiveDataSafetyPolicyPanel } from "./RestoreSensitiveDataSafetyPolicyPanel";
 export { RestoreAttachmentPhaseDisabledPolicyPanel } from "./RestoreAttachmentPhaseDisabledPolicyPanel";
+export { RestoreLiveWriteReadinessPolicyPanel } from "./RestoreLiveWriteReadinessPolicyPanel";
 export { JobHistoryPanel } from "./JobHistoryPanel";
 export { RestoreRecordImportPlanPanel } from "./RestoreRecordImportPlanPanel";
 export { BackupConfirmationBox } from "./BackupConfirmationBox";

@@ -23,6 +23,7 @@ import { RestoreRollbackLimitationPolicyPanel } from "../features/backups/Restor
 import { RestoreFinalValidationEnforcementPolicyPanel } from "../features/backups/RestoreFinalValidationEnforcementPolicyPanel";
 import { RestoreSensitiveDataSafetyPolicyPanel } from "../features/backups/RestoreSensitiveDataSafetyPolicyPanel";
 import { RestoreAttachmentPhaseDisabledPolicyPanel } from "../features/backups/RestoreAttachmentPhaseDisabledPolicyPanel";
+import { RestoreLiveWriteReadinessPolicyPanel } from "../features/backups/RestoreLiveWriteReadinessPolicyPanel";
 import { RestoreWriteEnginePanel } from "../features/backups/RestoreWriteEnginePanel";
 import { liveAirBridgeService } from "../services/liveAirBridgeService";
 import type { BackupPackageInspectionResult } from "../backend/types";
@@ -51,6 +52,7 @@ import type {
   FinalValidationEnforcementPolicyResult,
   SensitiveDataSafetyPolicyResult,
   AttachmentPhaseDisabledPolicyResult,
+  LiveWriteReadinessPolicyResult,
 } from "../backend/types";
 
 export function RestorePage() {
@@ -109,6 +111,8 @@ export function RestorePage() {
   const [sdsLoading, setSdsLoading] = useState(false);
   const [apdResult, setApdResult] = useState<AttachmentPhaseDisabledPolicyResult | null>(null);
   const [apdLoading, setApdLoading] = useState(false);
+  const [lwrResult, setLwrResult] = useState<LiveWriteReadinessPolicyResult | null>(null);
+  const [lwrLoading, setLwrLoading] = useState(false);
 
   return (
     <div className="page">
@@ -712,6 +716,30 @@ export function RestorePage() {
                   })
                   .finally(() => {
                     setApdLoading(false);
+                  });
+              }}
+            />
+
+            <div className="divider" style={{ margin: 0 }} />
+
+            {/* Live write readiness policy — Gate 18. Advisory only. No writes. No execute. No token. No record payload. No attachment URL. Ready does NOT enable writes. */}
+            <RestoreLiveWriteReadinessPolicyPanel
+              result={lwrResult}
+              loading={lwrLoading}
+              onVerify={() => {
+                setLwrLoading(true);
+                liveAirBridgeService
+                  .verifyLiveWriteReadinessPolicy({
+                    targetLabel: targetBaseName ?? undefined,
+                  })
+                  .then((r) => {
+                    setLwrResult(r);
+                  })
+                  .catch(() => {
+                    setLwrResult(null);
+                  })
+                  .finally(() => {
+                    setLwrLoading(false);
                   });
               }}
             />

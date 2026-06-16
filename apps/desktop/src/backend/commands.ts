@@ -63,6 +63,8 @@ import type {
   SensitiveDataSafetyPolicyResult,
   AttachmentPhaseDisabledPolicyRequest,
   AttachmentPhaseDisabledPolicyResult,
+  LiveWriteReadinessPolicyRequest,
+  LiveWriteReadinessPolicyResult,
   RunBackupCommandRequest,
   RunBackupCommandResponse,
   SandboxVerificationRequest,
@@ -571,4 +573,12 @@ export async function verifyAttachmentPhaseDisabledPolicy(
     "verify_attachment_phase_disabled_policy_gate",
     { request },
   );
+}
+
+export async function verifyLiveWriteReadinessPolicy(
+  request: LiveWriteReadinessPolicyRequest,
+): Promise<LiveWriteReadinessPolicyResult | null> {
+  return safeInvoke<LiveWriteReadinessPolicyResult>("verify_live_write_readiness_policy_gate", {
+    request,
+  });
 }

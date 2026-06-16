@@ -2600,3 +2600,67 @@ export interface AttachmentPhaseDisabledPolicyResult {
   networkWritesAttempted: boolean;
   writesEnabled: boolean;
 }
+
+// ── Gate 18 — Live Write Readiness Policy ─────────────────────────────────────
+
+export type LiveWriteReadinessPolicyStatus = "ready" | "warning" | "blocked";
+export type LiveWriteReadinessCheckStatus = "passed" | "warning" | "failed";
+export type LiveWriteReadinessGateStatus = "passed" | "warning" | "failed" | "notEvaluated";
+
+export interface LiveWriteReadinessGate {
+  gateId: string;
+  label: string;
+  status: LiveWriteReadinessGateStatus;
+  note?: string;
+}
+
+export interface LiveWriteReadinessSummary {
+  totalGates: number;
+  passedGates: number;
+  warningGates: number;
+  failedGates: number;
+  notEvaluatedGates: number;
+  missingRequiredGates: number;
+  allRequiredGatesDeclared: boolean;
+  liveExecutionAvailable: boolean;
+}
+
+export interface LiveWriteReadinessPolicyRequest {
+  gates?: LiveWriteReadinessGate[];
+  liveExecutionAvailable?: boolean;
+  targetLabel?: string;
+}
+
+export interface LiveWriteReadinessCheck {
+  checkId: string;
+  label: string;
+  status: LiveWriteReadinessCheckStatus;
+  message: string;
+  remediation?: string;
+}
+
+/**
+ * Gate 18 — Live Write Readiness Policy result.
+ *
+ * Safety invariants:
+ * - No token field.
+ * - No filesystem path field.
+ * - No attachment URL field.
+ * - No record payload field.
+ * - No raw HTTP data field.
+ * - writesEnabled is always false.
+ * - noChangesMade is always true.
+ * - networkWritesAttempted is always false.
+ * - Ready status does NOT enable restore writes.
+ * - Ready status does NOT introduce a restore success state.
+ * - This result is advisory only.
+ */
+export interface LiveWriteReadinessPolicyResult {
+  status: LiveWriteReadinessPolicyStatus;
+  checks: LiveWriteReadinessCheck[];
+  message: string;
+  gateSummary?: LiveWriteReadinessSummary;
+  noChangesMade: boolean;
+  networkWritesAttempted: boolean;
+  writesEnabled: boolean;
+}

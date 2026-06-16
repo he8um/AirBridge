@@ -456,7 +456,31 @@ The `verify_destructive_operation_policy_gate` Tauri command verifies that no de
 
 ---
 
-## Gate 17 — No Destructive Operations
+## Gate 18 — Live Write Readiness Aggregate Policy (implemented)
+
+- [x] **`verify_live_write_readiness_policy()` implemented.** Runs 10 checks: LWR-01 through LWR-10.
+- [x] **LWR-01 (write gate disabled) always passes.** `evaluate_write_gate()` unconditionally returns `Disabled`. If gate unexpectedly enabled, returns immediately `Blocked` after 1 check.
+- [x] **LWR-02 (all required gates declared) checked.** Missing or empty gates causes immediate `Blocked` with 2 checks only (short-circuit).
+- [x] **LWR-03 (no failed required gate) enforced.** Any failed required gate causes `Blocked`.
+- [x] **LWR-04 (warnings summarized) produces Warning only.** Warning gates do not block but reduce confidence.
+- [x] **LWR-05 (live execution unavailable) enforced.** `liveExecutionAvailable: true` causes `Blocked`.
+- [x] **LWR-06 (no restore success state) enforced.** Any gate note containing success-equivalent wording causes `Blocked`.
+- [x] **LWR-07 (no sensitive exposure) enforced.** Token, path, or attachment URL material in gate notes causes `Blocked`.
+- [x] **LWR-08 (no unevaluated required gate) enforced.** `NotEvaluated` gates cause `Blocked`.
+- [x] **LWR-09 (future implementation behind disabled gate) always passes.** Safety invariant.
+- [x] **LWR-10 (readiness result advisory only) always passes.** `Ready` does NOT enable writes, does NOT start restore, does NOT introduce restore success state.
+- [x] **17 required gates tracked.** sandboxEnvironment through attachmentPhaseDisabled.
+- [x] **Safety invariants.** `writesEnabled` always `false`. `noChangesMade` always `true`. `networkWritesAttempted` always `false`.
+- [x] **Gate summary returned** when gates are declared.
+- [x] **Advisory-only and writes-disabled notices always shown** in panel.
+- [x] **No execute button, no enable button, no token input** in panel.
+- [x] **Ready badge labeled "advisory only".** Never implies writes are possible.
+- [x] **30+ Rust unit tests pass** for live write readiness policy module.
+- [x] **38 frontend tests pass** for live write readiness policy panel rendering.
+
+---
+
+## Gate 19 — No Destructive Operations
 
 - [ ] **No delete record calls.** Grep confirms no `DELETE /v0/` record endpoint is called anywhere in the write path.
 - [ ] **No delete table calls.** Grep confirms no table deletion API call exists.
@@ -466,7 +490,7 @@ The `verify_destructive_operation_policy_gate` Tauri command verifies that no de
 
 ---
 
-## Gate 17 — Live Write Phase Sequencing
+## Gate 19 — Live Write Phase Sequencing
 
 - [ ] **Tables created before fields.** `CreateTable` operations all complete before any `CreateField` operation begins.
 - [ ] **Fields created before records.** `CreateField` and `DeferLinkedField` operations complete before any `CreateRecordBatch` begins.
@@ -476,7 +500,7 @@ The `verify_destructive_operation_policy_gate` Tauri command verifies that no de
 
 ---
 
-## Gate 18 — Checkpoint Safety
+## Gate 20 — Checkpoint Safety
 
 - [ ] **Checkpoint before each batch.** A durable checkpoint is written before each `CreateRecordBatch` operation begins.
 - [ ] **Checkpoint before second pass.** A durable checkpoint records first-pass completion before `UpdateLinkedRecordBatch` begins.

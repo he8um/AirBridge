@@ -35,6 +35,10 @@ use crate::restore::live_write_confirmation_policy::{
     verify_live_write_confirmation_policy, LiveWriteConfirmationPolicyRequest,
     LiveWriteConfirmationPolicyResult,
 };
+use crate::restore::live_write_readiness_policy::{
+    verify_live_write_readiness_policy, LiveWriteReadinessPolicyRequest,
+    LiveWriteReadinessPolicyResult,
+};
 use crate::restore::plan::{RestoreDryRunPlan, RestoreDryRunRequest};
 use crate::restore::rate_limit_backoff_policy::{
     verify_rate_limit_backoff_policy, RateLimitBackoffPolicyRequest, RateLimitBackoffPolicyResult,
@@ -752,6 +756,13 @@ pub fn verify_attachment_phase_disabled_policy_gate(
     request: AttachmentPhaseDisabledPolicyRequest,
 ) -> AttachmentPhaseDisabledPolicyResult {
     verify_attachment_phase_disabled_policy(&request)
+}
+
+#[tauri::command]
+pub fn verify_live_write_readiness_policy_gate(
+    request: LiveWriteReadinessPolicyRequest,
+) -> LiveWriteReadinessPolicyResult {
+    verify_live_write_readiness_policy(&request)
 }
 
 #[cfg(test)]

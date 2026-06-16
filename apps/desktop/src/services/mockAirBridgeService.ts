@@ -91,6 +91,9 @@ import type {
   AttachmentPhaseDisabledPolicyRequest,
   AttachmentPhaseDisabledPolicyResult,
   AttachmentPhaseDisabledPolicyStatus,
+  LiveWriteReadinessPolicyRequest,
+  LiveWriteReadinessPolicyResult,
+  LiveWriteReadinessPolicyStatus,
   RunBackupCommandResponse,
   RecordWriteRequestPlanRequest,
   RecordWriteRequestPlanResult,
@@ -5606,6 +5609,297 @@ function verifyAttachmentPhaseDisabledPolicyImpl(
   });
 }
 
+const REQUIRED_GATE_IDS = [
+  "sandboxEnvironment",
+  "restoreConfirmation",
+  "targetEmpty",
+  "destructiveOperationPolicy",
+  "attachmentUploadPolicy",
+  "schemaRecordOrder",
+  "sandboxWriteTesting",
+  "liveWriteConfirmation",
+  "rateLimitBackoff",
+  "checkpointDurability",
+  "finalValidationPlan",
+  "writePhaseOrdering",
+  "failureModes",
+  "rollbackLimitation",
+  "finalValidationEnforcement",
+  "sensitiveDataSafety",
+  "attachmentPhaseDisabled",
+] as const;
+
+function verifyLiveWriteReadinessPolicyImpl(
+  request: LiveWriteReadinessPolicyRequest,
+): Promise<LiveWriteReadinessPolicyResult> {
+  const label = request.targetLabel ? ` (${request.targetLabel})` : "";
+  const gates = request.gates ?? [];
+  const liveExecutionAvailable = request.liveExecutionAvailable ?? false;
+
+  if (gates.length === 0) {
+    return Promise.resolve({
+      status: "blocked" as LiveWriteReadinessPolicyStatus,
+      checks: [
+        {
+          checkId: "LWR-01",
+          label: "write-gate-disabled",
+          status: "passed" as const,
+          message: "Write gate is disabled. No restore writes are attempted by this policy check.",
+        },
+        {
+          checkId: "LWR-02",
+          label: "all-required-gates-declared",
+          status: "failed" as const,
+          message:
+            "No gate statuses were provided. All 17 required safety gates must be declared before readiness can be assessed.",
+          remediation: "Provide a gates array containing the status of every required safety gate.",
+        },
+      ],
+      message: `Live-write readiness policy is blocked${label}. No gates were declared. Restore writes remain disabled.`,
+      noChangesMade: true,
+      networkWritesAttempted: false,
+      writesEnabled: false,
+    });
+  }
+
+  const declaredIds = new Set(gates.map((g) => g.gateId));
+  const missing = REQUIRED_GATE_IDS.filter((id) => !declaredIds.has(id));
+
+  if (missing.length > 0) {
+    return Promise.resolve({
+      status: "blocked" as LiveWriteReadinessPolicyStatus,
+      checks: [
+        {
+          checkId: "LWR-01",
+          label: "write-gate-disabled",
+          status: "passed" as const,
+          message: "Write gate is disabled. No restore writes are attempted by this policy check.",
+        },
+        {
+          checkId: "LWR-02",
+          label: "all-required-gates-declared",
+          status: "failed" as const,
+          message: `${missing.length} required gate(s) are not declared: ${missing.join(", ")}.`,
+          remediation:
+            "Declare the missing gates with an appropriate status before assessing readiness.",
+        },
+      ],
+      message: `Live-write readiness policy is blocked${label}. ${missing.length} required gate(s) are missing. Restore writes remain disabled.`,
+      gateSummary: {
+        totalGates: REQUIRED_GATE_IDS.length,
+        passedGates: 0,
+        warningGates: 0,
+        failedGates: 0,
+        notEvaluatedGates: 0,
+        missingRequiredGates: missing.length,
+        allRequiredGatesDeclared: false,
+        liveExecutionAvailable,
+      },
+      noChangesMade: true,
+      networkWritesAttempted: false,
+      writesEnabled: false,
+    });
+  }
+
+  const requiredGates = gates.filter((g) =>
+    (REQUIRED_GATE_IDS as readonly string[]).includes(g.gateId),
+  );
+
+  const failedGates = requiredGates.filter((g) => g.status === "failed");
+  const warningGates = requiredGates.filter((g) => g.status === "warning");
+  const notEvaluatedGates = requiredGates.filter((g) => g.status === "notEvaluated");
+  const passedGates = requiredGates.filter((g) => g.status === "passed");
+
+  const successWording = gates.some((g) => {
+    const n = (g.note ?? "").toLowerCase();
+    return (
+      n.includes("restore complete") ||
+      n.includes("restore succeeded") ||
+      n.includes("restore success") ||
+      n.includes("writes enabled")
+    );
+  });
+
+  const sensitiveExposure = gates.some((g) => {
+    const n = (g.note ?? "").toLowerCase();
+    return (
+      n.includes("pat_") ||
+      n.includes("apikey") ||
+      n.includes("api_key") ||
+      n.includes("bearer") ||
+      n.includes("/users/") ||
+      n.includes("/tmp/") ||
+      n.includes("attachmenturl")
+    );
+  });
+
+  let blocked =
+    failedGates.length > 0 ||
+    notEvaluatedGates.length > 0 ||
+    liveExecutionAvailable ||
+    successWording ||
+    sensitiveExposure;
+  const hasWarning = warningGates.length > 0;
+
+  const checks = [
+    {
+      checkId: "LWR-01",
+      label: "write-gate-disabled",
+      status: "passed" as const,
+      message: "Write gate is disabled. No restore writes are attempted by this policy check.",
+    },
+    {
+      checkId: "LWR-02",
+      label: "all-required-gates-declared",
+      status: "passed" as const,
+      message: "All 17 required safety gates are declared.",
+    },
+    failedGates.length === 0
+      ? {
+          checkId: "LWR-03",
+          label: "no-failed-required-gate",
+          status: "passed" as const,
+          message: "No required gate has a failed status.",
+        }
+      : {
+          checkId: "LWR-03",
+          label: "no-failed-required-gate",
+          status: "failed" as const,
+          message: `${failedGates.length} required gate(s) have a failed status: ${failedGates.map((g) => g.gateId).join(", ")}.`,
+          remediation: "Resolve all failed gates before reassessing readiness.",
+        },
+    warningGates.length === 0
+      ? {
+          checkId: "LWR-04",
+          label: "warnings-summarized",
+          status: "passed" as const,
+          message: "No required gate has a warning status. Writes remain disabled.",
+        }
+      : {
+          checkId: "LWR-04",
+          label: "warnings-summarized",
+          status: "warning" as const,
+          message: `${warningGates.length} required gate(s) have a warning status: ${warningGates.map((g) => g.gateId).join(", ")}. Writes remain disabled.`,
+          remediation: "Review warning gates before live write implementation.",
+        },
+    !liveExecutionAvailable
+      ? {
+          checkId: "LWR-05",
+          label: "live-execution-unavailable",
+          status: "passed" as const,
+          message: "Live write execution is not available. No restore execution path is enabled.",
+        }
+      : {
+          checkId: "LWR-05",
+          label: "live-execution-unavailable",
+          status: "failed" as const,
+          message:
+            "Live write execution is marked as available. This violates the write-disabled policy.",
+          remediation: "Disable live write execution before evaluating the readiness policy.",
+        },
+    !successWording
+      ? {
+          checkId: "LWR-06",
+          label: "no-restore-success-state",
+          status: "passed" as const,
+          message:
+            "No gate note contains restore-success wording. Restore completion remains unavailable.",
+        }
+      : {
+          checkId: "LWR-06",
+          label: "no-restore-success-state",
+          status: "failed" as const,
+          message: "At least one gate note contains restore-success equivalent wording.",
+          remediation: "Remove any success-equivalent wording from gate notes.",
+        },
+    !sensitiveExposure
+      ? {
+          checkId: "LWR-07",
+          label: "no-sensitive-exposure",
+          status: "passed" as const,
+          message:
+            "No sensitive data (token, path, payload, attachment URL, raw HTTP) is present in any gate note.",
+        }
+      : {
+          checkId: "LWR-07",
+          label: "no-sensitive-exposure",
+          status: "failed" as const,
+          message: "At least one gate note contains sensitive data material.",
+          remediation: "Remove all sensitive material from gate notes.",
+        },
+    notEvaluatedGates.length === 0
+      ? {
+          checkId: "LWR-08",
+          label: "no-unevaluated-required-gate",
+          status: "passed" as const,
+          message: "All required gates have been evaluated.",
+        }
+      : {
+          checkId: "LWR-08",
+          label: "no-unevaluated-required-gate",
+          status: "failed" as const,
+          message: `${notEvaluatedGates.length} required gate(s) are not yet evaluated: ${notEvaluatedGates.map((g) => g.gateId).join(", ")}.`,
+          remediation: "Evaluate all required gates before assessing overall readiness.",
+        },
+    {
+      checkId: "LWR-09",
+      label: "future-implementation-behind-disabled-gate",
+      status: "passed" as const,
+      message:
+        "Any future live write implementation must remain behind the disabled write gate. Write gate is currently disabled.",
+    },
+    {
+      checkId: "LWR-10",
+      label: "readiness-result-advisory-only",
+      status: "passed" as const,
+      message:
+        "The readiness result is advisory only. A Ready status does not enable writes, does not start any restore operation, and does not introduce a restore success state. Restore writes remain disabled.",
+    },
+  ];
+
+  // recompute blocked after all checks
+  blocked =
+    failedGates.length > 0 ||
+    notEvaluatedGates.length > 0 ||
+    liveExecutionAvailable ||
+    successWording ||
+    sensitiveExposure;
+
+  const status: LiveWriteReadinessPolicyStatus = blocked
+    ? "blocked"
+    : hasWarning
+      ? "warning"
+      : "ready";
+
+  const gateSummary = {
+    totalGates: REQUIRED_GATE_IDS.length,
+    passedGates: passedGates.length,
+    warningGates: warningGates.length,
+    failedGates: failedGates.length,
+    notEvaluatedGates: notEvaluatedGates.length,
+    missingRequiredGates: 0,
+    allRequiredGatesDeclared: true,
+    liveExecutionAvailable,
+  };
+
+  const message =
+    status === "ready"
+      ? `Live-write readiness policy is satisfied${label}. All 17 required safety gates are declared and none are failed. This result is advisory only — restore writes remain disabled, and a Ready status does not enable any restore execution.`
+      : status === "warning"
+        ? `Live-write readiness policy has warnings${label}. All required gates are declared and none are failed, but at least one gate has a warning. This result is advisory only — restore writes remain disabled.`
+        : `Live-write readiness policy is blocked${label}. One or more required safety gates are missing, failed, not evaluated, or a hard safety invariant is violated. Restore writes remain disabled.`;
+
+  return Promise.resolve({
+    status,
+    checks,
+    message,
+    gateSummary,
+    noChangesMade: true,
+    networkWritesAttempted: false,
+    writesEnabled: false,
+  });
+}
+
 export const mockAirBridgeService: AirBridgeService = {
   listConnections,
   listWorkspaces,
@@ -5654,4 +5948,5 @@ export const mockAirBridgeService: AirBridgeService = {
   verifyFinalValidationEnforcementPolicy: verifyFinalValidationEnforcementPolicyImpl,
   verifySensitiveDataSafetyPolicy: verifySensitiveDataSafetyPolicyImpl,
   verifyAttachmentPhaseDisabledPolicy: verifyAttachmentPhaseDisabledPolicyImpl,
+  verifyLiveWriteReadinessPolicy: verifyLiveWriteReadinessPolicyImpl,
 };

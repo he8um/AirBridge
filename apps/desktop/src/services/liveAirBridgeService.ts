@@ -67,6 +67,8 @@ import type {
   SensitiveDataSafetyPolicyResult,
   AttachmentPhaseDisabledPolicyRequest,
   AttachmentPhaseDisabledPolicyResult,
+  LiveWriteReadinessPolicyRequest,
+  LiveWriteReadinessPolicyResult,
   RestoreWriteEngineRequest,
   RestoreWriteEngineResult,
   RunBackupCommandRequest,
@@ -768,6 +770,23 @@ async function verifyAttachmentPhaseDisabledPolicy(
   return result;
 }
 
+async function verifyLiveWriteReadinessPolicy(
+  request: LiveWriteReadinessPolicyRequest,
+): Promise<LiveWriteReadinessPolicyResult> {
+  const result = await commands.verifyLiveWriteReadinessPolicy(request);
+  if (result === null) {
+    return {
+      status: "blocked",
+      checks: [],
+      message: "Live write readiness policy check is not available in this context.",
+      noChangesMade: true,
+      networkWritesAttempted: false,
+      writesEnabled: false,
+    };
+  }
+  return result;
+}
+
 export const liveAirBridgeService: AirBridgeService = {
   listConnections,
   listWorkspaces,
@@ -816,4 +835,5 @@ export const liveAirBridgeService: AirBridgeService = {
   verifyFinalValidationEnforcementPolicy,
   verifySensitiveDataSafetyPolicy,
   verifyAttachmentPhaseDisabledPolicy,
+  verifyLiveWriteReadinessPolicy,
 };

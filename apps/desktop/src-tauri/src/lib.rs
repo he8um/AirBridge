@@ -69,6 +69,7 @@ pub fn run() {
             commands::restore::verify_final_validation_enforcement_policy_gate,
             commands::restore::verify_sensitive_data_safety_policy_gate,
             commands::restore::verify_attachment_phase_disabled_policy_gate,
+            commands::restore::verify_live_write_readiness_policy_gate,
             commands::credentials::get_credential_storage_status,
             commands::credentials::save_airtable_token_to_keychain,
             commands::credentials::remove_airtable_token_from_keychain,

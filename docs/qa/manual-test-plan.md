@@ -1819,6 +1819,81 @@ These test cases cover the command contract layer: confirmation enforcement, out
 
 ---
 
+## Restore Live Write Readiness Policy (Gate 18)
+
+**TC-LWR-01: Writes-disabled notice always visible**
+
+- Preconditions: Restore page open.
+- Steps:
+  1. Scroll to the "Gate 18 — Live Write Readiness Policy" section.
+- Expected result: A writes-disabled notice is visible, stating that verifying this policy does not enable writes or start any restore operation.
+
+**TC-LWR-02: Advisory-only notice always visible**
+
+- Preconditions: Restore page open.
+- Steps:
+  1. Observe the advisory-only notice in the live write readiness policy section.
+- Expected result: A notice states that this is an advisory readiness check only. A Ready result does not enable write execution. Restore completion remains unavailable.
+
+**TC-LWR-03: No gates declared returns blocked (2 checks)**
+
+- Preconditions: Restore page; mock service configured to return no gates.
+- Steps:
+  1. Click "Verify live write readiness".
+- Expected result: Status badge shows `blocked`. Exactly 2 checks are shown. LWR-01 passed. LWR-02 failed with message about no gates declared. No gate summary section. `writesEnabled` is `false`.
+
+**TC-LWR-04: All 17 gates passed returns ready (advisory only)**
+
+- Preconditions: Restore page; all 17 required gates declared with `passed` status.
+- Steps:
+  1. Click "Verify live write readiness".
+- Expected result: Status badge shows "Ready (advisory only)". 10 check rows appear. Gate summary section visible. Total gates = 17. Passed = 17. "Writes disabled" and "Advisory only" tags visible. Message says "writes remain disabled" and "advisory only".
+
+**TC-LWR-05: Failed required gate returns blocked**
+
+- Preconditions: One required gate (e.g. `sandboxEnvironment`) has `failed` status.
+- Steps:
+  1. Click "Verify live write readiness".
+- Expected result: Status badge shows `blocked`. LWR-03 shows `failed`. Remediation text visible.
+
+**TC-LWR-06: Warning gate returns warning (not blocked)**
+
+- Preconditions: One required gate has `warning` status, all others `passed`.
+- Steps:
+  1. Click "Verify live write readiness".
+- Expected result: Status badge shows `warning`. LWR-04 shows `warning`. Message says "writes remain disabled".
+
+**TC-LWR-07: notEvaluated gate returns blocked**
+
+- Preconditions: One required gate has `notEvaluated` status.
+- Steps:
+  1. Click "Verify live write readiness".
+- Expected result: Status badge shows `blocked`. LWR-08 shows `failed`.
+
+**TC-LWR-08: No execute, enable, or token field**
+
+- Preconditions: Restore page with ready result.
+- Steps:
+  1. Inspect all buttons and input fields in the live write readiness panel.
+- Expected result: No button labeled "Execute", "Enable writes", "Start restore", or similar. No `type="password"` or `name="token"` input field.
+
+**TC-LWR-09: Ready result does not enable writes or introduce restore success state**
+
+- Preconditions: Restore page; all 17 gates passed returns `ready`.
+- Steps:
+  1. Inspect the Live Write Readiness Policy panel and all visible text.
+- Expected result: `writesEnabled` is `false`. "Writes disabled" and "Advisory only" tags are visible. No text containing "Restore complete", "Restore succeeded", "succeeded", or "success" is visible. The message explicitly says "writes remain disabled" and "advisory only". The Ready badge text includes "advisory only".
+
+**TC-LWR-10: Gate summary shows correct counts**
+
+- Preconditions: All 17 required gates present with mixed statuses.
+- Steps:
+  1. Click "Verify live write readiness" with a mix of passed, warning, and not-evaluated gates.
+  2. Observe the gate summary section.
+- Expected result: Passed, warning, failed, and not-evaluated counts match the declared gate statuses. Total gates = 17. `liveExecutionAvailable` shows `No`.
+
+---
+
 ## Write Engine Skeleton
 
 **TC-WE-01: Write engine disabled notice is always visible**
