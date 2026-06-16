@@ -2138,3 +2138,54 @@ These test cases cover the command contract layer: confirmation enforcement, out
 - Steps:
   1. `grep -r "create_records\|update_records\|delete_records\|create_table\|create_field" apps/desktop/src-tauri/src/restore/`
 - Expected result: Zero matches. No Airtable write endpoint is called from any file in the restore module.
+
+---
+
+## Schema Write Execution Preview Test Cases
+
+**TC-SWEP-01: Blocked when prerequisites missing**
+
+- Preconditions: Application running in mock mode.
+- Steps:
+  1. Open the Restore page.
+  2. Click "Preview schema write execution" without having run any prerequisite gates.
+- Expected result: Panel shows `Blocked` badge. "Live schema writes remain disabled" is visible. No execute button is shown.
+
+**TC-SWEP-02: DryRunReady for safe dry-run plan**
+
+- Preconditions: Application running in mock mode.
+- Steps:
+  1. Open the Restore page.
+  2. Ensure all prerequisite gates have been verified (sandbox, target empty, schema plan ready, all policies safe, live write readiness satisfied).
+  3. Click "Preview schema write execution".
+- Expected result: Panel shows `Dry-run ready` badge. Ordered steps are displayed. "Live schema writes remain disabled" notice is visible. No execute button is shown. `writesEnabled` is `false` in the result.
+
+**TC-SWEP-03: Step ordering — tables before fields**
+
+- Preconditions: `dryRunReady` result with tables and fields.
+- Steps:
+  1. Obtain a `dryRunReady` preview result with ≥1 table and ≥1 direct field.
+  2. Inspect the rendered step list.
+- Expected result: All `SWEP-STEP-TBL-*` steps appear before `SWEP-STEP-FLD-DIRECT`. Step indices are sequential starting from 0.
+
+**TC-SWEP-04: Writes remain disabled after preview**
+
+- Preconditions: Application running.
+- Steps:
+  1. Run `cargo test -- write_gate` in the Rust test suite.
+  2. Run `cargo test -- schema_write_execution_preview::tests::write_gate_not_bypassed_by_preview`.
+- Expected result: `evaluate_write_gate()` returns `Disabled/DisabledByProductPolicy` before and after the preview call. No live schema write is attempted.
+
+**TC-SWEP-05: No token/path/payload/raw HTTP in result**
+
+- Preconditions: Any state.
+- Steps:
+  1. Run `cargo test -- schema_write_execution_preview::tests::no_token_in_dry_run_ready_serialization schema_write_execution_preview::tests::no_absolute_path_in_dry_run_ready_serialization schema_write_execution_preview::tests::no_record_payload_in_serialization schema_write_execution_preview::tests::no_attachment_url_in_serialization`.
+- Expected result: All four tests pass. No token, path, record payload, or attachment URL appears in the serialized result.
+
+**TC-SWEP-06: Safety invariants in all result states**
+
+- Preconditions: Any state.
+- Steps:
+  1. Run `cargo test -- schema_write_execution_preview::tests`.
+- Expected result: All 38 Rust tests in the `schema_write_execution_preview` module pass. `writesEnabled` is always `false`. `noChangesMade` is always `true`. `networkWritesAttempted` is always `false`.

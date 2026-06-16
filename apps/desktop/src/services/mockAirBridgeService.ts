@@ -94,6 +94,8 @@ import type {
   LiveWriteReadinessPolicyRequest,
   LiveWriteReadinessPolicyResult,
   LiveWriteReadinessPolicyStatus,
+  SchemaWriteExecutionPreviewRequest,
+  SchemaWriteExecutionPreviewResult,
   RunBackupCommandResponse,
   RecordWriteRequestPlanRequest,
   RecordWriteRequestPlanResult,
@@ -5949,4 +5951,156 @@ export const mockAirBridgeService: AirBridgeService = {
   verifySensitiveDataSafetyPolicy: verifySensitiveDataSafetyPolicyImpl,
   verifyAttachmentPhaseDisabledPolicy: verifyAttachmentPhaseDisabledPolicyImpl,
   verifyLiveWriteReadinessPolicy: verifyLiveWriteReadinessPolicyImpl,
+  previewSchemaWriteExecution: previewSchemaWriteExecutionImpl,
 };
+
+function previewSchemaWriteExecutionImpl(
+  request: SchemaWriteExecutionPreviewRequest,
+): Promise<SchemaWriteExecutionPreviewResult> {
+  const sandboxFlagPresent = request.sandboxFlagPresent ?? false;
+  const targetEmptyVerified = request.targetEmptyVerified ?? false;
+  const schemaPlanReady = request.schemaPlanReady ?? false;
+  const destructivePolicySafe = request.destructivePolicySafe ?? false;
+  const sensitiveDataSafe = request.sensitiveDataSafe ?? false;
+  const attachmentPhaseDisabled = request.attachmentPhaseDisabled ?? false;
+  const finalValidationEnforcementPresent = request.finalValidationEnforcementPresent ?? false;
+  const liveWriteReadinessSatisfied = request.liveWriteReadinessSatisfied ?? false;
+
+  const safetySnapshot = {
+    writeGateDisabled: true,
+    sandboxFlagPresent,
+    targetEmptyVerified,
+    schemaPlanReady,
+    destructivePolicySafe,
+    sensitiveDataSafe,
+    attachmentPhaseDisabled,
+    finalValidationEnforcementPresent,
+    liveWriteReadinessSatisfied,
+  };
+
+  let blockedReason: string | undefined;
+  if (!sandboxFlagPresent) {
+    blockedReason = "SWEP-PRE-02: Sandbox environment check has not passed.";
+  } else if (!targetEmptyVerified) {
+    blockedReason = "SWEP-PRE-03: Target empty verification has not passed.";
+  } else if (!schemaPlanReady) {
+    blockedReason = "SWEP-PRE-04: Schema plan is not ready.";
+  } else if (!destructivePolicySafe) {
+    blockedReason = "SWEP-PRE-05: Destructive operation policy is not safe.";
+  } else if (!sensitiveDataSafe) {
+    blockedReason = "SWEP-PRE-06: Sensitive data safety policy is not satisfied.";
+  } else if (!attachmentPhaseDisabled) {
+    blockedReason = "SWEP-PRE-07: Attachment phase is not disabled or metadata-only.";
+  } else if (!finalValidationEnforcementPresent) {
+    blockedReason = "SWEP-PRE-08: Final validation enforcement policy has not been verified.";
+  } else if (!liveWriteReadinessSatisfied) {
+    blockedReason = "SWEP-PRE-09: Live write readiness policy is not satisfied.";
+  }
+
+  if (blockedReason !== undefined) {
+    return Promise.resolve<SchemaWriteExecutionPreviewResult>({
+      status: "blocked",
+      mode: "liveBlocked",
+      message: `Schema write execution preview is blocked. ${blockedReason} Live schema writes remain disabled.`,
+      steps: [
+        {
+          stepIndex: 0,
+          stepId: "SWEP-STEP-BLOCKED",
+          label: "Preview blocked",
+          status: "blocked",
+          note: "Safety prerequisites not satisfied. No steps can be previewed.",
+        },
+      ],
+      safetySnapshot,
+      tableStepCount: 0,
+      fieldStepCount: 0,
+      deferredStepCount: 0,
+      manualStepCount: 0,
+      totalStepCount: 0,
+      blockedReason,
+      noChangesMade: true,
+      networkWritesAttempted: false,
+      writesEnabled: false,
+    });
+  }
+
+  const tableCount = request.tableCount ?? 0;
+  const directFieldCount = request.directFieldCount ?? 0;
+  const deferredFieldCount = request.deferredFieldCount ?? 0;
+  const manualCount = request.manualActionCount ?? 0;
+
+  const steps: SchemaWriteExecutionPreviewResult["steps"] = [];
+  let idx = 0;
+
+  steps.push({
+    stepIndex: idx++,
+    stepId: "SWEP-STEP-VAL",
+    label: "Validate schema plan inputs",
+    status: "pending",
+    note: "Validates that the schema plan is complete. No API calls.",
+  });
+
+  for (let t = 0; t < tableCount; t++) {
+    steps.push({
+      stepIndex: idx++,
+      stepId: `SWEP-STEP-TBL-${String(t).padStart(3, "0")}`,
+      label: `Create table ${t + 1} of ${tableCount}`,
+      status: "pending",
+      note: "Would call Airtable create-table endpoint. Disabled — no network call made.",
+    });
+  }
+
+  if (directFieldCount > 0) {
+    steps.push({
+      stepIndex: idx++,
+      stepId: "SWEP-STEP-FLD-DIRECT",
+      label: `Create ${directFieldCount} direct field(s)`,
+      status: "pending",
+      note: "Would call Airtable create-field endpoint. Disabled — no network calls made.",
+    });
+  }
+
+  if (deferredFieldCount > 0) {
+    steps.push({
+      stepIndex: idx++,
+      stepId: "SWEP-STEP-FLD-DEFERRED",
+      label: `Defer ${deferredFieldCount} linked field(s) to second pass`,
+      status: "pending",
+      note: "Linked fields deferred until all tables exist. Disabled — no network calls made.",
+    });
+  }
+
+  if (manualCount > 0) {
+    steps.push({
+      stepIndex: idx++,
+      stepId: "SWEP-STEP-MANUAL",
+      label: `${manualCount} field(s) require manual action`,
+      status: "pending",
+      note: "Cannot be created via the API. Require manual setup.",
+    });
+  }
+
+  steps.push({
+    stepIndex: idx,
+    stepId: "SWEP-STEP-POST",
+    label: "Post-schema safety verification",
+    status: "pending",
+    note: "Would verify schema matches backup plan. Disabled — no API calls made.",
+  });
+
+  return Promise.resolve<SchemaWriteExecutionPreviewResult>({
+    status: "dryRunReady",
+    mode: "dryRunOnly",
+    message: `Schema write execution preview is ready (dry-run only). ${tableCount} table(s), ${directFieldCount} direct field(s), ${deferredFieldCount} deferred field(s), ${manualCount} manual action(s) planned. Live schema writes remain disabled. This preview does not start any restore execution.`,
+    steps,
+    safetySnapshot,
+    tableStepCount: tableCount,
+    fieldStepCount: directFieldCount,
+    deferredStepCount: deferredFieldCount,
+    manualStepCount: manualCount,
+    totalStepCount: steps.length,
+    noChangesMade: true,
+    networkWritesAttempted: false,
+    writesEnabled: false,
+  });
+}

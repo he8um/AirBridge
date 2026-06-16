@@ -2664,3 +2664,77 @@ export interface LiveWriteReadinessPolicyResult {
   networkWritesAttempted: boolean;
   writesEnabled: boolean;
 }
+
+// ── Schema Write Execution Preview ────────────────────────────────────────────
+
+export type SchemaWriteExecutionPreviewStatus = "dryRunReady" | "blocked";
+export type SchemaWriteExecutionPreviewStepStatus = "pending" | "blocked" | "skipped";
+export type SchemaWriteExecutionPreviewMode = "dryRunOnly" | "liveBlocked";
+
+export interface SchemaWriteExecutionPreviewStep {
+  stepIndex: number;
+  stepId: string;
+  label: string;
+  status: SchemaWriteExecutionPreviewStepStatus;
+  note: string;
+}
+
+export interface SchemaWriteSafetySnapshot {
+  writeGateDisabled: boolean;
+  sandboxFlagPresent: boolean;
+  targetEmptyVerified: boolean;
+  schemaPlanReady: boolean;
+  destructivePolicySafe: boolean;
+  sensitiveDataSafe: boolean;
+  attachmentPhaseDisabled: boolean;
+  finalValidationEnforcementPresent: boolean;
+  liveWriteReadinessSatisfied: boolean;
+}
+
+export interface SchemaWriteExecutionPreviewRequest {
+  packageFilename?: string;
+  sandboxFlagPresent?: boolean;
+  targetEmptyVerified?: boolean;
+  schemaPlanReady?: boolean;
+  tableCount?: number;
+  directFieldCount?: number;
+  deferredFieldCount?: number;
+  manualActionCount?: number;
+  destructivePolicySafe?: boolean;
+  sensitiveDataSafe?: boolean;
+  attachmentPhaseDisabled?: boolean;
+  finalValidationEnforcementPresent?: boolean;
+  liveWriteReadinessSatisfied?: boolean;
+}
+
+/**
+ * Result of the schema write execution preview command.
+ *
+ * Safety invariants:
+ * - No token field.
+ * - No filesystem path field.
+ * - No record payload field.
+ * - No raw HTTP body field.
+ * - No attachment URL field.
+ * - writesEnabled is always false.
+ * - noChangesMade is always true.
+ * - networkWritesAttempted is always false.
+ * - DryRunReady does NOT enable live writes.
+ * - DryRunReady does NOT introduce a restore success state.
+ */
+export interface SchemaWriteExecutionPreviewResult {
+  status: SchemaWriteExecutionPreviewStatus;
+  mode: SchemaWriteExecutionPreviewMode;
+  message: string;
+  steps: SchemaWriteExecutionPreviewStep[];
+  safetySnapshot: SchemaWriteSafetySnapshot;
+  tableStepCount: number;
+  fieldStepCount: number;
+  deferredStepCount: number;
+  manualStepCount: number;
+  totalStepCount: number;
+  blockedReason?: string;
+  noChangesMade: boolean;
+  networkWritesAttempted: boolean;
+  writesEnabled: boolean;
+}

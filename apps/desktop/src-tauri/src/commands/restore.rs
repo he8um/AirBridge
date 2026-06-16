@@ -70,6 +70,10 @@ use crate::restore::schema_record_order_policy::{
     verify_schema_record_order_policy, SchemaRecordOrderPolicyRequest,
     SchemaRecordOrderPolicyResult,
 };
+use crate::restore::schema_write_execution_preview::{
+    preview_schema_write_execution, SchemaWriteExecutionPreviewRequest,
+    SchemaWriteExecutionPreviewResult,
+};
 use crate::restore::schema_write_executor::execute_schema_write_dry_run;
 use crate::restore::schema_write_requests::build_schema_write_request_plan;
 use crate::restore::schema_write_result::{
@@ -763,6 +767,19 @@ pub fn verify_live_write_readiness_policy_gate(
     request: LiveWriteReadinessPolicyRequest,
 ) -> LiveWriteReadinessPolicyResult {
     verify_live_write_readiness_policy(&request)
+}
+
+/// Builds a schema write execution preview from declared safety prerequisites.
+///
+/// No token is accepted. No Airtable calls are made. No schema is created.
+/// All steps in the result are `pending` (dry-run only) — the write gate blocks execution.
+/// `no_changes_made` is always `true`. `network_writes_attempted` is always `false`.
+/// `writes_enabled` is always `false`. A `DryRunReady` result does not enable writes.
+#[tauri::command]
+pub fn preview_schema_write_execution_gate(
+    request: SchemaWriteExecutionPreviewRequest,
+) -> SchemaWriteExecutionPreviewResult {
+    preview_schema_write_execution(&request)
 }
 
 #[cfg(test)]

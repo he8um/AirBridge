@@ -35,6 +35,7 @@ pub mod schema_planner;
 pub mod schema_record_order_policy;
 pub mod schema_steps;
 pub mod schema_warnings;
+pub mod schema_write_execution_preview;
 pub mod schema_write_executor;
 pub mod schema_write_requests;
 pub mod schema_write_result;

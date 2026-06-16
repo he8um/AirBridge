@@ -24,6 +24,7 @@ import { RestoreFinalValidationEnforcementPolicyPanel } from "../features/backup
 import { RestoreSensitiveDataSafetyPolicyPanel } from "../features/backups/RestoreSensitiveDataSafetyPolicyPanel";
 import { RestoreAttachmentPhaseDisabledPolicyPanel } from "../features/backups/RestoreAttachmentPhaseDisabledPolicyPanel";
 import { RestoreLiveWriteReadinessPolicyPanel } from "../features/backups/RestoreLiveWriteReadinessPolicyPanel";
+import { RestoreSchemaWriteExecutionPreviewPanel } from "../features/backups/RestoreSchemaWriteExecutionPreviewPanel";
 import { RestoreWriteEnginePanel } from "../features/backups/RestoreWriteEnginePanel";
 import { liveAirBridgeService } from "../services/liveAirBridgeService";
 import type { BackupPackageInspectionResult } from "../backend/types";
@@ -53,6 +54,7 @@ import type {
   SensitiveDataSafetyPolicyResult,
   AttachmentPhaseDisabledPolicyResult,
   LiveWriteReadinessPolicyResult,
+  SchemaWriteExecutionPreviewResult,
 } from "../backend/types";
 
 export function RestorePage() {
@@ -113,6 +115,8 @@ export function RestorePage() {
   const [apdLoading, setApdLoading] = useState(false);
   const [lwrResult, setLwrResult] = useState<LiveWriteReadinessPolicyResult | null>(null);
   const [lwrLoading, setLwrLoading] = useState(false);
+  const [swepResult, setSwepResult] = useState<SchemaWriteExecutionPreviewResult | null>(null);
+  const [swepLoading, setSwepLoading] = useState(false);
 
   return (
     <div className="page">
@@ -740,6 +744,39 @@ export function RestorePage() {
                   })
                   .finally(() => {
                     setLwrLoading(false);
+                  });
+              }}
+            />
+
+            <div className="divider" style={{ margin: 0 }} />
+
+            {/* Schema write execution preview — dry-run only. No live writes. No execute button. No token. No record payload. No attachment URL. DryRunReady does NOT enable writes. */}
+            <RestoreSchemaWriteExecutionPreviewPanel
+              result={swepResult}
+              loading={swepLoading}
+              onPreview={() => {
+                setSwepLoading(true);
+                liveAirBridgeService
+                  .previewSchemaWriteExecution({
+                    packageFilename: inspection?.filename ?? undefined,
+                    sandboxFlagPresent: true,
+                    targetEmptyVerified: true,
+                    schemaPlanReady: true,
+                    destructivePolicySafe: true,
+                    sensitiveDataSafe: true,
+                    attachmentPhaseDisabled: true,
+                    finalValidationEnforcementPresent: true,
+                    liveWriteReadinessSatisfied:
+                      lwrResult?.status === "ready" || lwrResult?.status === "warning",
+                  })
+                  .then((r) => {
+                    setSwepResult(r);
+                  })
+                  .catch(() => {
+                    setSwepResult(null);
+                  })
+                  .finally(() => {
+                    setSwepLoading(false);
                   });
               }}
             />

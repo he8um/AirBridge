@@ -1229,6 +1229,44 @@ After completing a restore, perform the following manual checks in Airtable:
 
 ---
 
+## Schema Write Execution Preview Checklist
+
+### Before testing
+
+- [ ] Confirm `preview_schema_write_execution_gate` is registered in the Tauri invoke handler.
+- [ ] Confirm `SchemaWriteExecutionPreviewRequest` has no `token` field.
+- [ ] Confirm `SchemaWriteExecutionPreviewResult` has no `token`, `writesEnabled: true`, or `"succeeded"` status.
+
+### During testing
+
+- [ ] Missing sandbox prerequisite returns `blocked`.
+- [ ] Missing target empty prerequisite returns `blocked`.
+- [ ] Missing schema plan prerequisite returns `blocked`.
+- [ ] Unsafe destructive policy returns `blocked`.
+- [ ] Unsafe sensitive data returns `blocked`.
+- [ ] Attachment phase not disabled returns `blocked`.
+- [ ] Missing final validation enforcement returns `blocked`.
+- [ ] Missing live write readiness returns `blocked`.
+- [ ] All prerequisites satisfied returns `dryRunReady`.
+- [ ] `dryRunReady` result has ordered steps: validate → tables → direct fields → deferred → manual → post-check.
+- [ ] Table steps appear before field steps in the ordered list.
+- [ ] `writesEnabled` is `false` in every result.
+- [ ] `noChangesMade` is `true` in every result.
+- [ ] `networkWritesAttempted` is `false` in every result.
+- [ ] No token field appears in the serialized result.
+- [ ] No absolute path appears in the serialized result.
+- [ ] No record payload appears in the serialized result.
+- [ ] No attachment URL appears in the serialized result.
+- [ ] `DryRunReady` message explicitly states live schema writes remain disabled.
+- [ ] `DryRunReady` message explicitly states the preview does not start any restore execution.
+- [ ] `evaluate_write_gate()` still returns `Disabled/DisabledByProductPolicy` after calling the preview.
+- [ ] No Airtable base, table, or field is created at any point.
+- [ ] UI panel shows writes-disabled notice at all times.
+- [ ] UI panel has no execute button, no enable-writes button, and no token input.
+- [ ] Record write execution, linked record second pass, checkpoint execution, and final validation execution remain pending/unavailable.
+
+---
+
 ## Schema Write Engine Foundation Checklist
 
 ### Before testing

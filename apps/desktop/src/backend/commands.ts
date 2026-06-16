@@ -65,6 +65,8 @@ import type {
   AttachmentPhaseDisabledPolicyResult,
   LiveWriteReadinessPolicyRequest,
   LiveWriteReadinessPolicyResult,
+  SchemaWriteExecutionPreviewRequest,
+  SchemaWriteExecutionPreviewResult,
   RunBackupCommandRequest,
   RunBackupCommandResponse,
   SandboxVerificationRequest,
@@ -579,6 +581,14 @@ export async function verifyLiveWriteReadinessPolicy(
   request: LiveWriteReadinessPolicyRequest,
 ): Promise<LiveWriteReadinessPolicyResult | null> {
   return safeInvoke<LiveWriteReadinessPolicyResult>("verify_live_write_readiness_policy_gate", {
+    request,
+  });
+}
+
+export async function previewSchemaWriteExecution(
+  request: SchemaWriteExecutionPreviewRequest,
+): Promise<SchemaWriteExecutionPreviewResult | null> {
+  return safeInvoke<SchemaWriteExecutionPreviewResult>("preview_schema_write_execution_gate", {
     request,
   });
 }

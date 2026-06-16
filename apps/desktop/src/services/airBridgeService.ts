@@ -69,6 +69,8 @@ import type {
   AttachmentPhaseDisabledPolicyResult,
   LiveWriteReadinessPolicyRequest,
   LiveWriteReadinessPolicyResult,
+  SchemaWriteExecutionPreviewRequest,
+  SchemaWriteExecutionPreviewResult,
   RestoreWriteEngineRequest,
   RestoreWriteEngineResult,
   RunBackupCommandRequest,
@@ -477,4 +479,17 @@ export interface AirBridgeService {
   verifyLiveWriteReadinessPolicy(
     request: LiveWriteReadinessPolicyRequest,
   ): Promise<LiveWriteReadinessPolicyResult>;
+  /**
+   * Builds a schema write execution preview from declared safety prerequisites.
+   *
+   * - No token field — no Airtable access required.
+   * - No Airtable API calls.
+   * - No schema created, updated, or deleted.
+   * - writesEnabled is always false.
+   * - noChangesMade is always true.
+   * - DryRunReady does NOT enable live writes.
+   */
+  previewSchemaWriteExecution(
+    request: SchemaWriteExecutionPreviewRequest,
+  ): Promise<SchemaWriteExecutionPreviewResult>;
 }

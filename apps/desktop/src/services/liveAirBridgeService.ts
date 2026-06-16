@@ -69,6 +69,8 @@ import type {
   AttachmentPhaseDisabledPolicyResult,
   LiveWriteReadinessPolicyRequest,
   LiveWriteReadinessPolicyResult,
+  SchemaWriteExecutionPreviewRequest,
+  SchemaWriteExecutionPreviewResult,
   RestoreWriteEngineRequest,
   RestoreWriteEngineResult,
   RunBackupCommandRequest,
@@ -787,6 +789,40 @@ async function verifyLiveWriteReadinessPolicy(
   return result;
 }
 
+async function previewSchemaWriteExecution(
+  request: SchemaWriteExecutionPreviewRequest,
+): Promise<SchemaWriteExecutionPreviewResult> {
+  const result = await commands.previewSchemaWriteExecution(request);
+  if (result === null) {
+    return {
+      status: "blocked",
+      mode: "liveBlocked",
+      message: "Schema write execution preview is not available in this context.",
+      steps: [],
+      safetySnapshot: {
+        writeGateDisabled: true,
+        sandboxFlagPresent: false,
+        targetEmptyVerified: false,
+        schemaPlanReady: false,
+        destructivePolicySafe: false,
+        sensitiveDataSafe: false,
+        attachmentPhaseDisabled: false,
+        finalValidationEnforcementPresent: false,
+        liveWriteReadinessSatisfied: false,
+      },
+      tableStepCount: 0,
+      fieldStepCount: 0,
+      deferredStepCount: 0,
+      manualStepCount: 0,
+      totalStepCount: 0,
+      noChangesMade: true,
+      networkWritesAttempted: false,
+      writesEnabled: false,
+    };
+  }
+  return result;
+}
+
 export const liveAirBridgeService: AirBridgeService = {
   listConnections,
   listWorkspaces,
@@ -836,4 +872,5 @@ export const liveAirBridgeService: AirBridgeService = {
   verifySensitiveDataSafetyPolicy,
   verifyAttachmentPhaseDisabledPolicy,
   verifyLiveWriteReadinessPolicy,
+  previewSchemaWriteExecution,
 };
