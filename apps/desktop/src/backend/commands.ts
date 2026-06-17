@@ -69,6 +69,8 @@ import type {
   SchemaWriteExecutionPreviewResult,
   RecordWriteExecutionPreviewRequest,
   RecordWriteExecutionPreviewResult,
+  MappingCheckpointExecutionPreviewRequest,
+  MappingCheckpointExecutionPreviewResult,
   RunBackupCommandRequest,
   RunBackupCommandResponse,
   SandboxVerificationRequest,
@@ -601,4 +603,13 @@ export async function previewRecordWriteExecution(
   return safeInvoke<RecordWriteExecutionPreviewResult>("preview_record_write_execution_gate", {
     request,
   });
+}
+
+export async function previewMappingCheckpointExecution(
+  request: MappingCheckpointExecutionPreviewRequest,
+): Promise<MappingCheckpointExecutionPreviewResult | null> {
+  return safeInvoke<MappingCheckpointExecutionPreviewResult>(
+    "preview_mapping_checkpoint_execution_gate",
+    { request },
+  );
 }

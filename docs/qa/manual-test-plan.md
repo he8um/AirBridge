@@ -2237,3 +2237,53 @@ These test cases cover the command contract layer: confirmation enforcement, out
 - Steps:
   1. Run `cargo test -- record_write_execution_preview::tests`.
 - Expected result: All Rust tests in the `record_write_execution_preview` module pass. `writesEnabled` is always `false`. `noChangesMade` is always `true`. `networkWritesAttempted` is always `false`. No token, absolute path, attachment URL, raw record payload, or `"succeeded"` appears in any serialized result.
+
+---
+
+**TC-MCEP-01: Blocked when prerequisites missing**
+
+- Preconditions: Empty/default request (no prerequisites satisfied).
+- Steps:
+  1. Invoke `preview_mapping_checkpoint_execution_gate` with an empty request `{}`.
+  2. Inspect the result.
+- Expected result: `status = "blocked"`. `blockedReason` contains `MCEP-PRE-01`. `writesEnabled = false`. `noChangesMade = true`. `networkWritesAttempted = false`.
+
+**TC-MCEP-02: Blocked when record write preview not ready**
+
+- Preconditions: All prerequisites set to safe except `recordWritePreviewReady = false`.
+- Steps:
+  1. Invoke `preview_mapping_checkpoint_execution_gate` with `recordWritePreviewReady: false` and all other prerequisites satisfied.
+  2. Inspect the result.
+- Expected result: `status = "blocked"`. `blockedReason` contains `MCEP-PRE-02`. `writesEnabled = false`.
+
+**TC-MCEP-03: DryRunReady for safe dry-run plan**
+
+- Preconditions: All 8 prerequisites satisfied.
+- Steps:
+  1. Invoke `preview_mapping_checkpoint_execution_gate` with a fully safe request (all prerequisites `true`, sensible batch counts).
+  2. Inspect the result.
+- Expected result: `status = "dryRunReady"`. `mode = "dryRunOnly"`. `steps[0].stepId = "MCEP-CHK-SCHEMA"`. Last step is `"MCEP-CHK-PRE-FV"`. `writesEnabled = false`. `noChangesMade = true`. `networkWritesAttempted = false`.
+
+**TC-MCEP-04: Step ordering — mapping before pre-linked-update**
+
+- Preconditions: All prerequisites satisfied; `firstPassBatchCount ≥ 1`.
+- Steps:
+  1. Invoke `preview_mapping_checkpoint_execution_gate` with `firstPassBatchCount: 3`.
+  2. Find the maximum `stepIndex` of all `MCEP-MAP-REC-B{n}` steps.
+  3. Find the `stepIndex` of `MCEP-CHK-PRE-LINK`.
+- Expected result: All mapping step indices are less than the `MCEP-CHK-PRE-LINK` step index.
+
+**TC-MCEP-05: Writes remain disabled after preview**
+
+- Preconditions: All prerequisites satisfied.
+- Steps:
+  1. Invoke `preview_mapping_checkpoint_execution_gate` with all safe inputs.
+  2. Check `evaluate_write_gate()` return value before and after.
+- Expected result: `evaluate_write_gate()` returns `Disabled` before and after. `writesEnabled` in the preview result is `false`.
+
+**TC-MCEP-06: Safety invariants in all result states**
+
+- Preconditions: Any state.
+- Steps:
+  1. Run `cargo test -- mapping_checkpoint_execution_preview::tests`.
+- Expected result: All Rust tests in the `mapping_checkpoint_execution_preview` module pass. `writesEnabled` is always `false`. `noChangesMade` is always `true`. `networkWritesAttempted` is always `false`. No token, absolute path, attachment URL, record ID, field value, or `"succeeded"` appears in any serialized result.

@@ -19,6 +19,7 @@ export { RestoreAttachmentPhaseDisabledPolicyPanel } from "./RestoreAttachmentPh
 export { RestoreLiveWriteReadinessPolicyPanel } from "./RestoreLiveWriteReadinessPolicyPanel";
 export { RestoreSchemaWriteExecutionPreviewPanel } from "./RestoreSchemaWriteExecutionPreviewPanel";
 export { RestoreRecordWriteExecutionPreviewPanel } from "./RestoreRecordWriteExecutionPreviewPanel";
+export { RestoreMappingCheckpointExecutionPreviewPanel } from "./RestoreMappingCheckpointExecutionPreviewPanel";
 export { JobHistoryPanel } from "./JobHistoryPanel";
 export { RestoreRecordImportPlanPanel } from "./RestoreRecordImportPlanPanel";
 export { BackupConfirmationBox } from "./BackupConfirmationBox";

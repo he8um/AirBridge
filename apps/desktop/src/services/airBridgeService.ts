@@ -73,6 +73,8 @@ import type {
   SchemaWriteExecutionPreviewResult,
   RecordWriteExecutionPreviewRequest,
   RecordWriteExecutionPreviewResult,
+  MappingCheckpointExecutionPreviewRequest,
+  MappingCheckpointExecutionPreviewResult,
   RestoreWriteEngineRequest,
   RestoreWriteEngineResult,
   RunBackupCommandRequest,
@@ -510,4 +512,22 @@ export interface AirBridgeService {
   previewRecordWriteExecution(
     request: RecordWriteExecutionPreviewRequest,
   ): Promise<RecordWriteExecutionPreviewResult>;
+  /**
+   * Builds an ordered mapping/checkpoint execution preview (dry-run / blocked only).
+   *
+   * Safety contract — this command:
+   * - Makes no Airtable API calls.
+   * - Does not create, update, or delete any record.
+   * - Does not write any checkpoint file (real, temp, or mock).
+   * - Does not persist any filesystem state.
+   * - Does not accept or return a token, full path, record ID, record payload,
+   *   raw HTTP body, or attachment URL.
+   * - writesEnabled is always false.
+   * - noChangesMade is always true.
+   * - networkWritesAttempted is always false.
+   * - DryRunReady does NOT enable live mapping capture or checkpoint persistence.
+   */
+  previewMappingCheckpointExecution(
+    request: MappingCheckpointExecutionPreviewRequest,
+  ): Promise<MappingCheckpointExecutionPreviewResult>;
 }

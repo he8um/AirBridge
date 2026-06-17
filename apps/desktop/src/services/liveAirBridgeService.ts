@@ -73,6 +73,8 @@ import type {
   SchemaWriteExecutionPreviewResult,
   RecordWriteExecutionPreviewRequest,
   RecordWriteExecutionPreviewResult,
+  MappingCheckpointExecutionPreviewRequest,
+  MappingCheckpointExecutionPreviewResult,
   RestoreWriteEngineRequest,
   RestoreWriteEngineResult,
   RunBackupCommandRequest,
@@ -863,6 +865,51 @@ async function previewRecordWriteExecution(
   return result;
 }
 
+async function previewMappingCheckpointExecution(
+  request: MappingCheckpointExecutionPreviewRequest,
+): Promise<MappingCheckpointExecutionPreviewResult> {
+  const result = await commands.previewMappingCheckpointExecution(request);
+  if (result === null) {
+    return {
+      status: "blocked",
+      mode: "liveBlocked",
+      message: "Mapping/checkpoint execution preview is not available in this context.",
+      steps: [],
+      idMappingSummary: {
+        totalMappingCount: 0,
+        tablesRequiringRemapping: 0,
+        firstPassBatchCount: 0,
+        mappingAvailableBeforeSecondPass: false,
+        note: "Preview unavailable.",
+      },
+      checkpointSummary: {
+        totalCheckpointCount: 0,
+        recordCreateCheckpointCount: 0,
+        linkedUpdateCheckpointCount: 0,
+        hasPreRecordCreateCheckpoint: false,
+        hasPreLinkedUpdateCheckpoint: false,
+        hasPreFinalValidationCheckpoint: false,
+        note: "Preview unavailable.",
+      },
+      safetySnapshot: {
+        writeGateDisabled: true,
+        recordWritePreviewReady: false,
+        checkpointDurabilitySafe: false,
+        failureModesSafe: false,
+        rollbackLimitationSafe: false,
+        finalValidationEnforcementPresent: false,
+        sensitiveDataSafe: false,
+        liveWriteReadinessSatisfied: false,
+      },
+      totalStepCount: 0,
+      noChangesMade: true,
+      networkWritesAttempted: false,
+      writesEnabled: false,
+    };
+  }
+  return result;
+}
+
 export const liveAirBridgeService: AirBridgeService = {
   listConnections,
   listWorkspaces,
@@ -914,4 +961,5 @@ export const liveAirBridgeService: AirBridgeService = {
   verifyLiveWriteReadinessPolicy,
   previewSchemaWriteExecution,
   previewRecordWriteExecution,
+  previewMappingCheckpointExecution,
 };

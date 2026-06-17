@@ -26,6 +26,7 @@ import { RestoreAttachmentPhaseDisabledPolicyPanel } from "../features/backups/R
 import { RestoreLiveWriteReadinessPolicyPanel } from "../features/backups/RestoreLiveWriteReadinessPolicyPanel";
 import { RestoreSchemaWriteExecutionPreviewPanel } from "../features/backups/RestoreSchemaWriteExecutionPreviewPanel";
 import { RestoreRecordWriteExecutionPreviewPanel } from "../features/backups/RestoreRecordWriteExecutionPreviewPanel";
+import { RestoreMappingCheckpointExecutionPreviewPanel } from "../features/backups/RestoreMappingCheckpointExecutionPreviewPanel";
 import { RestoreWriteEnginePanel } from "../features/backups/RestoreWriteEnginePanel";
 import { liveAirBridgeService } from "../services/liveAirBridgeService";
 import type { BackupPackageInspectionResult } from "../backend/types";
@@ -57,6 +58,7 @@ import type {
   LiveWriteReadinessPolicyResult,
   SchemaWriteExecutionPreviewResult,
   RecordWriteExecutionPreviewResult,
+  MappingCheckpointExecutionPreviewResult,
 } from "../backend/types";
 
 export function RestorePage() {
@@ -121,6 +123,10 @@ export function RestorePage() {
   const [swepLoading, setSwepLoading] = useState(false);
   const [rwepResult, setRwepResult] = useState<RecordWriteExecutionPreviewResult | null>(null);
   const [rwepLoading, setRwepLoading] = useState(false);
+  const [mcepResult, setMcepResult] = useState<MappingCheckpointExecutionPreviewResult | null>(
+    null,
+  );
+  const [mcepLoading, setMcepLoading] = useState(false);
 
   return (
     <div className="page">
@@ -825,6 +831,42 @@ export function RestorePage() {
                   throw new Error("Record write execution preview failed.");
                 } finally {
                   setRwepLoading(false);
+                }
+              }}
+            />
+
+            <div className="divider" style={{ margin: 0 }} />
+
+            {/* Mapping/checkpoint execution preview — dry-run only. No live writes. No execute button. No token. No record IDs. No checkpoint files. DryRunReady does NOT enable writes. */}
+            <RestoreMappingCheckpointExecutionPreviewPanel
+              result={mcepResult}
+              loading={mcepLoading}
+              request={{
+                packageFilename: inspection?.filename ?? undefined,
+                recordWritePreviewReady: rwepResult?.status === "dryRunReady",
+                firstPassBatchCount: rwepResult?.firstPassBatchCount ?? 0,
+                secondPassBatchCount: rwepResult?.secondPassBatchCount ?? 0,
+                totalRecordCount: rwepResult?.totalRecordCount ?? 0,
+                tablesRequiringRemapping: schemaPlan?.tableSteps?.length ?? 0,
+                checkpointDurabilitySafe: true,
+                failureModesSafe: true,
+                rollbackLimitationSafe: true,
+                finalValidationEnforcementPresent: true,
+                sensitiveDataSafe: true,
+                liveWriteReadinessSatisfied:
+                  lwrResult?.status === "ready" || lwrResult?.status === "warning",
+              }}
+              onPreview={async (req) => {
+                setMcepLoading(true);
+                try {
+                  const r = await liveAirBridgeService.previewMappingCheckpointExecution(req);
+                  setMcepResult(r);
+                  return r;
+                } catch {
+                  setMcepResult(null);
+                  throw new Error("Mapping/checkpoint execution preview failed.");
+                } finally {
+                  setMcepLoading(false);
                 }
               }}
             />

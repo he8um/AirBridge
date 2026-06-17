@@ -114,6 +114,16 @@ Old-to-new record ID mapping is `UnavailableUntilExecution` — linked record up
 
 `noChangesMade` is always `true`. `networkWritesAttempted` is always `false`. The result contains no raw record payloads. The result status is never `"succeeded"`.
 
+### Mapping and Checkpoint Execution Preview Foundation
+
+The mapping and checkpoint execution preview (`preview_mapping_checkpoint_execution_gate`) converts declared safety prerequisites and batch counts into a deterministic ordered step list showing checkpoint boundaries across the restore pipeline. No token is accepted or returned. No Airtable API calls are made. No checkpoint files are written to disk.
+
+The step builder produces steps in six ordered phases: `MCEP-CHK-SCHEMA` (schema checkpoint boundary), `MCEP-CHK-PRE-REC` (pre-record-create boundary), `MCEP-MAP-REC-B{n}` (per-first-pass-batch ID mapping capture, one per batch), `MCEP-CHK-PRE-LINK` (pre-linked-update boundary, only when first-pass batches > 0), `MCEP-CHK-LINK-B{n}` (per-second-pass-batch linked-update checkpoint, one per batch), and `MCEP-CHK-PRE-FV` (pre-final-validation boundary).
+
+The preview checks eight prerequisites (MCEP-PRE-01 through MCEP-PRE-08): write gate disabled, record write preview `DryRunReady`, checkpoint durability safe, failure modes safe, rollback limitation safe, final validation enforcement present, sensitive data safe, and live write readiness satisfied. If any prerequisite is missing, the result is `Blocked`. If all prerequisites are satisfied, the result is `DryRunReady` with `mode = DryRunOnly`.
+
+`DryRunReady` does NOT enable live mapping capture, does NOT persist checkpoint files, does NOT start any restore execution. `writesEnabled` is always `false`, `noChangesMade` is always `true`, `networkWritesAttempted` is always `false`. The result status is never `"succeeded"`. No record IDs, field values, attachment URLs, or raw HTTP data appear in any result field.
+
 ---
 
 ## Related Documents

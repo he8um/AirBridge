@@ -13,6 +13,7 @@ pub mod final_validation_policy;
 pub mod linked_record_updates;
 pub mod live_write_confirmation_policy;
 pub mod live_write_readiness_policy;
+pub mod mapping_checkpoint_execution_preview;
 pub mod ordering;
 pub mod plan;
 pub mod rate_limit_backoff_policy;

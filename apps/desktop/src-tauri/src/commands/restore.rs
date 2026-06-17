@@ -39,6 +39,10 @@ use crate::restore::live_write_readiness_policy::{
     verify_live_write_readiness_policy, LiveWriteReadinessPolicyRequest,
     LiveWriteReadinessPolicyResult,
 };
+use crate::restore::mapping_checkpoint_execution_preview::{
+    preview_mapping_checkpoint_execution, MappingCheckpointExecutionPreviewRequest,
+    MappingCheckpointExecutionPreviewResult,
+};
 use crate::restore::plan::{RestoreDryRunPlan, RestoreDryRunRequest};
 use crate::restore::rate_limit_backoff_policy::{
     verify_rate_limit_backoff_policy, RateLimitBackoffPolicyRequest, RateLimitBackoffPolicyResult,
@@ -802,6 +806,27 @@ pub fn preview_record_write_execution_gate(
     request: RecordWriteExecutionPreviewRequest,
 ) -> RecordWriteExecutionPreviewResult {
     preview_record_write_execution(&request)
+}
+
+/// Builds an ordered mapping/checkpoint execution preview (dry-run / blocked only).
+///
+/// Safety contract — this command:
+/// - Makes no Airtable API calls.
+/// - Does not create, update, or delete any record, table, or field.
+/// - Does not write any checkpoint file (real, temp, or mock).
+/// - Does not persist any filesystem state.
+/// - Does not accept or return a token, full path, record ID, record payload,
+///   raw HTTP body, or attachment URL.
+/// - Always returns `writes_enabled: false`, `no_changes_made: true`,
+///   `network_writes_attempted: false`.
+/// - Consults `evaluate_write_gate()` internally to confirm writes remain disabled.
+/// - A `DryRunReady` result does NOT enable live mapping capture or
+///   checkpoint persistence.
+#[tauri::command]
+pub fn preview_mapping_checkpoint_execution_gate(
+    request: MappingCheckpointExecutionPreviewRequest,
+) -> MappingCheckpointExecutionPreviewResult {
+    preview_mapping_checkpoint_execution(&request)
 }
 
 #[cfg(test)]

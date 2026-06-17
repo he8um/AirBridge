@@ -1354,6 +1354,50 @@ Record any failures here with a brief description and steps to reproduce.
 
 ---
 
+## Mapping Checkpoint Execution Preview Checklist
+
+### Before testing
+
+- [ ] Confirm `preview_mapping_checkpoint_execution_gate` is registered in the Tauri invoke handler.
+- [ ] Confirm `MappingCheckpointExecutionPreviewRequest` has no `token` field.
+- [ ] Confirm `MappingCheckpointExecutionPreviewResult` has no `token`, `writesEnabled: true`, `"succeeded"` status, raw record payload, record IDs, attachment URL, or raw HTTP body.
+
+### During testing
+
+- [ ] Missing record write preview prerequisite returns `blocked` with MCEP-PRE-02 reason.
+- [ ] Missing checkpoint durability safe prerequisite returns `blocked`.
+- [ ] Missing failure modes safe prerequisite returns `blocked`.
+- [ ] Missing rollback limitation safe prerequisite returns `blocked`.
+- [ ] Missing final validation enforcement prerequisite returns `blocked`.
+- [ ] Missing sensitive data safe prerequisite returns `blocked`.
+- [ ] Missing live write readiness prerequisite returns `blocked`.
+- [ ] All 8 prerequisites satisfied returns `dryRunReady`.
+- [ ] `dryRunReady` result has step `MCEP-CHK-SCHEMA` first.
+- [ ] `dryRunReady` result has step `MCEP-CHK-PRE-FV` last.
+- [ ] `MCEP-MAP-REC-B{n}` steps appear before `MCEP-CHK-PRE-LINK`.
+- [ ] `MCEP-CHK-PRE-LINK` step is absent when first-pass batch count is 0.
+- [ ] Checkpoint summary `totalCheckpointCount` equals 3 + firstPassBatches + secondPassBatches.
+- [ ] `writesEnabled` is `false` in every result.
+- [ ] `noChangesMade` is `true` in every result.
+- [ ] `networkWritesAttempted` is `false` in every result.
+- [ ] No token field appears in the serialized result.
+- [ ] No absolute path appears in the serialized result.
+- [ ] No record ID or field value appears in the serialized result.
+- [ ] No attachment URL appears in the serialized result.
+- [ ] No raw HTTP request or response body appears in the serialized result.
+- [ ] `DryRunReady` message explicitly states live mapping capture and checkpoint persistence remain disabled.
+- [ ] `DryRunReady` message explicitly states the preview does not start any restore execution.
+- [ ] `DryRunReady` message explicitly states no checkpoint files are written.
+- [ ] Panel renders `data-testid="restore-mcep-panel"`.
+- [ ] Panel renders execution-disabled notice.
+- [ ] Panel shows `data-testid="mcep-dry-run-badge"` when `dryRunReady`.
+- [ ] Panel shows `data-testid="mcep-blocked-badge"` when `blocked`.
+- [ ] Panel shows `data-testid="mcep-execution-disabled-tag"` whenever result is present.
+- [ ] Panel shows `data-testid="mcep-no-changes-made"` whenever result is present.
+- [ ] Panel has no execute button, no enable button, no token input.
+
+---
+
 ## Record Write Execution Preview Checklist
 
 ### Before testing

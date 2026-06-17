@@ -99,6 +99,9 @@ import type {
   RecordWriteExecutionPreviewRequest,
   RecordWriteExecutionPreviewResult,
   RecordWriteExecutionPreviewBatch,
+  MappingCheckpointExecutionPreviewRequest,
+  MappingCheckpointExecutionPreviewResult,
+  MappingCheckpointPreviewStep,
   RunBackupCommandResponse,
   RecordWriteRequestPlanRequest,
   RecordWriteRequestPlanResult,
@@ -5956,6 +5959,7 @@ export const mockAirBridgeService: AirBridgeService = {
   verifyLiveWriteReadinessPolicy: verifyLiveWriteReadinessPolicyImpl,
   previewSchemaWriteExecution: previewSchemaWriteExecutionImpl,
   previewRecordWriteExecution: previewRecordWriteExecutionImpl,
+  previewMappingCheckpointExecution: previewMappingCheckpointExecutionImpl,
 };
 
 function previewSchemaWriteExecutionImpl(
@@ -6272,6 +6276,199 @@ function previewRecordWriteExecutionImpl(
     secondPassBatchCount: totalSecondPass,
     totalRecordCount: totalRecords,
     batchSize,
+    noChangesMade: true,
+    networkWritesAttempted: false,
+    writesEnabled: false,
+  });
+}
+
+function previewMappingCheckpointExecutionImpl(
+  request: MappingCheckpointExecutionPreviewRequest,
+): Promise<MappingCheckpointExecutionPreviewResult> {
+  const recordWritePreviewReady = request.recordWritePreviewReady ?? false;
+  const checkpointDurabilitySafe = request.checkpointDurabilitySafe ?? false;
+  const failureModesSafe = request.failureModesSafe ?? false;
+  const rollbackLimitationSafe = request.rollbackLimitationSafe ?? false;
+  const finalValidationEnforcementPresent = request.finalValidationEnforcementPresent ?? false;
+  const sensitiveDataSafe = request.sensitiveDataSafe ?? false;
+  const liveWriteReadinessSatisfied = request.liveWriteReadinessSatisfied ?? false;
+
+  const safetySnapshot = {
+    writeGateDisabled: true,
+    recordWritePreviewReady,
+    checkpointDurabilitySafe,
+    failureModesSafe,
+    rollbackLimitationSafe,
+    finalValidationEnforcementPresent,
+    sensitiveDataSafe,
+    liveWriteReadinessSatisfied,
+  };
+
+  const emptyMappingSummary = {
+    totalMappingCount: 0,
+    tablesRequiringRemapping: 0,
+    firstPassBatchCount: 0,
+    mappingAvailableBeforeSecondPass: false,
+    note: "Mapping preview unavailable — prerequisites not satisfied.",
+  };
+  const emptyCheckpointSummary = {
+    totalCheckpointCount: 0,
+    recordCreateCheckpointCount: 0,
+    linkedUpdateCheckpointCount: 0,
+    hasPreRecordCreateCheckpoint: false,
+    hasPreLinkedUpdateCheckpoint: false,
+    hasPreFinalValidationCheckpoint: false,
+    note: "Checkpoint preview unavailable — prerequisites not satisfied.",
+  };
+
+  const blockedReason: string | undefined = !recordWritePreviewReady
+    ? "MCEP-PRE-02: Record write execution preview has not returned DryRunReady."
+    : !checkpointDurabilitySafe
+      ? "MCEP-PRE-03: Checkpoint durability policy is not safe."
+      : !failureModesSafe
+        ? "MCEP-PRE-04: Failure modes policy is not safe."
+        : !rollbackLimitationSafe
+          ? "MCEP-PRE-05: Rollback limitation policy is not safe."
+          : !finalValidationEnforcementPresent
+            ? "MCEP-PRE-06: Final validation enforcement policy has not been verified."
+            : !sensitiveDataSafe
+              ? "MCEP-PRE-07: Sensitive data safety policy is not satisfied."
+              : !liveWriteReadinessSatisfied
+                ? "MCEP-PRE-08: Live write readiness policy is not satisfied."
+                : undefined;
+
+  if (blockedReason !== undefined) {
+    const blockedStep: MappingCheckpointPreviewStep = {
+      stepIndex: 0,
+      stepId: "MCEP-BLOCKED",
+      phaseLabel: "blocked",
+      checkpointBoundaryLabel: "—",
+      status: "blocked",
+      entryCount: 0,
+      note: "Safety prerequisites not satisfied. No mapping or checkpoint steps can be previewed.",
+    };
+    return Promise.resolve<MappingCheckpointExecutionPreviewResult>({
+      status: "blocked",
+      mode: "liveBlocked",
+      message: `Mapping/checkpoint execution preview is blocked. ${blockedReason} Live mapping capture and checkpoint persistence remain disabled.`,
+      steps: [blockedStep],
+      idMappingSummary: emptyMappingSummary,
+      checkpointSummary: emptyCheckpointSummary,
+      safetySnapshot,
+      totalStepCount: 0,
+      blockedReason,
+      noChangesMade: true,
+      networkWritesAttempted: false,
+      writesEnabled: false,
+    });
+  }
+
+  const firstPassBatches = request.firstPassBatchCount ?? 0;
+  const secondPassBatches = request.secondPassBatchCount ?? 0;
+  const totalRecords = request.totalRecordCount ?? 0;
+  const tablesRemapping = request.tablesRequiringRemapping ?? 0;
+
+  const steps: MappingCheckpointPreviewStep[] = [];
+  let idx = 0;
+
+  // Schema checkpoint
+  steps.push({
+    stepIndex: idx++,
+    stepId: "MCEP-CHK-SCHEMA",
+    phaseLabel: "schema-checkpoint",
+    checkpointBoundaryLabel: "After schema preview — before record create phase",
+    status: "pending",
+    entryCount: 0,
+    note: "Would record that schema phase is complete before beginning record creation. No checkpoint file written in this preview.",
+  });
+
+  // Pre-record-create checkpoint
+  steps.push({
+    stepIndex: idx++,
+    stepId: "MCEP-CHK-PRE-REC",
+    phaseLabel: "pre-record-create-checkpoint",
+    checkpointBoundaryLabel: "Before record create phase",
+    status: "pending",
+    entryCount: 0,
+    note: "Would mark the start of the record create phase. No checkpoint file written in this preview.",
+  });
+
+  // Per first-pass batch: capture mapping entries
+  for (let b = 0; b < firstPassBatches; b++) {
+    steps.push({
+      stepIndex: idx++,
+      stepId: `MCEP-MAP-REC-B${String(b).padStart(3, "0")}`,
+      phaseLabel: "record-create-mapping",
+      checkpointBoundaryLabel: `After first-pass create batch ${b + 1} — capture ID mapping`,
+      status: "pending",
+      entryCount: 0,
+      note: `Would capture old-to-new record ID mapping after first-pass create batch ${b + 1}. No raw record IDs or field data. No checkpoint file written in this preview.`,
+    });
+  }
+
+  // Pre-linked-update checkpoint (only if first-pass batches ran)
+  if (firstPassBatches > 0) {
+    steps.push({
+      stepIndex: idx++,
+      stepId: "MCEP-CHK-PRE-LINK",
+      phaseLabel: "pre-linked-update-checkpoint",
+      checkpointBoundaryLabel: "Before linked record update phase — ID mapping complete",
+      status: "pending",
+      entryCount: 0,
+      note: "Would verify ID mapping is complete before beginning linked record updates. No checkpoint file written in this preview.",
+    });
+  }
+
+  // Per second-pass batch: checkpoint after linked update
+  for (let b = 0; b < secondPassBatches; b++) {
+    steps.push({
+      stepIndex: idx++,
+      stepId: `MCEP-CHK-LINK-B${String(b).padStart(3, "0")}`,
+      phaseLabel: "linked-update-checkpoint",
+      checkpointBoundaryLabel: `After second-pass linked-update batch ${b + 1}`,
+      status: "pending",
+      entryCount: 0,
+      note: `Would checkpoint after second-pass linked-update batch ${b + 1}. No checkpoint file written in this preview.`,
+    });
+  }
+
+  // Pre-final-validation checkpoint
+  steps.push({
+    stepIndex: idx++,
+    stepId: "MCEP-CHK-PRE-FV",
+    phaseLabel: "pre-final-validation-checkpoint",
+    checkpointBoundaryLabel: "Before final validation — all batches complete",
+    status: "pending",
+    entryCount: 0,
+    note: "Would checkpoint that all batches are complete before final validation. No checkpoint file written in this preview.",
+  });
+
+  const fixedCheckpoints = 3;
+  const totalCheckpoints = fixedCheckpoints + firstPassBatches + secondPassBatches;
+
+  return Promise.resolve<MappingCheckpointExecutionPreviewResult>({
+    status: "dryRunReady",
+    mode: "dryRunOnly",
+    message: `Mapping/checkpoint execution preview is ready (dry-run only). ${firstPassBatches} first-pass batch(es), ${secondPassBatches} second-pass batch(es), ${totalCheckpoints} total checkpoint boundary(ies), ${totalRecords} record(s) to map. Live mapping capture and checkpoint persistence remain disabled. This preview does not start any restore execution. No checkpoint files are written.`,
+    steps,
+    idMappingSummary: {
+      totalMappingCount: totalRecords,
+      tablesRequiringRemapping: tablesRemapping,
+      firstPassBatchCount: firstPassBatches,
+      mappingAvailableBeforeSecondPass: firstPassBatches > 0,
+      note: `Would capture old-to-new record ID mapping after each first-pass create batch. ${totalRecords} record(s) across ${firstPassBatches} first-pass batch(es). No raw record IDs present in this preview.`,
+    },
+    checkpointSummary: {
+      totalCheckpointCount: totalCheckpoints,
+      recordCreateCheckpointCount: firstPassBatches,
+      linkedUpdateCheckpointCount: secondPassBatches,
+      hasPreRecordCreateCheckpoint: true,
+      hasPreLinkedUpdateCheckpoint: firstPassBatches > 0,
+      hasPreFinalValidationCheckpoint: true,
+      note: `Would place checkpoint boundaries at ${totalCheckpoints} point(s). No checkpoint files are written in this preview. Checkpoint persistence requires live execution.`,
+    },
+    safetySnapshot,
+    totalStepCount: steps.length,
     noChangesMade: true,
     networkWritesAttempted: false,
     writesEnabled: false,

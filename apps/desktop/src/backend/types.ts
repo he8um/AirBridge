@@ -2823,3 +2823,95 @@ export interface RecordWriteExecutionPreviewResult {
   networkWritesAttempted: boolean;
   writesEnabled: boolean;
 }
+
+// ── Mapping / Checkpoint Execution Preview ────────────────────────────────────
+
+export type MappingCheckpointExecutionPreviewStatus = "dryRunReady" | "blocked";
+export type MappingCheckpointPreviewStepStatus = "pending" | "blocked" | "skipped";
+export type MappingCheckpointPreviewMode = "dryRunOnly" | "liveBlocked";
+
+export interface MappingCheckpointPreviewStep {
+  stepIndex: number;
+  stepId: string;
+  phaseLabel: string;
+  checkpointBoundaryLabel: string;
+  status: MappingCheckpointPreviewStepStatus;
+  entryCount: number;
+  note: string;
+}
+
+export interface IdMappingPreviewSummary {
+  totalMappingCount: number;
+  tablesRequiringRemapping: number;
+  firstPassBatchCount: number;
+  mappingAvailableBeforeSecondPass: boolean;
+  note: string;
+}
+
+export interface CheckpointPreviewSummary {
+  totalCheckpointCount: number;
+  recordCreateCheckpointCount: number;
+  linkedUpdateCheckpointCount: number;
+  hasPreRecordCreateCheckpoint: boolean;
+  hasPreLinkedUpdateCheckpoint: boolean;
+  hasPreFinalValidationCheckpoint: boolean;
+  note: string;
+}
+
+export interface MappingCheckpointSafetySnapshot {
+  writeGateDisabled: boolean;
+  recordWritePreviewReady: boolean;
+  checkpointDurabilitySafe: boolean;
+  failureModesSafe: boolean;
+  rollbackLimitationSafe: boolean;
+  finalValidationEnforcementPresent: boolean;
+  sensitiveDataSafe: boolean;
+  liveWriteReadinessSatisfied: boolean;
+}
+
+export interface MappingCheckpointExecutionPreviewRequest {
+  packageFilename?: string;
+  recordWritePreviewReady?: boolean;
+  firstPassBatchCount?: number;
+  secondPassBatchCount?: number;
+  totalRecordCount?: number;
+  tablesRequiringRemapping?: number;
+  checkpointDurabilitySafe?: boolean;
+  failureModesSafe?: boolean;
+  rollbackLimitationSafe?: boolean;
+  finalValidationEnforcementPresent?: boolean;
+  sensitiveDataSafe?: boolean;
+  liveWriteReadinessSatisfied?: boolean;
+}
+
+/**
+ * Result of the mapping/checkpoint execution preview command.
+ *
+ * Safety invariants:
+ * - No token field.
+ * - No filesystem path field.
+ * - No raw record IDs (old or new).
+ * - No raw record payload or field values.
+ * - No raw HTTP request or response body.
+ * - No attachment URL field.
+ * - No checkpoint files are written.
+ * - writesEnabled is always false.
+ * - noChangesMade is always true.
+ * - networkWritesAttempted is always false.
+ * - DryRunReady does NOT enable live mapping capture or checkpoint persistence.
+ * - DryRunReady does NOT introduce a restore success state.
+ */
+export interface MappingCheckpointExecutionPreviewResult {
+  status: MappingCheckpointExecutionPreviewStatus;
+  mode: MappingCheckpointPreviewMode;
+  message: string;
+  steps: MappingCheckpointPreviewStep[];
+  idMappingSummary: IdMappingPreviewSummary;
+  checkpointSummary: CheckpointPreviewSummary;
+  safetySnapshot: MappingCheckpointSafetySnapshot;
+  totalStepCount: number;
+  blockedReason?: string;
+  noChangesMade: boolean;
+  networkWritesAttempted: boolean;
+  writesEnabled: boolean;
+}
