@@ -28,6 +28,9 @@ use crate::restore::final_validation_enforcement_policy::{
     verify_final_validation_enforcement_policy, FinalValidationEnforcementPolicyRequest,
     FinalValidationEnforcementPolicyResult,
 };
+use crate::restore::checkpoint_store::{
+    store_restore_checkpoint, RestoreCheckpointStoreRequest, RestoreCheckpointStoreResult,
+};
 use crate::restore::final_validation_execution_preview::{
     preview_final_validation_execution, FinalValidationExecutionPreviewRequest,
     FinalValidationExecutionPreviewResult,
@@ -875,6 +878,26 @@ pub fn preview_final_validation_execution_gate(
     request: FinalValidationExecutionPreviewRequest,
 ) -> FinalValidationExecutionPreviewResult {
     preview_final_validation_execution(&request)
+}
+
+/// Stores sanitized restore checkpoint metadata to an app-controlled local directory.
+///
+/// Safety invariants:
+/// - No Airtable API calls.
+/// - No token, full path, record payload, raw HTTP, attachment URL,
+///   old record IDs, or new record IDs are stored or returned.
+/// - `writes_enabled` is always `false`.
+/// - `network_writes_attempted` is always `false`.
+/// - `Stored` does NOT enable live restore execution.
+/// - `Stored` does NOT introduce a restore success state.
+/// - Consults `evaluate_write_gate()` internally to confirm writes remain disabled.
+/// - Stores only sanitized metadata in `<os-temp>/airbridge-checkpoints/`.
+/// - Returns only a safe filename (no directory component) and safe counts to the caller.
+#[tauri::command]
+pub fn store_restore_checkpoint_metadata(
+    request: RestoreCheckpointStoreRequest,
+) -> RestoreCheckpointStoreResult {
+    store_restore_checkpoint(&request)
 }
 
 #[cfg(test)]

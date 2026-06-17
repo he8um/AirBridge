@@ -75,6 +75,7 @@ pub fn run() {
             commands::restore::preview_mapping_checkpoint_execution_gate,
             commands::restore::preview_linked_second_pass_execution_gate,
             commands::restore::preview_final_validation_execution_gate,
+            commands::restore::store_restore_checkpoint_metadata,
             commands::credentials::get_credential_storage_status,
             commands::credentials::save_airtable_token_to_keychain,
             commands::credentials::remove_airtable_token_from_keychain,

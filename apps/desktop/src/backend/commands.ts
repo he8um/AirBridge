@@ -75,6 +75,8 @@ import type {
   LinkedSecondPassExecutionPreviewResult,
   FinalValidationExecutionPreviewRequest,
   FinalValidationExecutionPreviewResult,
+  RestoreCheckpointStoreRequest,
+  RestoreCheckpointStoreResult,
   RunBackupCommandRequest,
   RunBackupCommandResponse,
   SandboxVerificationRequest,
@@ -634,4 +636,10 @@ export async function previewFinalValidationExecution(
     "preview_final_validation_execution_gate",
     { request },
   );
+}
+
+export async function storeRestoreCheckpointMetadata(
+  request: RestoreCheckpointStoreRequest,
+): Promise<RestoreCheckpointStoreResult | null> {
+  return safeInvoke<RestoreCheckpointStoreResult>("store_restore_checkpoint_metadata", { request });
 }

@@ -1403,6 +1403,53 @@ Record any failures here with a brief description and steps to reproduce.
 
 ---
 
+## Checkpoint Metadata Store Checklist
+
+### Before testing
+
+- [ ] Confirm `store_restore_checkpoint_metadata` is registered in the Tauri invoke handler.
+- [ ] Confirm `RestoreCheckpointStoreRequest` has no `token` field, no `output_path` field, no record payload field, no old/new record ID field, no attachment URL field.
+- [ ] Confirm `RestoreCheckpointStoreResult` has no `token`, no full path, no old/new record IDs, no record payload, no raw HTTP body, no attachment URL, no `"succeeded"` status, no `writesEnabled: true`.
+
+### During testing
+
+- [ ] Missing `checkpointDurabilitySafe` prerequisite returns `blocked` with RCPS-PRE-02 reason.
+- [ ] Missing `sensitiveDataSafe` prerequisite returns `blocked` with RCPS-PRE-03 reason.
+- [ ] Missing `mappingCheckpointPreviewReady` prerequisite returns `blocked` with RCPS-PRE-04 reason.
+- [ ] Missing `finalValidationPreviewReady` prerequisite returns `blocked` with RCPS-PRE-05 reason.
+- [ ] All prerequisites satisfied → `stored` result with `summary` present.
+- [ ] `writesEnabled` is `false` in every result.
+- [ ] `networkWritesAttempted` is `false` in every result.
+- [ ] `noChangesMade` is `true` in every blocked result.
+- [ ] `noChangesMade` is `false` in a stored result.
+- [ ] `summary.safeFilename` has no path separator (`/` or `\`).
+- [ ] `summary.safeFilename` starts with `rcps-` and ends with `.json`.
+- [ ] No token (`pat_`) in the serialized result.
+- [ ] No absolute path in the serialized result.
+- [ ] No old or new record ID in the serialized result.
+- [ ] No record payload or field values in the serialized result.
+- [ ] No attachment URL in the serialized result.
+- [ ] No raw HTTP request or response body in the serialized result.
+- [ ] Stored result message explicitly states restore execution is not triggered.
+- [ ] Stored result message explicitly states live restore writes remain disabled.
+- [ ] Stored result message explicitly states no sensitive data is stored.
+- [ ] Stored checkpoint file on disk declares `restoreExecutionNotTriggered: true`.
+- [ ] Stored checkpoint file on disk declares `noSensitiveData: true`.
+- [ ] Checkpoint label with path traversal characters (e.g. `../`) is sanitized — no separator appears in filename.
+- [ ] Panel renders `data-testid="restore-checkpoint-store-panel"`.
+- [ ] Panel renders restore-not-triggered notice.
+- [ ] Panel renders `data-testid="rcps-metadata-only-badge"`.
+- [ ] Panel shows `data-testid="rcps-stored-badge"` when stored.
+- [ ] Panel shows `data-testid="rcps-blocked-badge"` when blocked.
+- [ ] Panel shows `data-testid="rcps-restore-not-triggered-tag"` when result is present.
+- [ ] Panel shows `data-testid="rcps-summary"` with safe filename and counts when stored.
+- [ ] Panel shows `data-testid="rcps-writes-disabled"` when result is present.
+- [ ] Panel has no execute button, no enable button, no token input.
+- [ ] Panel does not display full checkpoint directory path.
+- [ ] Panel does not display old or new record IDs.
+
+---
+
 ## Linked Second-Pass Execution Preview Checklist
 
 ### Before testing

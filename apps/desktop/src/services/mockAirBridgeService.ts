@@ -107,6 +107,8 @@ import type {
   LinkedSecondPassPreviewBatch,
   FinalValidationExecutionPreviewRequest,
   FinalValidationExecutionPreviewResult,
+  RestoreCheckpointStoreRequest,
+  RestoreCheckpointStoreResult,
   LinkedSecondPassFieldSummary,
   RunBackupCommandResponse,
   RecordWriteRequestPlanRequest,
@@ -5968,6 +5970,7 @@ export const mockAirBridgeService: AirBridgeService = {
   previewMappingCheckpointExecution: previewMappingCheckpointExecutionImpl,
   previewLinkedSecondPassExecution: previewLinkedSecondPassExecutionImpl,
   previewFinalValidationExecution: previewFinalValidationExecutionImpl,
+  storeRestoreCheckpointMetadata: storeRestoreCheckpointMetadataImpl,
 };
 
 function previewSchemaWriteExecutionImpl(
@@ -6802,6 +6805,94 @@ function previewFinalValidationExecutionImpl(
     },
     safetySnapshot,
     noChangesMade: true,
+    networkWritesAttempted: false,
+    writesEnabled: false,
+  });
+}
+
+function storeRestoreCheckpointMetadataImpl(
+  request: RestoreCheckpointStoreRequest,
+): Promise<RestoreCheckpointStoreResult> {
+  const checkpointDurabilitySafe = request.checkpointDurabilitySafe ?? false;
+  const sensitiveDataSafe = request.sensitiveDataSafe ?? false;
+  const mappingCheckpointPreviewReady = request.mappingCheckpointPreviewReady ?? false;
+  const finalValidationPreviewReady = request.finalValidationPreviewReady ?? false;
+
+  if (!checkpointDurabilitySafe) {
+    const reason =
+      "RCPS-PRE-02: Checkpoint durability policy is not safe. A compliant checkpoint durability plan must be declared before storing checkpoint metadata.";
+    return Promise.resolve<RestoreCheckpointStoreResult>({
+      status: "blocked",
+      mode: "metadataOnly",
+      message: `Checkpoint metadata store is blocked. ${reason} No checkpoint metadata file was written. Restore execution remains disabled.`,
+      blockedReason: reason,
+      noChangesMade: true,
+      networkWritesAttempted: false,
+      writesEnabled: false,
+    });
+  }
+  if (!sensitiveDataSafe) {
+    const reason =
+      "RCPS-PRE-03: Sensitive data safety policy is not satisfied. All 10 exposure surfaces must have redaction coverage before checkpoint metadata is stored.";
+    return Promise.resolve<RestoreCheckpointStoreResult>({
+      status: "blocked",
+      mode: "metadataOnly",
+      message: `Checkpoint metadata store is blocked. ${reason} No checkpoint metadata file was written. Restore execution remains disabled.`,
+      blockedReason: reason,
+      noChangesMade: true,
+      networkWritesAttempted: false,
+      writesEnabled: false,
+    });
+  }
+  if (!mappingCheckpointPreviewReady) {
+    const reason =
+      "RCPS-PRE-04: Mapping/checkpoint execution preview has not returned DryRunReady. Complete the mapping/checkpoint preview before storing checkpoint metadata.";
+    return Promise.resolve<RestoreCheckpointStoreResult>({
+      status: "blocked",
+      mode: "metadataOnly",
+      message: `Checkpoint metadata store is blocked. ${reason} No checkpoint metadata file was written. Restore execution remains disabled.`,
+      blockedReason: reason,
+      noChangesMade: true,
+      networkWritesAttempted: false,
+      writesEnabled: false,
+    });
+  }
+  if (!finalValidationPreviewReady) {
+    const reason =
+      "RCPS-PRE-05: Final validation execution preview has not returned DryRunReady. Complete the final validation preview before storing checkpoint metadata.";
+    return Promise.resolve<RestoreCheckpointStoreResult>({
+      status: "blocked",
+      mode: "metadataOnly",
+      message: `Checkpoint metadata store is blocked. ${reason} No checkpoint metadata file was written. Restore execution remains disabled.`,
+      blockedReason: reason,
+      noChangesMade: true,
+      networkWritesAttempted: false,
+      writesEnabled: false,
+    });
+  }
+
+  const rawLabel = request.checkpointLabel ?? "restore-checkpoint";
+  const checkpointLabel = rawLabel.replace(/[^a-zA-Z0-9\-_]/g, "-").slice(0, 64);
+  const phases = request.phases ?? [];
+  const boundaries = request.boundaries ?? [];
+  const totalBoundaryCount = boundaries.length;
+  const phaseCount = phases.length;
+  const totalItemCount = boundaries.reduce((sum, b) => sum + b.itemCount, 0);
+  const safeFilename = `rcps-${checkpointLabel}.json`;
+
+  return Promise.resolve<RestoreCheckpointStoreResult>({
+    status: "stored",
+    mode: "metadataOnly",
+    message: `Checkpoint metadata stored (metadata-only). ${totalBoundaryCount} boundary(ies) across ${phaseCount} phase(s). Safe filename: ${safeFilename}. Restore execution is not triggered by this checkpoint. Live restore writes remain disabled. No sensitive data is stored in the checkpoint file.`,
+    summary: {
+      checkpointLabel,
+      totalBoundaryCount,
+      phaseCount,
+      totalItemCount,
+      safeFilename,
+      note: `Stored ${totalBoundaryCount} checkpoint boundary(ies) across ${phaseCount} phase(s), ${totalItemCount} item(s) total. Restore execution is not triggered by this checkpoint. No sensitive data is stored.`,
+    },
+    noChangesMade: false,
     networkWritesAttempted: false,
     writesEnabled: false,
   });

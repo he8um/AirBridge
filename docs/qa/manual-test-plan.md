@@ -2386,3 +2386,54 @@ These test cases cover the command contract layer: confirmation enforcement, out
 - Steps:
   1. Run `cargo test -- final_validation_execution_preview::tests`.
 - Expected result: All Rust tests in the `final_validation_execution_preview` module pass. `writesEnabled` is always `false`. `noChangesMade` is always `true`. `networkWritesAttempted` is always `false`. No token, absolute path, attachment URL, old/new record ID, field value, or `"succeeded"` appears in any serialized check or summary.
+
+### Checkpoint Metadata Store Test Cases
+
+**TC-RCPS-01: Blocked when prerequisite missing**
+
+- Preconditions: Restore page loaded.
+- Steps:
+  1. Invoke `store_restore_checkpoint_metadata` with an empty request `{}`.
+- Expected result: `status = "blocked"`. `blockedReason` contains `RCPS-PRE-02`. `writesEnabled = false`. `noChangesMade = true`. `networkWritesAttempted = false`. No file written.
+
+**TC-RCPS-02: Blocked when final validation preview not ready**
+
+- Preconditions: All other prerequisites satisfied.
+- Steps:
+  1. Invoke `store_restore_checkpoint_metadata` with `finalValidationPreviewReady: false` and all other prerequisites satisfied.
+- Expected result: `status = "blocked"`. `blockedReason` contains `RCPS-PRE-05`. `writesEnabled = false`. No file written.
+
+**TC-RCPS-03: Stored when all prerequisites satisfied**
+
+- Preconditions: All 5 prerequisites satisfied.
+- Steps:
+  1. Invoke `store_restore_checkpoint_metadata` with a fully safe request including phases and boundaries.
+- Expected result: `status = "stored"`. `summary` present with correct counts. `writesEnabled = false`. `noChangesMade = false`. `networkWritesAttempted = false`. `summary.safeFilename` starts with `rcps-` and ends with `.json`. No path separator in `safeFilename`.
+
+**TC-RCPS-04: Stored checkpoint file is sanitized**
+
+- Preconditions: TC-RCPS-03 completed successfully.
+- Steps:
+  1. Inspect the stored JSON file in `<os-temp>/airbridge-checkpoints/`.
+- Expected result: File declares `"restoreExecutionNotTriggered": true` and `"noSensitiveData": true`. No token, no absolute path, no record IDs, no record field values, no attachment URL, no raw HTTP body.
+
+**TC-RCPS-05: Write gate remains disabled after store**
+
+- Preconditions: TC-RCPS-03 completed.
+- Steps:
+  1. Invoke `preview_restore_write_engine` after storing checkpoint metadata.
+- Expected result: Write engine still returns `status = "Disabled"`. Storing checkpoint metadata does not affect write gate state.
+
+**TC-RCPS-06: Label sanitization for path traversal input**
+
+- Preconditions: Any state.
+- Steps:
+  1. Invoke `store_restore_checkpoint_metadata` with `checkpointLabel: "../../../etc/passwd"` and all prerequisites satisfied.
+- Expected result: `summary.safeFilename` contains no `/`, no `.`, and the string `"passwd"` does not appear. The label is sanitized to alphanumeric, hyphens, and underscores only.
+
+**TC-RCPS-07: Safety invariants in all result states**
+
+- Preconditions: Any state.
+- Steps:
+  1. Run `cargo test -- checkpoint_store::tests`.
+- Expected result: All Rust tests in the `checkpoint_store` module pass. `writesEnabled` is always `false`. `networkWritesAttempted` is always `false`. No token, absolute path, attachment URL, old/new record ID, field value, or `"succeeded"` appears in any serialized result or stored file.

@@ -79,6 +79,8 @@ import type {
   LinkedSecondPassExecutionPreviewResult,
   FinalValidationExecutionPreviewRequest,
   FinalValidationExecutionPreviewResult,
+  RestoreCheckpointStoreRequest,
+  RestoreCheckpointStoreResult,
   RestoreWriteEngineRequest,
   RestoreWriteEngineResult,
   RunBackupCommandRequest,
@@ -968,6 +970,7 @@ export const liveAirBridgeService: AirBridgeService = {
   previewMappingCheckpointExecution,
   previewLinkedSecondPassExecution,
   previewFinalValidationExecution,
+  storeRestoreCheckpointMetadata,
 };
 
 async function previewLinkedSecondPassExecution(
@@ -1045,6 +1048,25 @@ async function previewFinalValidationExecution(
         attachmentPhaseDisabledSafe: false,
         liveWriteReadinessSatisfied: false,
       },
+      noChangesMade: true,
+      networkWritesAttempted: false,
+      writesEnabled: false,
+    };
+  }
+  return result;
+}
+
+async function storeRestoreCheckpointMetadata(
+  request: RestoreCheckpointStoreRequest,
+): Promise<RestoreCheckpointStoreResult> {
+  const result = await commands.storeRestoreCheckpointMetadata(request);
+  if (result === null) {
+    return {
+      status: "blocked",
+      mode: "metadataOnly",
+      message: "Checkpoint metadata store is not available in this context.",
+      blockedReason:
+        "RCPS-PRE-01: Command invocation returned null. No checkpoint file was written.",
       noChangesMade: true,
       networkWritesAttempted: false,
       writesEnabled: false,

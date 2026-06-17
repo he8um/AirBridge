@@ -79,6 +79,8 @@ import type {
   LinkedSecondPassExecutionPreviewResult,
   FinalValidationExecutionPreviewRequest,
   FinalValidationExecutionPreviewResult,
+  RestoreCheckpointStoreRequest,
+  RestoreCheckpointStoreResult,
   RestoreWriteEngineRequest,
   RestoreWriteEngineResult,
   RunBackupCommandRequest,
@@ -564,4 +566,21 @@ export interface AirBridgeService {
   previewFinalValidationExecution(
     request: FinalValidationExecutionPreviewRequest,
   ): Promise<FinalValidationExecutionPreviewResult>;
+  /**
+   * Stores sanitized restore checkpoint metadata to the app-controlled
+   * local checkpoint directory.
+   *
+   * Safety contract:
+   * - No Airtable API calls.
+   * - No token, full path, record payload, raw HTTP, old/new record IDs,
+   *   or attachment URL is stored or returned.
+   * - writesEnabled is always false.
+   * - noChangesMade is true when blocked (no file written).
+   * - networkWritesAttempted is always false.
+   * - stored does NOT enable live restore execution.
+   * - stored does NOT introduce a restore success state.
+   */
+  storeRestoreCheckpointMetadata(
+    request: RestoreCheckpointStoreRequest,
+  ): Promise<RestoreCheckpointStoreResult>;
 }

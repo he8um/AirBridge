@@ -3134,3 +3134,125 @@ export interface FinalValidationExecutionPreviewResult {
   networkWritesAttempted: boolean;
   writesEnabled: boolean;
 }
+
+// ── Restore Checkpoint Store ──────────────────────────────────────────────────
+
+/**
+ * Overall status of the checkpoint metadata store operation.
+ *
+ * Safety contract:
+ * - `stored` does NOT enable live restore execution.
+ * - `stored` does NOT introduce a restore success state.
+ * - `writesEnabled` is always false.
+ * - `networkWritesAttempted` is always false.
+ * - No token, full path, record payload, raw HTTP, old/new record IDs, or
+ *   attachment URL is stored or returned.
+ */
+export type RestoreCheckpointStoreStatus = "stored" | "blocked";
+
+/** Storage mode for the checkpoint metadata store. */
+export type RestoreCheckpointStoreMode = "metadataOnly";
+
+/**
+ * A restore pipeline phase recorded in the checkpoint manifest.
+ *
+ * Safety properties:
+ * - No record IDs (old or new).
+ * - No record field values.
+ * - No token.
+ * - No absolute path.
+ * - No attachment URL.
+ * - Only safe labels and counts.
+ */
+export interface RestoreCheckpointPhase {
+  phaseLabel: string;
+  boundaryCount: number;
+  note: string;
+}
+
+/**
+ * A single checkpoint boundary within a phase.
+ *
+ * Safety properties:
+ * - No record IDs (old or new).
+ * - No record field values.
+ * - No token.
+ * - No absolute path.
+ * - No attachment URL.
+ * - Only safe labels and counts.
+ */
+export interface RestoreCheckpointBoundary {
+  boundaryLabel: string;
+  boundaryIndex: number;
+  itemCount: number;
+  note: string;
+}
+
+/**
+ * Safe summary returned to the UI after storing checkpoint metadata.
+ *
+ * Does NOT include:
+ * - Full filesystem path.
+ * - Token.
+ * - Record payload or field values.
+ * - Old or new record IDs.
+ * - Attachment URL.
+ * - Raw HTTP body.
+ */
+export interface RestoreCheckpointSafeSummary {
+  checkpointLabel: string;
+  totalBoundaryCount: number;
+  phaseCount: number;
+  totalItemCount: number;
+  safeFilename: string;
+  note: string;
+}
+
+/**
+ * Request to store sanitized restore checkpoint metadata.
+ *
+ * Safety invariants:
+ * - No token field.
+ * - No full filesystem path field.
+ * - No record payload field.
+ * - No old or new record IDs.
+ * - No attachment URL.
+ * - No raw HTTP body.
+ */
+export interface RestoreCheckpointStoreRequest {
+  checkpointLabel?: string;
+  checkpointDurabilitySafe?: boolean;
+  sensitiveDataSafe?: boolean;
+  mappingCheckpointPreviewReady?: boolean;
+  finalValidationPreviewReady?: boolean;
+  phases?: RestoreCheckpointPhase[];
+  boundaries?: RestoreCheckpointBoundary[];
+}
+
+/**
+ * Result of the checkpoint metadata store operation.
+ *
+ * Safety invariants (enforced):
+ * - `writesEnabled` is always false.
+ * - `networkWritesAttempted` is always false.
+ * - `noChangesMade` is true when blocked (no file written).
+ * - `noChangesMade` is false when a checkpoint metadata file is stored.
+ * - No token field.
+ * - No full filesystem path field.
+ * - No old or new record IDs.
+ * - No record payload or field values.
+ * - No raw HTTP request or response body.
+ * - No attachment URL.
+ * - `stored` does NOT enable live restore execution.
+ * - `stored` does NOT introduce a restore success state.
+ */
+export interface RestoreCheckpointStoreResult {
+  status: RestoreCheckpointStoreStatus;
+  mode: RestoreCheckpointStoreMode;
+  message: string;
+  summary?: RestoreCheckpointSafeSummary;
+  blockedReason?: string;
+  noChangesMade: boolean;
+  networkWritesAttempted: boolean;
+  writesEnabled: boolean;
+}

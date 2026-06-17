@@ -29,6 +29,7 @@ import { RestoreRecordWriteExecutionPreviewPanel } from "../features/backups/Res
 import { RestoreMappingCheckpointExecutionPreviewPanel } from "../features/backups/RestoreMappingCheckpointExecutionPreviewPanel";
 import { RestoreLinkedSecondPassExecutionPreviewPanel } from "../features/backups/RestoreLinkedSecondPassExecutionPreviewPanel";
 import { RestoreFinalValidationExecutionPreviewPanel } from "../features/backups/RestoreFinalValidationExecutionPreviewPanel";
+import { RestoreCheckpointStorePanel } from "../features/backups/RestoreCheckpointStorePanel";
 import { RestoreWriteEnginePanel } from "../features/backups/RestoreWriteEnginePanel";
 import { liveAirBridgeService } from "../services/liveAirBridgeService";
 import type { BackupPackageInspectionResult } from "../backend/types";
@@ -63,6 +64,7 @@ import type {
   MappingCheckpointExecutionPreviewResult,
   LinkedSecondPassExecutionPreviewResult,
   FinalValidationExecutionPreviewResult,
+  RestoreCheckpointStoreResult,
 } from "../backend/types";
 
 export function RestorePage() {
@@ -135,6 +137,8 @@ export function RestorePage() {
   const [lsepLoading, setLsepLoading] = useState(false);
   const [fvepResult, setFvepResult] = useState<FinalValidationExecutionPreviewResult | null>(null);
   const [fvepLoading, setFvepLoading] = useState(false);
+  const [rcpsResult, setRcpsResult] = useState<RestoreCheckpointStoreResult | null>(null);
+  const [rcpsLoading, setRcpsLoading] = useState(false);
 
   return (
     <div className="page">
@@ -952,6 +956,37 @@ export function RestorePage() {
                   throw new Error("Final validation execution preview failed.");
                 } finally {
                   setFvepLoading(false);
+                }
+              }}
+            />
+
+            <div className="divider" style={{ margin: 0 }} />
+
+            <RestoreCheckpointStorePanel
+              result={rcpsResult}
+              loading={rcpsLoading}
+              request={{
+                checkpointLabel: inspection?.filename
+                  ? `restore-${inspection.filename.replace(/[^a-zA-Z0-9\-_]/g, "-").slice(0, 48)}`
+                  : "restore-checkpoint",
+                checkpointDurabilitySafe: true,
+                sensitiveDataSafe: true,
+                mappingCheckpointPreviewReady: mcepResult?.status === "dryRunReady",
+                finalValidationPreviewReady: fvepResult?.status === "dryRunReady",
+                phases: [],
+                boundaries: [],
+              }}
+              onStore={async (req) => {
+                setRcpsLoading(true);
+                try {
+                  const r = await liveAirBridgeService.storeRestoreCheckpointMetadata(req);
+                  setRcpsResult(r);
+                  return r;
+                } catch {
+                  setRcpsResult(null);
+                  throw new Error("Checkpoint metadata store failed.");
+                } finally {
+                  setRcpsLoading(false);
                 }
               }}
             />

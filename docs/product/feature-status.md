@@ -144,6 +144,14 @@ When `DryRunReady`, the result contains eight ordered checks: `FVEP-CHK-SCHEMA` 
 
 `DryRunReady` does NOT enable live final validation execution, does NOT persist checkpoint files, does NOT call any Airtable endpoint, and does NOT start any restore execution. `writesEnabled` is always `false`, `noChangesMade` is always `true`, `networkWritesAttempted` is always `false`. The result status is never `"succeeded"`. Live final validation execution and end-to-end restore execution remain pending.
 
+### Restore Checkpoint Metadata Store
+
+The checkpoint metadata store (`store_restore_checkpoint_metadata`) writes a sanitized JSON checkpoint manifest to an app-controlled local directory (`<os-temp>/airbridge-checkpoints/`). No token, full filesystem path, record payload, old or new record IDs, raw HTTP body, or attachment URL is accepted, stored, or returned. The stored file explicitly declares `restoreExecutionNotTriggered: true` and `noSensitiveData: true`. The command returns only a safe filename (no directory component), boundary count, phase count, and item count to the UI.
+
+The command checks five prerequisites (RCPS-PRE-01 through RCPS-PRE-05): write gate disabled, checkpoint durability policy safe, sensitive data safety policy satisfied, mapping/checkpoint preview `DryRunReady`, and final validation preview `DryRunReady`. If any prerequisite is missing, the result is `Blocked` and no file is written.
+
+`Stored` does NOT enable live restore execution, does NOT introduce a restore success state, does NOT call any Airtable endpoint, and does NOT accept any user-supplied output path. `writesEnabled` is always `false`, `networkWritesAttempted` is always `false`. `noChangesMade` is `false` only when a local checkpoint metadata file was actually written; it is `true` when blocked. The result status is never `"succeeded"`. End-to-end restore execution remains pending.
+
 ---
 
 ## Related Documents
