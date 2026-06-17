@@ -1450,6 +1450,40 @@ Record any failures here with a brief description and steps to reproduce.
 
 ---
 
+## Schema Write Executor Foundation Checklist (internal module)
+
+### Before testing
+
+- [ ] Confirm `build_schema_write_executor_plan` is internal only — no Tauri command is registered for it.
+- [ ] Confirm `SchemaWriteExecutorRequest` has no `token` field, no `output_path` field, no record payload field, no old/new record ID field, no attachment URL field.
+- [ ] Confirm `SchemaWriteExecutorResult` has no `token`, no full path, no old/new record IDs, no record payload, no raw HTTP body, no attachment URL, no `"succeeded"` status, no `writesEnabled: true`.
+- [ ] Confirm no UI execute button or panel calls `build_schema_write_executor_plan`.
+- [ ] Confirm `SchemaWriteExecutorMode` has only `disabled` and `sandboxOnly` — no `production` mode.
+
+### During testing (Rust unit tests only)
+
+- [ ] Mode `disabled` returns `blocked` with SWEX-PRE-02 reason.
+- [ ] Explicit internal write flag not set returns `blocked` with SWEX-PRE-03 reason.
+- [ ] Sandbox not verified returns `blocked` with SWEX-PRE-04 reason.
+- [ ] Target not empty returns `blocked` with SWEX-PRE-05 reason.
+- [ ] Live write readiness not satisfied returns `blocked` with SWEX-PRE-06 reason.
+- [ ] Request plan blocked returns `blocked` with SWEX-PRE-07 reason.
+- [ ] All prerequisites satisfied → `notExecuted` result (write gate still disabled).
+- [ ] `writesEnabled` is `false` in every result.
+- [ ] `networkWritesAttempted` is `false` in every result.
+- [ ] `noChangesMade` is `true` in every result.
+- [ ] No token (`pat_`) in the serialized result.
+- [ ] No absolute path in the serialized result.
+- [ ] No `"succeeded"`, `"restoreComplete"`, or `"restoreSuccess"` in any result.
+- [ ] Steps are built in canonical order: tables first, then direct fields, then deferred linked fields, then manual actions.
+- [ ] All steps have status `pending` when `notExecuted`.
+- [ ] Step IDs use stable prefixes: `SWEX-TBL-`, `SWEX-FLD-`, `SWEX-DEF-`, `SWEX-MAN-`.
+- [ ] `safety_snapshot.write_gate_disabled` is always `true`.
+- [ ] `evaluate_write_gate()` returns `Disabled` before and after any executor call.
+- [ ] Run `cargo test -- schema_write_executor::tests` — all tests pass.
+
+---
+
 ## Linked Second-Pass Execution Preview Checklist
 
 ### Before testing

@@ -14,6 +14,9 @@ use crate::restore::checkpoint_durability_policy::{
     verify_checkpoint_durability_policy, CheckpointDurabilityPolicyRequest,
     CheckpointDurabilityPolicyResult,
 };
+use crate::restore::checkpoint_store::{
+    store_restore_checkpoint, RestoreCheckpointStoreRequest, RestoreCheckpointStoreResult,
+};
 use crate::restore::destructive_operation_policy::{
     verify_destructive_operation_policy, DestructiveOperationPolicyRequest,
     DestructiveOperationPolicyResult,
@@ -27,9 +30,6 @@ use crate::restore::failure_modes_policy::{
 use crate::restore::final_validation_enforcement_policy::{
     verify_final_validation_enforcement_policy, FinalValidationEnforcementPolicyRequest,
     FinalValidationEnforcementPolicyResult,
-};
-use crate::restore::checkpoint_store::{
-    store_restore_checkpoint, RestoreCheckpointStoreRequest, RestoreCheckpointStoreResult,
 };
 use crate::restore::final_validation_execution_preview::{
     preview_final_validation_execution, FinalValidationExecutionPreviewRequest,

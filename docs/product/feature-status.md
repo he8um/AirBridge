@@ -152,6 +152,14 @@ The command checks five prerequisites (RCPS-PRE-01 through RCPS-PRE-05): write g
 
 `Stored` does NOT enable live restore execution, does NOT introduce a restore success state, does NOT call any Airtable endpoint, and does NOT accept any user-supplied output path. `writesEnabled` is always `false`, `networkWritesAttempted` is always `false`. `noChangesMade` is `false` only when a local checkpoint metadata file was actually written; it is `true` when blocked. The result status is never `"succeeded"`. End-to-end restore execution remains pending.
 
+### Schema Write Executor Foundation (internal)
+
+The schema write executor foundation (`build_schema_write_executor_plan` in `restore/schema_write_executor.rs`) is an internal Rust module — it is not exposed as a Tauri command and has no UI surface. It builds an ordered step list of typed internal schema operation descriptors (tables first, then direct fields, then deferred linked fields, then manual actions) from an existing `SchemaWriteRequestPlan`. No Airtable API calls are made at any point.
+
+The executor checks seven prerequisites (SWEX-PRE-01 through SWEX-PRE-07): write gate disabled, mode must be `sandboxOnly`, explicit internal write flag set, sandbox environment verified, target empty verified, live-write readiness satisfied, and request plan not blocked. If any prerequisite is missing, the result is `Blocked`. If all prerequisites are satisfied, the result is `NotExecuted` — because `evaluate_write_gate()` currently always returns `Disabled`. The `DryRunOnly` status is defined for future use but is currently unreachable.
+
+The executor never makes network calls, never returns a token, full path, record payload, raw HTTP body, old/new record IDs, or attachment URL. `writesEnabled` is always `false`, `noChangesMade` is always `true`, `networkWritesAttempted` is always `false`. No production-target mode exists. No UI execute button is provided. Record writes, linked record updates, and live final validation reads remain pending.
+
 ---
 
 ## Related Documents

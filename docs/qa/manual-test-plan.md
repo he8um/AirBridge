@@ -2437,3 +2437,55 @@ These test cases cover the command contract layer: confirmation enforcement, out
 - Steps:
   1. Run `cargo test -- checkpoint_store::tests`.
 - Expected result: All Rust tests in the `checkpoint_store` module pass. `writesEnabled` is always `false`. `networkWritesAttempted` is always `false`. No token, absolute path, attachment URL, old/new record ID, field value, or `"succeeded"` appears in any serialized result or stored file.
+
+### Schema Write Executor Foundation Test Cases (internal — Rust only)
+
+**TC-SWEX-01: Blocked when mode is disabled**
+
+- Preconditions: Any state (internal Rust test only).
+- Steps:
+  1. Call `build_schema_write_executor_plan` with `mode: disabled` and a valid request plan.
+- Expected result: `status = "blocked"`. `blockedReason` contains `SWEX-PRE-02`. `writesEnabled = false`. `noChangesMade = true`. `networkWritesAttempted = false`.
+
+**TC-SWEX-02: Blocked when explicit internal write flag not set**
+
+- Preconditions: Any state.
+- Steps:
+  1. Call `build_schema_write_executor_plan` with `mode: sandboxOnly` and `explicitInternalSchemaWriteRequested: false`.
+- Expected result: `status = "blocked"`. `blockedReason` contains `SWEX-PRE-03`.
+
+**TC-SWEX-03: Blocked when sandbox not verified**
+
+- Preconditions: Any state.
+- Steps:
+  1. Call `build_schema_write_executor_plan` with `mode: sandboxOnly`, explicit flag set, but `sandboxVerified: false`.
+- Expected result: `status = "blocked"`. `blockedReason` contains `SWEX-PRE-04`.
+
+**TC-SWEX-04: Blocked when target not empty**
+
+- Preconditions: Any state.
+- Steps:
+  1. Call `build_schema_write_executor_plan` with `targetEmptyVerified: false`.
+- Expected result: `status = "blocked"`. `blockedReason` contains `SWEX-PRE-05`.
+
+**TC-SWEX-05: NotExecuted when all prerequisites satisfied**
+
+- Preconditions: Any state.
+- Steps:
+  1. Call `build_schema_write_executor_plan` with all prerequisites satisfied and a ready request plan.
+- Expected result: `status = "notExecuted"`. `mode = "disabled"`. `writesEnabled = false`. `noChangesMade = true`. `networkWritesAttempted = false`. Steps list is non-empty with all steps `pending`.
+
+**TC-SWEX-06: Write gate remains disabled**
+
+- Preconditions: Any state.
+- Steps:
+  1. Call `build_schema_write_executor_plan` with all prerequisites satisfied.
+  2. Call `evaluate_write_gate()`.
+- Expected result: Write gate still returns `status = "Disabled"`. The executor call does not affect write gate state.
+
+**TC-SWEX-07: Safety invariants in all result states**
+
+- Preconditions: Any state.
+- Steps:
+  1. Run `cargo test -- schema_write_executor::tests`.
+- Expected result: All Rust tests pass. `writesEnabled` is always `false`. `noChangesMade` is always `true`. `networkWritesAttempted` is always `false`. No token, absolute path, attachment URL, old/new record ID, or `"succeeded"` appears in any serialized result. Steps are ordered tables-first.

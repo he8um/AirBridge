@@ -297,7 +297,13 @@ pub fn store_restore_checkpoint(
     // Sanitize the label: allow only alphanumeric, hyphens, and underscores.
     let checkpoint_label: String = raw_label
         .chars()
-        .map(|c| if c.is_ascii_alphanumeric() || c == '-' || c == '_' { c } else { '-' })
+        .map(|c| {
+            if c.is_ascii_alphanumeric() || c == '-' || c == '_' {
+                c
+            } else {
+                '-'
+            }
+        })
         .take(64)
         .collect();
 
@@ -428,8 +434,7 @@ fn write_checkpoint_manifest(
             .map_err(|e| format!("checkpoint flush failed: {e}"))?;
     }
 
-    std::fs::rename(&tmp_path, &dest)
-        .map_err(|e| format!("checkpoint rename failed: {e}"))?;
+    std::fs::rename(&tmp_path, &dest).map_err(|e| format!("checkpoint rename failed: {e}"))?;
 
     // Return only the filename — never the full path.
     Ok(safe_filename)
@@ -687,8 +692,10 @@ mod tests {
             assert!(!summary.checkpoint_label.contains('.'));
             assert!(!summary.safe_filename.contains('/'));
             assert!(!summary.safe_filename.contains('\\'));
-            assert!(!summary.safe_filename.contains('.') || summary.safe_filename.ends_with(".json"),
-                "safe_filename must not contain . except for the .json extension");
+            assert!(
+                !summary.safe_filename.contains('.') || summary.safe_filename.ends_with(".json"),
+                "safe_filename must not contain . except for the .json extension"
+            );
         }
     }
 
