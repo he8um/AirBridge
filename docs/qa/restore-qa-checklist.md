@@ -1351,3 +1351,49 @@ Record any failures here with a brief description and steps to reproduce.
 | Item | Status | Notes |
 |------|--------|-------|
 | | | |
+
+---
+
+## Record Write Execution Preview Checklist
+
+### Before testing
+
+- [ ] Confirm `preview_record_write_execution_gate` is registered in the Tauri invoke handler.
+- [ ] Confirm `RecordWriteExecutionPreviewRequest` has no `token` field.
+- [ ] Confirm `RecordWriteExecutionPreviewResult` has no `token`, `writesEnabled: true`, `"succeeded"` status, raw field values, raw HTTP body, or attachment URL.
+
+### During testing
+
+- [ ] Missing schema preview prerequisite returns `blocked` with RWEP-PRE-02 reason.
+- [ ] Missing sandbox prerequisite returns `blocked`.
+- [ ] Missing target empty prerequisite returns `blocked`.
+- [ ] Missing record import plan returns `blocked`.
+- [ ] Missing record write request plan returns `blocked`.
+- [ ] Batch size > 10 returns `blocked` with RWEP-PRE-07 reason.
+- [ ] Batch size 0 returns `blocked`.
+- [ ] Unsafe rate-limit/backoff policy returns `blocked`.
+- [ ] Unsafe checkpoint durability policy returns `blocked`.
+- [ ] Unsafe sensitive data policy returns `blocked`.
+- [ ] Attachment phase not disabled returns `blocked`.
+- [ ] Missing final validation enforcement returns `blocked`.
+- [ ] Missing live write readiness returns `blocked`.
+- [ ] All 13 prerequisites satisfied returns `dryRunReady`.
+- [ ] `dryRunReady` result has ordered batches: first-pass create batches before second-pass linked-update batches.
+- [ ] Batch record count never exceeds batch size.
+- [ ] `writesEnabled` is `false` in every result.
+- [ ] `noChangesMade` is `true` in every result.
+- [ ] `networkWritesAttempted` is `false` in every result.
+- [ ] No token field appears in the serialized result.
+- [ ] No absolute path appears in the serialized result.
+- [ ] No raw record payload or field values appear in the serialized result.
+- [ ] No attachment URL appears in the serialized result.
+- [ ] No raw HTTP request or response body appears in the serialized result.
+- [ ] `DryRunReady` message explicitly states live record writes remain disabled.
+- [ ] `DryRunReady` message explicitly states the preview does not start any restore execution.
+- [ ] Panel renders `data-testid="restore-rwep-panel"`.
+- [ ] Panel renders "Live record writes disabled" notice.
+- [ ] Panel shows `data-testid="rwep-dry-run-badge"` when `dryRunReady`.
+- [ ] Panel shows `data-testid="rwep-blocked-badge"` when `blocked`.
+- [ ] Panel shows `data-testid="rwep-writes-disabled-tag"` whenever result is present.
+- [ ] Panel shows `data-testid="rwep-no-changes-made"` whenever result is present.
+- [ ] Panel has no execute button, no enable button, no token input.

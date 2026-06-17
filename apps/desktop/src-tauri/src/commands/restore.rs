@@ -45,6 +45,10 @@ use crate::restore::rate_limit_backoff_policy::{
 };
 use crate::restore::record_import_plan::{RestoreRecordImportPlan, RestoreRecordImportPlanRequest};
 use crate::restore::record_import_planner::create_record_import_plan;
+use crate::restore::record_write_execution_preview::{
+    preview_record_write_execution, RecordWriteExecutionPreviewRequest,
+    RecordWriteExecutionPreviewResult,
+};
 use crate::restore::record_write_executor::execute_record_write_dry_run;
 use crate::restore::record_write_requests::build_record_write_request_plan;
 use crate::restore::record_write_result::{
@@ -780,6 +784,24 @@ pub fn preview_schema_write_execution_gate(
     request: SchemaWriteExecutionPreviewRequest,
 ) -> SchemaWriteExecutionPreviewResult {
     preview_schema_write_execution(&request)
+}
+
+/// Builds an ordered record write execution preview (dry-run / blocked only).
+///
+/// Safety contract — this command:
+/// - Makes no Airtable API calls.
+/// - Does not create, update, or delete any record, table, or field.
+/// - Does not accept or return a token, full path, record payload, raw HTTP body,
+///   or attachment URL.
+/// - Always returns `writes_enabled: false`, `no_changes_made: true`,
+///   `network_writes_attempted: false`.
+/// - Consults `evaluate_write_gate()` internally to confirm writes remain disabled.
+/// - A `DryRunReady` result does NOT enable live record write execution.
+#[tauri::command]
+pub fn preview_record_write_execution_gate(
+    request: RecordWriteExecutionPreviewRequest,
+) -> RecordWriteExecutionPreviewResult {
+    preview_record_write_execution(&request)
 }
 
 #[cfg(test)]

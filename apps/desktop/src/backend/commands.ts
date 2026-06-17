@@ -67,6 +67,8 @@ import type {
   LiveWriteReadinessPolicyResult,
   SchemaWriteExecutionPreviewRequest,
   SchemaWriteExecutionPreviewResult,
+  RecordWriteExecutionPreviewRequest,
+  RecordWriteExecutionPreviewResult,
   RunBackupCommandRequest,
   RunBackupCommandResponse,
   SandboxVerificationRequest,
@@ -589,6 +591,14 @@ export async function previewSchemaWriteExecution(
   request: SchemaWriteExecutionPreviewRequest,
 ): Promise<SchemaWriteExecutionPreviewResult | null> {
   return safeInvoke<SchemaWriteExecutionPreviewResult>("preview_schema_write_execution_gate", {
+    request,
+  });
+}
+
+export async function previewRecordWriteExecution(
+  request: RecordWriteExecutionPreviewRequest,
+): Promise<RecordWriteExecutionPreviewResult | null> {
+  return safeInvoke<RecordWriteExecutionPreviewResult>("preview_record_write_execution_gate", {
     request,
   });
 }

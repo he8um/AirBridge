@@ -71,6 +71,8 @@ import type {
   LiveWriteReadinessPolicyResult,
   SchemaWriteExecutionPreviewRequest,
   SchemaWriteExecutionPreviewResult,
+  RecordWriteExecutionPreviewRequest,
+  RecordWriteExecutionPreviewResult,
   RestoreWriteEngineRequest,
   RestoreWriteEngineResult,
   RunBackupCommandRequest,
@@ -823,6 +825,44 @@ async function previewSchemaWriteExecution(
   return result;
 }
 
+async function previewRecordWriteExecution(
+  request: RecordWriteExecutionPreviewRequest,
+): Promise<RecordWriteExecutionPreviewResult> {
+  const result = await commands.previewRecordWriteExecution(request);
+  if (result === null) {
+    return {
+      status: "blocked",
+      mode: "liveBlocked",
+      message: "Record write execution preview is not available in this context.",
+      batches: [],
+      safetySnapshot: {
+        writeGateDisabled: true,
+        schemaPreviewReady: false,
+        sandboxFlagPresent: false,
+        targetEmptyVerified: false,
+        recordImportPlanReady: false,
+        recordWriteRequestPlanReady: false,
+        batchSizeSafe: false,
+        rateLimitBackoffSafe: false,
+        checkpointDurabilitySafe: false,
+        sensitiveDataSafe: false,
+        attachmentPhaseDisabled: false,
+        finalValidationEnforcementPresent: false,
+        liveWriteReadinessSatisfied: false,
+      },
+      totalBatchCount: 0,
+      firstPassBatchCount: 0,
+      secondPassBatchCount: 0,
+      totalRecordCount: 0,
+      batchSize: 10,
+      noChangesMade: true,
+      networkWritesAttempted: false,
+      writesEnabled: false,
+    };
+  }
+  return result;
+}
+
 export const liveAirBridgeService: AirBridgeService = {
   listConnections,
   listWorkspaces,
@@ -873,4 +913,5 @@ export const liveAirBridgeService: AirBridgeService = {
   verifyAttachmentPhaseDisabledPolicy,
   verifyLiveWriteReadinessPolicy,
   previewSchemaWriteExecution,
+  previewRecordWriteExecution,
 };

@@ -25,6 +25,7 @@ import { RestoreSensitiveDataSafetyPolicyPanel } from "../features/backups/Resto
 import { RestoreAttachmentPhaseDisabledPolicyPanel } from "../features/backups/RestoreAttachmentPhaseDisabledPolicyPanel";
 import { RestoreLiveWriteReadinessPolicyPanel } from "../features/backups/RestoreLiveWriteReadinessPolicyPanel";
 import { RestoreSchemaWriteExecutionPreviewPanel } from "../features/backups/RestoreSchemaWriteExecutionPreviewPanel";
+import { RestoreRecordWriteExecutionPreviewPanel } from "../features/backups/RestoreRecordWriteExecutionPreviewPanel";
 import { RestoreWriteEnginePanel } from "../features/backups/RestoreWriteEnginePanel";
 import { liveAirBridgeService } from "../services/liveAirBridgeService";
 import type { BackupPackageInspectionResult } from "../backend/types";
@@ -55,6 +56,7 @@ import type {
   AttachmentPhaseDisabledPolicyResult,
   LiveWriteReadinessPolicyResult,
   SchemaWriteExecutionPreviewResult,
+  RecordWriteExecutionPreviewResult,
 } from "../backend/types";
 
 export function RestorePage() {
@@ -117,6 +119,8 @@ export function RestorePage() {
   const [lwrLoading, setLwrLoading] = useState(false);
   const [swepResult, setSwepResult] = useState<SchemaWriteExecutionPreviewResult | null>(null);
   const [swepLoading, setSwepLoading] = useState(false);
+  const [rwepResult, setRwepResult] = useState<RecordWriteExecutionPreviewResult | null>(null);
+  const [rwepLoading, setRwepLoading] = useState(false);
 
   return (
     <div className="page">
@@ -778,6 +782,50 @@ export function RestorePage() {
                   .finally(() => {
                     setSwepLoading(false);
                   });
+              }}
+            />
+
+            <div className="divider" style={{ margin: 0 }} />
+
+            {/* Record write execution preview — dry-run only. No live writes. No execute button. No token. No record payload. No attachment URL. DryRunReady does NOT enable writes. */}
+            <RestoreRecordWriteExecutionPreviewPanel
+              result={rwepResult}
+              loading={rwepLoading}
+              request={{
+                packageFilename: inspection?.filename ?? undefined,
+                schemaPreviewReady: swepResult?.status === "dryRunReady",
+                sandboxFlagPresent: true,
+                targetEmptyVerified: true,
+                recordImportPlanReady: true,
+                recordWriteRequestPlanReady: true,
+                tableCount: schemaPlan?.tableSteps?.length ?? 0,
+                totalFirstPassBatches: 2,
+                totalSecondPassBatches: 1,
+                totalRecordCount: recordImportTables.reduce(
+                  (sum, t) => sum + (t.recordCount ?? 0),
+                  0,
+                ),
+                batchSize: 10,
+                rateLimitBackoffSafe: true,
+                checkpointDurabilitySafe: true,
+                sensitiveDataSafe: true,
+                attachmentPhaseDisabled: true,
+                finalValidationEnforcementPresent: true,
+                liveWriteReadinessSatisfied:
+                  lwrResult?.status === "ready" || lwrResult?.status === "warning",
+              }}
+              onPreview={async (req) => {
+                setRwepLoading(true);
+                try {
+                  const r = await liveAirBridgeService.previewRecordWriteExecution(req);
+                  setRwepResult(r);
+                  return r;
+                } catch {
+                  setRwepResult(null);
+                  throw new Error("Record write execution preview failed.");
+                } finally {
+                  setRwepLoading(false);
+                }
               }}
             />
 

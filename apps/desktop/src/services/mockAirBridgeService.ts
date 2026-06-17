@@ -96,6 +96,9 @@ import type {
   LiveWriteReadinessPolicyStatus,
   SchemaWriteExecutionPreviewRequest,
   SchemaWriteExecutionPreviewResult,
+  RecordWriteExecutionPreviewRequest,
+  RecordWriteExecutionPreviewResult,
+  RecordWriteExecutionPreviewBatch,
   RunBackupCommandResponse,
   RecordWriteRequestPlanRequest,
   RecordWriteRequestPlanResult,
@@ -5952,6 +5955,7 @@ export const mockAirBridgeService: AirBridgeService = {
   verifyAttachmentPhaseDisabledPolicy: verifyAttachmentPhaseDisabledPolicyImpl,
   verifyLiveWriteReadinessPolicy: verifyLiveWriteReadinessPolicyImpl,
   previewSchemaWriteExecution: previewSchemaWriteExecutionImpl,
+  previewRecordWriteExecution: previewRecordWriteExecutionImpl,
 };
 
 function previewSchemaWriteExecutionImpl(
@@ -6099,6 +6103,175 @@ function previewSchemaWriteExecutionImpl(
     deferredStepCount: deferredFieldCount,
     manualStepCount: manualCount,
     totalStepCount: steps.length,
+    noChangesMade: true,
+    networkWritesAttempted: false,
+    writesEnabled: false,
+  });
+}
+
+function previewRecordWriteExecutionImpl(
+  request: RecordWriteExecutionPreviewRequest,
+): Promise<RecordWriteExecutionPreviewResult> {
+  const schemaPreviewReady = request.schemaPreviewReady ?? false;
+  const sandboxFlagPresent = request.sandboxFlagPresent ?? false;
+  const targetEmptyVerified = request.targetEmptyVerified ?? false;
+  const recordImportPlanReady = request.recordImportPlanReady ?? false;
+  const recordWriteRequestPlanReady = request.recordWriteRequestPlanReady ?? false;
+  const batchSize = request.batchSize ?? 10;
+  const batchSizeSafe = batchSize > 0 && batchSize <= 10;
+  const rateLimitBackoffSafe = request.rateLimitBackoffSafe ?? false;
+  const checkpointDurabilitySafe = request.checkpointDurabilitySafe ?? false;
+  const sensitiveDataSafe = request.sensitiveDataSafe ?? false;
+  const attachmentPhaseDisabled = request.attachmentPhaseDisabled ?? false;
+  const finalValidationEnforcementPresent = request.finalValidationEnforcementPresent ?? false;
+  const liveWriteReadinessSatisfied = request.liveWriteReadinessSatisfied ?? false;
+
+  const safetySnapshot = {
+    writeGateDisabled: true,
+    schemaPreviewReady,
+    sandboxFlagPresent,
+    targetEmptyVerified,
+    recordImportPlanReady,
+    recordWriteRequestPlanReady,
+    batchSizeSafe,
+    rateLimitBackoffSafe,
+    checkpointDurabilitySafe,
+    sensitiveDataSafe,
+    attachmentPhaseDisabled,
+    finalValidationEnforcementPresent,
+    liveWriteReadinessSatisfied,
+  };
+
+  const blockedReason: string | undefined = !schemaPreviewReady
+    ? "RWEP-PRE-02: Schema write execution preview has not returned DryRunReady."
+    : !sandboxFlagPresent
+      ? "RWEP-PRE-03: Sandbox environment check has not passed."
+      : !targetEmptyVerified
+        ? "RWEP-PRE-04: Target empty verification has not passed."
+        : !recordImportPlanReady
+          ? "RWEP-PRE-05: Record import plan is not ready."
+          : !recordWriteRequestPlanReady
+            ? "RWEP-PRE-06: Record write request plan is not ready."
+            : !batchSizeSafe
+              ? `RWEP-PRE-07: Batch size ${batchSize} exceeds the safe maximum of 10.`
+              : !rateLimitBackoffSafe
+                ? "RWEP-PRE-08: Rate-limit/backoff policy is not safe."
+                : !checkpointDurabilitySafe
+                  ? "RWEP-PRE-09: Checkpoint durability policy is not safe."
+                  : !sensitiveDataSafe
+                    ? "RWEP-PRE-10: Sensitive data safety policy is not satisfied."
+                    : !attachmentPhaseDisabled
+                      ? "RWEP-PRE-11: Attachment phase is not disabled or metadata-only."
+                      : !finalValidationEnforcementPresent
+                        ? "RWEP-PRE-12: Final validation enforcement policy has not been verified."
+                        : !liveWriteReadinessSatisfied
+                          ? "RWEP-PRE-13: Live write readiness policy is not satisfied."
+                          : undefined;
+
+  if (blockedReason !== undefined) {
+    const blockedBatch: RecordWriteExecutionPreviewBatch = {
+      batchIndex: 0,
+      batchId: "RWEP-BATCH-BLOCKED",
+      tableLabel: "—",
+      operationClass: "blocked",
+      status: "blocked",
+      recordCount: 0,
+      estimatedRequestCount: 0,
+      note: "Safety prerequisites not satisfied. No batches can be previewed.",
+    };
+    return Promise.resolve<RecordWriteExecutionPreviewResult>({
+      status: "blocked",
+      mode: "liveBlocked",
+      message: `Record write execution preview is blocked. ${blockedReason} Live record writes remain disabled.`,
+      batches: [blockedBatch],
+      safetySnapshot,
+      totalBatchCount: 0,
+      firstPassBatchCount: 0,
+      secondPassBatchCount: 0,
+      totalRecordCount: 0,
+      batchSize,
+      blockedReason,
+      noChangesMade: true,
+      networkWritesAttempted: false,
+      writesEnabled: false,
+    });
+  }
+
+  const tableCount = request.tableCount ?? 0;
+  const totalFirstPass = request.totalFirstPassBatches ?? 0;
+  const totalSecondPass = request.totalSecondPassBatches ?? 0;
+  const totalRecords = request.totalRecordCount ?? 0;
+  const tables = tableCount > 0 ? tableCount : 1;
+
+  const batches: RecordWriteExecutionPreviewBatch[] = [];
+  let idx = 0;
+
+  const fpPerTable = Math.ceil(totalFirstPass / tables);
+  const recordsPerTable = Math.ceil(totalRecords / tables);
+
+  for (let t = 0; t < tables; t++) {
+    const tableBatches =
+      t < tables - 1 ? fpPerTable : Math.max(0, totalFirstPass - fpPerTable * (tables - 1));
+    for (let b = 0; b < tableBatches; b++) {
+      const recCount =
+        b < tableBatches - 1 ? batchSize : Math.max(1, recordsPerTable - batchSize * b);
+      batches.push({
+        batchIndex: idx,
+        batchId: `RWEP-BATCH-FP-T${String(t).padStart(2, "0")}-B${String(b).padStart(2, "0")}`,
+        tableLabel: `Table ${t + 1} (first-pass)`,
+        operationClass: "first-pass-create",
+        status: "pending",
+        recordCount: Math.min(recCount, batchSize),
+        estimatedRequestCount: 1,
+        note: `Would call Airtable create-records endpoint for table ${t + 1} batch ${b + 1}. Disabled — no network call made.`,
+      });
+      idx++;
+    }
+  }
+
+  const spPerTable = Math.ceil(totalSecondPass / tables);
+  for (let t = 0; t < tables; t++) {
+    const tableBatches =
+      t < tables - 1 ? spPerTable : Math.max(0, totalSecondPass - spPerTable * (tables - 1));
+    for (let b = 0; b < tableBatches; b++) {
+      batches.push({
+        batchIndex: idx,
+        batchId: `RWEP-BATCH-SP-T${String(t).padStart(2, "0")}-B${String(b).padStart(2, "0")}`,
+        tableLabel: `Table ${t + 1} (second-pass)`,
+        operationClass: "second-pass-linked-update",
+        status: "pending",
+        recordCount: batchSize,
+        estimatedRequestCount: 1,
+        note: `Would call Airtable update-records endpoint for table ${t + 1} linked field batch ${b + 1}. ID mapping unavailable until execution. Disabled — no network call made.`,
+      });
+      idx++;
+    }
+  }
+
+  if (batches.length === 0) {
+    batches.push({
+      batchIndex: 0,
+      batchId: "RWEP-BATCH-EMPTY",
+      tableLabel: "—",
+      operationClass: "no-operations",
+      status: "skipped",
+      recordCount: 0,
+      estimatedRequestCount: 0,
+      note: "No records or tables declared. Nothing to preview.",
+    });
+  }
+
+  return Promise.resolve<RecordWriteExecutionPreviewResult>({
+    status: "dryRunReady",
+    mode: "dryRunOnly",
+    message: `Record write execution preview is ready (dry-run only). ${totalFirstPass} first-pass create batch(es), ${totalSecondPass} second-pass linked-update batch(es), ${totalRecords} total record(s), batch size ${batchSize}. Live record writes remain disabled. This preview does not start any restore execution.`,
+    batches,
+    safetySnapshot,
+    totalBatchCount: batches.length,
+    firstPassBatchCount: totalFirstPass,
+    secondPassBatchCount: totalSecondPass,
+    totalRecordCount: totalRecords,
+    batchSize,
     noChangesMade: true,
     networkWritesAttempted: false,
     writesEnabled: false,

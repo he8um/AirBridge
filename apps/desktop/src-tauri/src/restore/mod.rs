@@ -21,6 +21,7 @@ pub mod record_import_plan;
 pub mod record_import_planner;
 pub mod record_import_warnings;
 pub mod record_mapping;
+pub mod record_write_execution_preview;
 pub mod record_write_executor;
 pub mod record_write_requests;
 pub mod record_write_result;

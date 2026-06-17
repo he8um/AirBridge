@@ -2189,3 +2189,51 @@ These test cases cover the command contract layer: confirmation enforcement, out
 - Steps:
   1. Run `cargo test -- schema_write_execution_preview::tests`.
 - Expected result: All 38 Rust tests in the `schema_write_execution_preview` module pass. `writesEnabled` is always `false`. `noChangesMade` is always `true`. `networkWritesAttempted` is always `false`.
+
+---
+
+## Record Write Execution Preview Test Cases
+
+**TC-RWEP-01: Blocked when prerequisites missing**
+
+- Preconditions: No prerequisites satisfied.
+- Steps:
+  1. Call `previewRecordWriteExecution({})` with no fields set.
+- Expected result: `status` is `"blocked"`. `mode` is `"liveBlocked"`. `blockedReason` contains `RWEP-PRE-02`. `writesEnabled` is `false`. `noChangesMade` is `true`. `networkWritesAttempted` is `false`. Result has exactly one batch with `status: "blocked"`.
+
+**TC-RWEP-02: Blocked when batch size exceeds 10**
+
+- Preconditions: All other prerequisites satisfied; `batchSize: 11`.
+- Steps:
+  1. Call `previewRecordWriteExecution({ ...allSafe, batchSize: 11 })`.
+- Expected result: `status` is `"blocked"`. `blockedReason` contains `RWEP-PRE-07`. `writesEnabled` is `false`.
+
+**TC-RWEP-03: DryRunReady for safe dry-run plan**
+
+- Preconditions: All 13 prerequisites satisfied.
+- Steps:
+  1. Call `previewRecordWriteExecution({ ...allSafe, tableCount: 2, totalFirstPassBatches: 4, totalSecondPassBatches: 2, totalRecordCount: 35, batchSize: 10 })`.
+- Expected result: `status` is `"dryRunReady"`. `mode` is `"dryRunOnly"`. `firstPassBatchCount` is `4`. `secondPassBatchCount` is `2`. `totalRecordCount` is `35`. `batchSize` is `10`. Message contains "disabled" and "does not start any restore execution".
+
+**TC-RWEP-04: Batch ordering — first-pass before second-pass**
+
+- Preconditions: All prerequisites satisfied.
+- Steps:
+  1. Call `previewRecordWriteExecution({ ...allSafe, tableCount: 2, totalFirstPassBatches: 4, totalSecondPassBatches: 2 })`.
+  2. Inspect `batches` array.
+- Expected result: All `first-pass-create` batches appear before any `second-pass-linked-update` batch. `batchIndex` values are sequential from 0.
+
+**TC-RWEP-05: Writes remain disabled after preview**
+
+- Preconditions: All prerequisites satisfied.
+- Steps:
+  1. Call `preview_record_write_execution_gate` with all safe inputs.
+  2. Check `evaluate_write_gate()` return value before and after.
+- Expected result: `evaluate_write_gate()` returns `Disabled` before and after. `writesEnabled` in the preview result is `false`.
+
+**TC-RWEP-06: Safety invariants in all result states**
+
+- Preconditions: Any state.
+- Steps:
+  1. Run `cargo test -- record_write_execution_preview::tests`.
+- Expected result: All Rust tests in the `record_write_execution_preview` module pass. `writesEnabled` is always `false`. `noChangesMade` is always `true`. `networkWritesAttempted` is always `false`. No token, absolute path, attachment URL, raw record payload, or `"succeeded"` appears in any serialized result.

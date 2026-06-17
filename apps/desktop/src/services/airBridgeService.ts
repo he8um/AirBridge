@@ -71,6 +71,8 @@ import type {
   LiveWriteReadinessPolicyResult,
   SchemaWriteExecutionPreviewRequest,
   SchemaWriteExecutionPreviewResult,
+  RecordWriteExecutionPreviewRequest,
+  RecordWriteExecutionPreviewResult,
   RestoreWriteEngineRequest,
   RestoreWriteEngineResult,
   RunBackupCommandRequest,
@@ -492,4 +494,20 @@ export interface AirBridgeService {
   previewSchemaWriteExecution(
     request: SchemaWriteExecutionPreviewRequest,
   ): Promise<SchemaWriteExecutionPreviewResult>;
+  /**
+   * Builds an ordered record write execution preview (dry-run / blocked only).
+   *
+   * Safety contract — this command:
+   * - Makes no Airtable API calls.
+   * - Does not create, update, or delete any record.
+   * - Does not accept or return a token, full path, record payload, raw HTTP body,
+   *   or attachment URL.
+   * - writesEnabled is always false.
+   * - noChangesMade is always true.
+   * - networkWritesAttempted is always false.
+   * - DryRunReady does NOT enable live record writes.
+   */
+  previewRecordWriteExecution(
+    request: RecordWriteExecutionPreviewRequest,
+  ): Promise<RecordWriteExecutionPreviewResult>;
 }

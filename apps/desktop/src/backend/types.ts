@@ -2738,3 +2738,88 @@ export interface SchemaWriteExecutionPreviewResult {
   networkWritesAttempted: boolean;
   writesEnabled: boolean;
 }
+
+// ── Record Write Execution Preview ────────────────────────────────────────────
+
+export type RecordWriteExecutionPreviewStatus = "dryRunReady" | "blocked";
+export type RecordWriteExecutionPreviewBatchStatus = "pending" | "blocked" | "skipped";
+export type RecordWriteExecutionPreviewMode = "dryRunOnly" | "liveBlocked";
+
+export interface RecordWriteExecutionPreviewBatch {
+  batchIndex: number;
+  batchId: string;
+  tableLabel: string;
+  operationClass: string;
+  status: RecordWriteExecutionPreviewBatchStatus;
+  recordCount: number;
+  estimatedRequestCount: number;
+  note: string;
+}
+
+export interface RecordWriteSafetySnapshot {
+  writeGateDisabled: boolean;
+  schemaPreviewReady: boolean;
+  sandboxFlagPresent: boolean;
+  targetEmptyVerified: boolean;
+  recordImportPlanReady: boolean;
+  recordWriteRequestPlanReady: boolean;
+  batchSizeSafe: boolean;
+  rateLimitBackoffSafe: boolean;
+  checkpointDurabilitySafe: boolean;
+  sensitiveDataSafe: boolean;
+  attachmentPhaseDisabled: boolean;
+  finalValidationEnforcementPresent: boolean;
+  liveWriteReadinessSatisfied: boolean;
+}
+
+export interface RecordWriteExecutionPreviewRequest {
+  packageFilename?: string;
+  schemaPreviewReady?: boolean;
+  sandboxFlagPresent?: boolean;
+  targetEmptyVerified?: boolean;
+  recordImportPlanReady?: boolean;
+  recordWriteRequestPlanReady?: boolean;
+  tableCount?: number;
+  totalFirstPassBatches?: number;
+  totalSecondPassBatches?: number;
+  totalRecordCount?: number;
+  batchSize?: number;
+  rateLimitBackoffSafe?: boolean;
+  checkpointDurabilitySafe?: boolean;
+  sensitiveDataSafe?: boolean;
+  attachmentPhaseDisabled?: boolean;
+  finalValidationEnforcementPresent?: boolean;
+  liveWriteReadinessSatisfied?: boolean;
+}
+
+/**
+ * Result of the record write execution preview command.
+ *
+ * Safety invariants:
+ * - No token field.
+ * - No filesystem path field.
+ * - No raw record payload or field values.
+ * - No raw HTTP request or response body.
+ * - No attachment URL field.
+ * - writesEnabled is always false.
+ * - noChangesMade is always true.
+ * - networkWritesAttempted is always false.
+ * - DryRunReady does NOT enable live record writes.
+ * - DryRunReady does NOT introduce a restore success state.
+ */
+export interface RecordWriteExecutionPreviewResult {
+  status: RecordWriteExecutionPreviewStatus;
+  mode: RecordWriteExecutionPreviewMode;
+  message: string;
+  batches: RecordWriteExecutionPreviewBatch[];
+  safetySnapshot: RecordWriteSafetySnapshot;
+  totalBatchCount: number;
+  firstPassBatchCount: number;
+  secondPassBatchCount: number;
+  totalRecordCount: number;
+  batchSize: number;
+  blockedReason?: string;
+  noChangesMade: boolean;
+  networkWritesAttempted: boolean;
+  writesEnabled: boolean;
+}
