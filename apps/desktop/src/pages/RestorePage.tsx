@@ -28,6 +28,7 @@ import { RestoreSchemaWriteExecutionPreviewPanel } from "../features/backups/Res
 import { RestoreRecordWriteExecutionPreviewPanel } from "../features/backups/RestoreRecordWriteExecutionPreviewPanel";
 import { RestoreMappingCheckpointExecutionPreviewPanel } from "../features/backups/RestoreMappingCheckpointExecutionPreviewPanel";
 import { RestoreLinkedSecondPassExecutionPreviewPanel } from "../features/backups/RestoreLinkedSecondPassExecutionPreviewPanel";
+import { RestoreFinalValidationExecutionPreviewPanel } from "../features/backups/RestoreFinalValidationExecutionPreviewPanel";
 import { RestoreWriteEnginePanel } from "../features/backups/RestoreWriteEnginePanel";
 import { liveAirBridgeService } from "../services/liveAirBridgeService";
 import type { BackupPackageInspectionResult } from "../backend/types";
@@ -61,6 +62,7 @@ import type {
   RecordWriteExecutionPreviewResult,
   MappingCheckpointExecutionPreviewResult,
   LinkedSecondPassExecutionPreviewResult,
+  FinalValidationExecutionPreviewResult,
 } from "../backend/types";
 
 export function RestorePage() {
@@ -131,6 +133,8 @@ export function RestorePage() {
   const [mcepLoading, setMcepLoading] = useState(false);
   const [lsepResult, setLsepResult] = useState<LinkedSecondPassExecutionPreviewResult | null>(null);
   const [lsepLoading, setLsepLoading] = useState(false);
+  const [fvepResult, setFvepResult] = useState<FinalValidationExecutionPreviewResult | null>(null);
+  const [fvepLoading, setFvepLoading] = useState(false);
 
   return (
     <div className="page">
@@ -907,6 +911,47 @@ export function RestorePage() {
                   throw new Error("Linked second-pass execution preview failed.");
                 } finally {
                   setLsepLoading(false);
+                }
+              }}
+            />
+
+            <div className="divider" style={{ margin: 0 }} />
+
+            {/* Final validation execution preview — dry-run only. No live validation execution. No execute button. No token. No record IDs. No checkpoint files. DryRunReady does NOT enable writes. */}
+            <RestoreFinalValidationExecutionPreviewPanel
+              result={fvepResult}
+              loading={fvepLoading}
+              request={{
+                packageFilename: inspection?.filename ?? undefined,
+                schemaWritePreviewReady: swepResult?.status === "dryRunReady",
+                recordWritePreviewReady: rwepResult?.status === "dryRunReady",
+                mappingCheckpointPreviewReady: mcepResult?.status === "dryRunReady",
+                linkedSecondPassPreviewReady: lsepResult?.status === "dryRunReady",
+                finalValidationPolicySafe: true,
+                finalValidationEnforcementPolicySafe: true,
+                sensitiveDataSafe: true,
+                attachmentPhaseDisabledSafe: true,
+                liveWriteReadinessSatisfied:
+                  lwrResult?.status === "ready" || lwrResult?.status === "warning",
+                tableCount: schemaPlan?.tableSteps?.length ?? 0,
+                fieldCount: schemaPlan?.tableSteps?.length ?? 0,
+                recordCount: rwepResult?.totalRecordCount ?? 0,
+                idMappingEntryCount: rwepResult?.totalRecordCount ?? 0,
+                linkedCoverageCount: schemaPlan?.tableSteps?.length ?? 0,
+                attachmentMetadataCount: 0,
+                manifestPresent: false,
+              }}
+              onPreview={async (req) => {
+                setFvepLoading(true);
+                try {
+                  const r = await liveAirBridgeService.previewFinalValidationExecution(req);
+                  setFvepResult(r);
+                  return r;
+                } catch {
+                  setFvepResult(null);
+                  throw new Error("Final validation execution preview failed.");
+                } finally {
+                  setFvepLoading(false);
                 }
               }}
             />

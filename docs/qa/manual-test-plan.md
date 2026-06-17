@@ -2337,3 +2337,52 @@ These test cases cover the command contract layer: confirmation enforcement, out
 - Steps:
   1. Run `cargo test -- linked_second_pass_execution_preview::tests`.
 - Expected result: All Rust tests in the `linked_second_pass_execution_preview` module pass. `writesEnabled` is always `false`. `noChangesMade` is always `true`. `networkWritesAttempted` is always `false`. No token, absolute path, attachment URL, old/new record ID, field value, or `"succeeded"` appears in any serialized result.
+
+---
+
+**TC-FVEP-01: Blocked when prerequisites missing**
+
+- Preconditions: Empty/default request (no prerequisites satisfied).
+- Steps:
+  1. Invoke `preview_final_validation_execution_gate` with an empty request `{}`.
+  2. Inspect the result.
+- Expected result: `status = "blocked"`. `blockedReason` contains `FVEP-PRE-02`. `writesEnabled = false`. `noChangesMade = true`. `networkWritesAttempted = false`.
+
+**TC-FVEP-02: Blocked when linked second-pass preview not ready**
+
+- Preconditions: All prerequisites set to safe except `linkedSecondPassPreviewReady = false`.
+- Steps:
+  1. Invoke `preview_final_validation_execution_gate` with `linkedSecondPassPreviewReady: false` and all other prerequisites satisfied.
+  2. Inspect the result.
+- Expected result: `status = "blocked"`. `blockedReason` contains `FVEP-PRE-05`. `writesEnabled = false`.
+
+**TC-FVEP-03: DryRunReady for safe dry-run plan**
+
+- Preconditions: All 10 prerequisites satisfied; sensible count fields provided.
+- Steps:
+  1. Invoke `preview_final_validation_execution_gate` with a fully safe request.
+  2. Inspect the result.
+- Expected result: `status = "dryRunReady"`. `mode = "dryRunOnly"`. `writesEnabled = false`. `noChangesMade = true`. `networkWritesAttempted = false`. Result contains exactly 8 checks in order.
+
+**TC-FVEP-04: Manifest check skipped when no manifest**
+
+- Preconditions: All prerequisites satisfied; `manifestPresent = false`.
+- Steps:
+  1. Invoke `preview_final_validation_execution_gate` with `manifestPresent: false`.
+  2. Inspect the checks list.
+- Expected result: `status = "dryRunReady"`. Check `FVEP-CHK-MANIFEST` has `status = "skipped"` and `expectedCount = 0`.
+
+**TC-FVEP-05: Writes remain disabled after preview**
+
+- Preconditions: All prerequisites satisfied.
+- Steps:
+  1. Invoke `preview_final_validation_execution_gate` with all safe inputs.
+  2. Check `evaluate_write_gate()` return value before and after.
+- Expected result: `evaluate_write_gate()` returns `Disabled` before and after. `writesEnabled` in the preview result is `false`.
+
+**TC-FVEP-06: Safety invariants in all result states**
+
+- Preconditions: Any state.
+- Steps:
+  1. Run `cargo test -- final_validation_execution_preview::tests`.
+- Expected result: All Rust tests in the `final_validation_execution_preview` module pass. `writesEnabled` is always `false`. `noChangesMade` is always `true`. `networkWritesAttempted` is always `false`. No token, absolute path, attachment URL, old/new record ID, field value, or `"succeeded"` appears in any serialized check or summary.

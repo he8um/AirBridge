@@ -3015,3 +3015,122 @@ export interface LinkedSecondPassExecutionPreviewResult {
   networkWritesAttempted: boolean;
   writesEnabled: boolean;
 }
+
+// ── Final Validation Execution Preview ────────────────────────────────────────
+
+/**
+ * Overall status of the final validation execution preview.
+ *
+ * Safety invariants:
+ * - DryRunReady does NOT enable live final validation execution.
+ * - writesEnabled is always false.
+ */
+export type FinalValidationExecutionPreviewStatus = "dryRunReady" | "blocked";
+
+/** Status of a single validation check in the final validation preview. */
+export type FinalValidationExecutionPreviewCheckStatus = "pending" | "blocked" | "skipped";
+
+/** Execution mode for the final validation preview. */
+export type FinalValidationExecutionPreviewMode = "dryRunOnly" | "liveBlocked";
+
+/**
+ * A single ordered validation check in the final validation execution preview.
+ *
+ * Safety properties:
+ * - No old or new record IDs.
+ * - No raw record field values.
+ * - No token or absolute path.
+ * - No attachment URL.
+ */
+export interface FinalValidationExecutionPreviewCheck {
+  checkId: string;
+  label: string;
+  status: FinalValidationExecutionPreviewCheckStatus;
+  expectedCount: number;
+  note: string;
+}
+
+/** Point-in-time safety snapshot for the final validation execution preview. */
+export interface FinalValidationExecutionSafetySnapshot {
+  writeGateDisabled: boolean;
+  schemaWritePreviewReady: boolean;
+  recordWritePreviewReady: boolean;
+  mappingCheckpointPreviewReady: boolean;
+  linkedSecondPassPreviewReady: boolean;
+  finalValidationPolicySafe: boolean;
+  finalValidationEnforcementPolicySafe: boolean;
+  sensitiveDataSafe: boolean;
+  attachmentPhaseDisabledSafe: boolean;
+  liveWriteReadinessSatisfied: boolean;
+}
+
+/**
+ * Safe summary of the final validation execution preview.
+ * No sensitive values — no token, path, or record payload.
+ */
+export interface FinalValidationExecutionPreviewSummary {
+  totalCheckCount: number;
+  pendingCheckCount: number;
+  nonPendingCheckCount: number;
+  tableCount: number;
+  fieldCount: number;
+  recordCount: number;
+  idMappingEntryCount: number;
+  linkedCoverageCount: number;
+  attachmentMetadataCount: number;
+  manifestPresent: boolean;
+  note: string;
+}
+
+/**
+ * Request for the final validation execution preview.
+ *
+ * Safety contract:
+ * - No token field.
+ * - No full filesystem path.
+ * - No raw record payloads.
+ * - No old or new record IDs.
+ */
+export interface FinalValidationExecutionPreviewRequest {
+  packageFilename?: string;
+  schemaWritePreviewReady?: boolean;
+  recordWritePreviewReady?: boolean;
+  mappingCheckpointPreviewReady?: boolean;
+  linkedSecondPassPreviewReady?: boolean;
+  finalValidationPolicySafe?: boolean;
+  finalValidationEnforcementPolicySafe?: boolean;
+  sensitiveDataSafe?: boolean;
+  attachmentPhaseDisabledSafe?: boolean;
+  liveWriteReadinessSatisfied?: boolean;
+  tableCount?: number;
+  fieldCount?: number;
+  recordCount?: number;
+  idMappingEntryCount?: number;
+  linkedCoverageCount?: number;
+  attachmentMetadataCount?: number;
+  manifestPresent?: boolean;
+}
+
+/**
+ * Result of the final validation execution preview.
+ *
+ * Safety invariants:
+ * - writesEnabled is always false.
+ * - noChangesMade is always true.
+ * - networkWritesAttempted is always false.
+ * - No token, full path, old/new record IDs, raw record payload, raw HTTP, or attachment URL.
+ * - DryRunReady does NOT enable live final validation execution.
+ * - DryRunReady does NOT introduce a restore success state.
+ */
+export interface FinalValidationExecutionPreviewResult {
+  status: FinalValidationExecutionPreviewStatus;
+  mode: FinalValidationExecutionPreviewMode;
+  message: string;
+  checks: FinalValidationExecutionPreviewCheck[];
+  summary: FinalValidationExecutionPreviewSummary;
+  safetySnapshot: FinalValidationExecutionSafetySnapshot;
+  blockedReason?: string;
+  noChangesMade: boolean;
+  networkWritesAttempted: boolean;
+  writesEnabled: boolean;
+}

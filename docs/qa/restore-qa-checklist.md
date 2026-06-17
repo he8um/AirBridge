@@ -1354,6 +1354,55 @@ Record any failures here with a brief description and steps to reproduce.
 
 ---
 
+## Final Validation Execution Preview Checklist
+
+### Before testing
+
+- [ ] Confirm `preview_final_validation_execution_gate` is registered in the Tauri invoke handler.
+- [ ] Confirm `FinalValidationExecutionPreviewRequest` has no `token` field.
+- [ ] Confirm `FinalValidationExecutionPreviewResult` has no `token`, `writesEnabled: true`, `"succeeded"` status, old/new record IDs, raw record payload, attachment URL, or raw HTTP body.
+
+### During testing
+
+- [ ] Missing schema write preview prerequisite returns `blocked` with FVEP-PRE-02 reason.
+- [ ] Missing record write preview prerequisite returns `blocked` with FVEP-PRE-03 reason.
+- [ ] Missing mapping/checkpoint preview prerequisite returns `blocked` with FVEP-PRE-04 reason.
+- [ ] Missing linked second-pass preview prerequisite returns `blocked` with FVEP-PRE-05 reason.
+- [ ] Missing final validation policy safe prerequisite returns `blocked` with FVEP-PRE-06 reason.
+- [ ] Missing final validation enforcement policy safe prerequisite returns `blocked` with FVEP-PRE-07 reason.
+- [ ] Missing sensitive data safe prerequisite returns `blocked` with FVEP-PRE-08 reason.
+- [ ] Missing attachment phase disabled safe prerequisite returns `blocked` with FVEP-PRE-09 reason.
+- [ ] Missing live write readiness prerequisite returns `blocked` with FVEP-PRE-10 reason.
+- [ ] All 10 prerequisites satisfied returns `dryRunReady`.
+- [ ] `dryRunReady` result contains exactly 8 ordered checks: FVEP-CHK-SCHEMA, FVEP-CHK-FIELDS, FVEP-CHK-RECORDS, FVEP-CHK-MAPPING, FVEP-CHK-LINKED, FVEP-CHK-ATTACH, FVEP-CHK-MANIFEST, FVEP-CHK-GUARD.
+- [ ] FVEP-CHK-MANIFEST is `skipped` when `manifestPresent` is false.
+- [ ] FVEP-CHK-MANIFEST is `pending` when `manifestPresent` is true.
+- [ ] All other checks are `pending` when `dryRunReady`.
+- [ ] Check `expectedCount` values reflect the corresponding request count fields.
+- [ ] Summary `pendingCheckCount` and `nonPendingCheckCount` are correct.
+- [ ] `writesEnabled` is `false` in every result.
+- [ ] `noChangesMade` is `true` in every result.
+- [ ] `networkWritesAttempted` is `false` in every result.
+- [ ] No token field appears in the serialized result.
+- [ ] No absolute path appears in the serialized result.
+- [ ] No old or new record ID appears in the serialized checks or summary.
+- [ ] No raw record payload or field values appear in the serialized result.
+- [ ] No attachment URL appears in the serialized result.
+- [ ] No raw HTTP request or response body appears in the serialized result.
+- [ ] `DryRunReady` message explicitly states live final validation execution remains disabled.
+- [ ] `DryRunReady` message explicitly states the preview does not start any restore execution.
+- [ ] `DryRunReady` message explicitly states no checkpoint files are written.
+- [ ] `DryRunReady` message explicitly states no record IDs are present.
+- [ ] Panel renders `data-testid="restore-fvep-panel"`.
+- [ ] Panel renders execution-disabled notice.
+- [ ] Panel shows `data-testid="fvep-dry-run-badge"` when `dryRunReady`.
+- [ ] Panel shows `data-testid="fvep-blocked-badge"` when `blocked`.
+- [ ] Panel shows `data-testid="fvep-execution-disabled-tag"` whenever result is present.
+- [ ] Panel shows `data-testid="fvep-no-changes-made"` whenever result is present.
+- [ ] Panel has no execute button, no enable button, no token input.
+
+---
+
 ## Linked Second-Pass Execution Preview Checklist
 
 ### Before testing

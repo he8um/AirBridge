@@ -105,6 +105,8 @@ import type {
   LinkedSecondPassExecutionPreviewRequest,
   LinkedSecondPassExecutionPreviewResult,
   LinkedSecondPassPreviewBatch,
+  FinalValidationExecutionPreviewRequest,
+  FinalValidationExecutionPreviewResult,
   LinkedSecondPassFieldSummary,
   RunBackupCommandResponse,
   RecordWriteRequestPlanRequest,
@@ -5965,6 +5967,7 @@ export const mockAirBridgeService: AirBridgeService = {
   previewRecordWriteExecution: previewRecordWriteExecutionImpl,
   previewMappingCheckpointExecution: previewMappingCheckpointExecutionImpl,
   previewLinkedSecondPassExecution: previewLinkedSecondPassExecutionImpl,
+  previewFinalValidationExecution: previewFinalValidationExecutionImpl,
 };
 
 function previewSchemaWriteExecutionImpl(
@@ -6615,6 +6618,189 @@ function previewLinkedSecondPassExecutionImpl(
     safetySnapshot,
     totalBatchCount: request.secondPassBatchCount ?? batches.length,
     batchSize,
+    noChangesMade: true,
+    networkWritesAttempted: false,
+    writesEnabled: false,
+  });
+}
+
+function previewFinalValidationExecutionImpl(
+  request: FinalValidationExecutionPreviewRequest,
+): Promise<FinalValidationExecutionPreviewResult> {
+  const schemaWritePreviewReady = request.schemaWritePreviewReady ?? false;
+  const recordWritePreviewReady = request.recordWritePreviewReady ?? false;
+  const mappingCheckpointPreviewReady = request.mappingCheckpointPreviewReady ?? false;
+  const linkedSecondPassPreviewReady = request.linkedSecondPassPreviewReady ?? false;
+  const finalValidationPolicySafe = request.finalValidationPolicySafe ?? false;
+  const finalValidationEnforcementPolicySafe =
+    request.finalValidationEnforcementPolicySafe ?? false;
+  const sensitiveDataSafe = request.sensitiveDataSafe ?? false;
+  const attachmentPhaseDisabledSafe = request.attachmentPhaseDisabledSafe ?? false;
+  const liveWriteReadinessSatisfied = request.liveWriteReadinessSatisfied ?? false;
+
+  const safetySnapshot = {
+    writeGateDisabled: true,
+    schemaWritePreviewReady,
+    recordWritePreviewReady,
+    mappingCheckpointPreviewReady,
+    linkedSecondPassPreviewReady,
+    finalValidationPolicySafe,
+    finalValidationEnforcementPolicySafe,
+    sensitiveDataSafe,
+    attachmentPhaseDisabledSafe,
+    liveWriteReadinessSatisfied,
+  };
+
+  const emptySummary = {
+    totalCheckCount: 8,
+    pendingCheckCount: 0,
+    nonPendingCheckCount: 8,
+    tableCount: 0,
+    fieldCount: 0,
+    recordCount: 0,
+    idMappingEntryCount: 0,
+    linkedCoverageCount: 0,
+    attachmentMetadataCount: 0,
+    manifestPresent: false,
+    note: "Final validation preview unavailable — prerequisites not satisfied.",
+  };
+
+  let blockedReason: string | undefined;
+  if (!schemaWritePreviewReady) {
+    blockedReason = "FVEP-PRE-02: Schema write execution preview has not returned DryRunReady.";
+  } else if (!recordWritePreviewReady) {
+    blockedReason = "FVEP-PRE-03: Record write execution preview has not returned DryRunReady.";
+  } else if (!mappingCheckpointPreviewReady) {
+    blockedReason =
+      "FVEP-PRE-04: Mapping/checkpoint execution preview has not returned DryRunReady.";
+  } else if (!linkedSecondPassPreviewReady) {
+    blockedReason =
+      "FVEP-PRE-05: Linked second-pass execution preview has not returned DryRunReady.";
+  } else if (!finalValidationPolicySafe) {
+    blockedReason = "FVEP-PRE-06: Final validation policy is not safe.";
+  } else if (!finalValidationEnforcementPolicySafe) {
+    blockedReason = "FVEP-PRE-07: Final validation enforcement policy is not safe.";
+  } else if (!sensitiveDataSafe) {
+    blockedReason = "FVEP-PRE-08: Sensitive data safety policy is not satisfied.";
+  } else if (!attachmentPhaseDisabledSafe) {
+    blockedReason = "FVEP-PRE-09: Attachment phase disabled policy is not safe.";
+  } else if (!liveWriteReadinessSatisfied) {
+    blockedReason = "FVEP-PRE-10: Live write readiness policy is not satisfied.";
+  }
+
+  if (blockedReason !== undefined) {
+    return Promise.resolve<FinalValidationExecutionPreviewResult>({
+      status: "blocked",
+      mode: "liveBlocked",
+      message: `Final validation execution preview is blocked. ${blockedReason} Live final validation execution remains disabled.`,
+      checks: [
+        {
+          checkId: "FVEP-BLOCKED",
+          label: "prerequisites-blocked",
+          status: "blocked",
+          expectedCount: 0,
+          note: "Safety prerequisites not satisfied. No final validation checks can be previewed.",
+        },
+      ],
+      summary: emptySummary,
+      safetySnapshot,
+      blockedReason,
+      noChangesMade: true,
+      networkWritesAttempted: false,
+      writesEnabled: false,
+    });
+  }
+
+  const tableCount = request.tableCount ?? 0;
+  const fieldCount = request.fieldCount ?? 0;
+  const recordCount = request.recordCount ?? 0;
+  const idMappingEntryCount = request.idMappingEntryCount ?? 0;
+  const linkedCoverageCount = request.linkedCoverageCount ?? 0;
+  const attachmentMetadataCount = request.attachmentMetadataCount ?? 0;
+  const manifestPresent = request.manifestPresent ?? false;
+
+  const checks: FinalValidationExecutionPreviewResult["checks"] = [
+    {
+      checkId: "FVEP-CHK-SCHEMA",
+      label: "schema-table-count",
+      status: "pending",
+      expectedCount: tableCount,
+      note: `Would verify ${tableCount} table(s) are present in the restored base. No raw table IDs in this preview.`,
+    },
+    {
+      checkId: "FVEP-CHK-FIELDS",
+      label: "field-count",
+      status: "pending",
+      expectedCount: fieldCount,
+      note: `Would verify ${fieldCount} field(s) are present across all restored tables. No raw field IDs in this preview.`,
+    },
+    {
+      checkId: "FVEP-CHK-RECORDS",
+      label: "record-count",
+      status: "pending",
+      expectedCount: recordCount,
+      note: `Would verify ${recordCount} record(s) are present in the restored base. No raw record IDs in this preview.`,
+    },
+    {
+      checkId: "FVEP-CHK-MAPPING",
+      label: "id-mapping-coverage",
+      status: "pending",
+      expectedCount: idMappingEntryCount,
+      note: `Would verify ${idMappingEntryCount} old-to-new ID mapping entry(ies) are complete. No raw record IDs in this preview.`,
+    },
+    {
+      checkId: "FVEP-CHK-LINKED",
+      label: "linked-record-coverage",
+      status: "pending",
+      expectedCount: linkedCoverageCount,
+      note: `Would verify ${linkedCoverageCount} linked field(s) have been updated in the second pass. No raw record IDs in this preview.`,
+    },
+    {
+      checkId: "FVEP-CHK-ATTACH",
+      label: "attachment-metadata-only",
+      status: "pending",
+      expectedCount: attachmentMetadataCount,
+      note: `Would verify ${attachmentMetadataCount} attachment metadata entry(ies) are present (metadata only). No raw attachment URLs in this preview.`,
+    },
+    {
+      checkId: "FVEP-CHK-MANIFEST",
+      label: "manifest-checksum-reference",
+      status: manifestPresent ? "pending" : "skipped",
+      expectedCount: manifestPresent ? 1 : 0,
+      note: manifestPresent
+        ? "Would verify the restored base references match the package manifest checksum. No raw paths or tokens in this preview."
+        : "No package manifest present — manifest/checksum validation is not applicable.",
+    },
+    {
+      checkId: "FVEP-CHK-GUARD",
+      label: "final-completion-guard",
+      status: "pending",
+      expectedCount: 1,
+      note: "Would verify the completion guard is active and no result status may be set to any complete/success equivalent without all prior validation checks having passed.",
+    },
+  ];
+
+  const pendingCount = checks.filter((c) => c.status === "pending").length;
+
+  return Promise.resolve<FinalValidationExecutionPreviewResult>({
+    status: "dryRunReady",
+    mode: "dryRunOnly",
+    message: `Final validation execution preview is ready (dry-run only). ${checks.length} check(s) planned: ${tableCount} table(s), ${fieldCount} field(s), ${recordCount} record count(s), ${idMappingEntryCount} mapping entry(ies), ${linkedCoverageCount} linked field(s), ${attachmentMetadataCount} attachment entry(ies). Live final validation execution remains disabled. This preview does not start any restore execution. No checkpoint files are written. No record IDs are present in this preview.`,
+    checks,
+    summary: {
+      totalCheckCount: checks.length,
+      pendingCheckCount: pendingCount,
+      nonPendingCheckCount: checks.length - pendingCount,
+      tableCount,
+      fieldCount,
+      recordCount,
+      idMappingEntryCount,
+      linkedCoverageCount,
+      attachmentMetadataCount,
+      manifestPresent,
+      note: `Would validate ${tableCount} table(s), ${fieldCount} field(s), ${recordCount} record count(s), ${idMappingEntryCount} mapping entry(ies), ${linkedCoverageCount} linked field(s), ${attachmentMetadataCount} attachment entry(ies). No raw record IDs present in this preview.`,
+    },
+    safetySnapshot,
     noChangesMade: true,
     networkWritesAttempted: false,
     writesEnabled: false,

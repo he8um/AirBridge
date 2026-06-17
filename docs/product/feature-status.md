@@ -134,6 +134,16 @@ The preview checks eight prerequisites (LSEP-PRE-01 through LSEP-PRE-08): write 
 
 `DryRunReady` does NOT enable live linked record updates, does NOT persist checkpoint files, does NOT call any Airtable endpoint, and does NOT start any restore execution. Unresolved links produce a warning count in the summary — they do not cause `Blocked`. `writesEnabled` is always `false`, `noChangesMade` is always `true`, `networkWritesAttempted` is always `false`. The result status is never `"succeeded"`. Live checkpoint persistence, final validation execution, and end-to-end restore execution remain pending.
 
+### Final Validation Execution Preview Foundation
+
+The final validation execution preview (`preview_final_validation_execution_gate`) provides a deterministic dry-run preview of the eight ordered final validation checks that would run after all write phases complete. No token is accepted or returned. No Airtable API calls are made. No checkpoint files are written. No record IDs appear in any result field.
+
+The preview checks ten prerequisites (FVEP-PRE-01 through FVEP-PRE-10): write gate disabled, schema write preview `DryRunReady`, record write preview `DryRunReady`, mapping/checkpoint preview `DryRunReady`, linked second-pass preview `DryRunReady`, final validation policy safe, final validation enforcement policy safe, sensitive data safe, attachment phase disabled safe, and live write readiness satisfied. If any prerequisite is missing, the result is `Blocked`. If all prerequisites are satisfied, the result is `DryRunReady` with `mode = DryRunOnly`.
+
+When `DryRunReady`, the result contains eight ordered checks: `FVEP-CHK-SCHEMA` (table count), `FVEP-CHK-FIELDS` (field count), `FVEP-CHK-RECORDS` (record count), `FVEP-CHK-MAPPING` (ID mapping coverage), `FVEP-CHK-LINKED` (linked record coverage), `FVEP-CHK-ATTACH` (attachment metadata only), `FVEP-CHK-MANIFEST` (manifest/checksum reference — skipped if no manifest), and `FVEP-CHK-GUARD` (final completion guard). Each check carries only safe counts, labels, and notes — no raw IDs, field values, or HTTP data.
+
+`DryRunReady` does NOT enable live final validation execution, does NOT persist checkpoint files, does NOT call any Airtable endpoint, and does NOT start any restore execution. `writesEnabled` is always `false`, `noChangesMade` is always `true`, `networkWritesAttempted` is always `false`. The result status is never `"succeeded"`. Live final validation execution and end-to-end restore execution remain pending.
+
 ---
 
 ## Related Documents

@@ -21,6 +21,7 @@ export { RestoreSchemaWriteExecutionPreviewPanel } from "./RestoreSchemaWriteExe
 export { RestoreRecordWriteExecutionPreviewPanel } from "./RestoreRecordWriteExecutionPreviewPanel";
 export { RestoreMappingCheckpointExecutionPreviewPanel } from "./RestoreMappingCheckpointExecutionPreviewPanel";
 export { RestoreLinkedSecondPassExecutionPreviewPanel } from "./RestoreLinkedSecondPassExecutionPreviewPanel";
+export { RestoreFinalValidationExecutionPreviewPanel } from "./RestoreFinalValidationExecutionPreviewPanel";
 export { JobHistoryPanel } from "./JobHistoryPanel";
 export { RestoreRecordImportPlanPanel } from "./RestoreRecordImportPlanPanel";
 export { BackupConfirmationBox } from "./BackupConfirmationBox";

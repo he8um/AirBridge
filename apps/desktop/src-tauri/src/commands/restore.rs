@@ -28,6 +28,10 @@ use crate::restore::final_validation_enforcement_policy::{
     verify_final_validation_enforcement_policy, FinalValidationEnforcementPolicyRequest,
     FinalValidationEnforcementPolicyResult,
 };
+use crate::restore::final_validation_execution_preview::{
+    preview_final_validation_execution, FinalValidationExecutionPreviewRequest,
+    FinalValidationExecutionPreviewResult,
+};
 use crate::restore::final_validation_policy::{
     verify_final_validation_policy, FinalValidationPolicyRequest, FinalValidationPolicyResult,
 };
@@ -851,6 +855,26 @@ pub fn preview_linked_second_pass_execution_gate(
     request: LinkedSecondPassExecutionPreviewRequest,
 ) -> LinkedSecondPassExecutionPreviewResult {
     preview_linked_second_pass_execution(&request)
+}
+
+/// Builds an ordered final validation execution preview (dry-run / blocked only).
+///
+/// Safety contract — this command:
+/// - Makes no Airtable API calls.
+/// - Does not create, update, or delete any record, table, or field.
+/// - Does not write any checkpoint file (real, temp, or mock).
+/// - Does not persist any filesystem state.
+/// - Does not accept or return a token, full path, old/new record ID, record payload,
+///   raw HTTP body, or attachment URL.
+/// - Always returns `writes_enabled: false`, `no_changes_made: true`,
+///   `network_writes_attempted: false`.
+/// - Consults `evaluate_write_gate()` internally to confirm writes remain disabled.
+/// - A `DryRunReady` result does NOT enable live final validation execution.
+#[tauri::command]
+pub fn preview_final_validation_execution_gate(
+    request: FinalValidationExecutionPreviewRequest,
+) -> FinalValidationExecutionPreviewResult {
+    preview_final_validation_execution(&request)
 }
 
 #[cfg(test)]

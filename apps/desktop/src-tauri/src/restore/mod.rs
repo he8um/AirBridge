@@ -9,6 +9,7 @@ pub mod execution;
 pub mod execution_gate;
 pub mod failure_modes_policy;
 pub mod final_validation_enforcement_policy;
+pub mod final_validation_execution_preview;
 pub mod final_validation_policy;
 pub mod linked_record_updates;
 pub mod linked_second_pass_execution_preview;

@@ -73,6 +73,8 @@ import type {
   MappingCheckpointExecutionPreviewResult,
   LinkedSecondPassExecutionPreviewRequest,
   LinkedSecondPassExecutionPreviewResult,
+  FinalValidationExecutionPreviewRequest,
+  FinalValidationExecutionPreviewResult,
   RunBackupCommandRequest,
   RunBackupCommandResponse,
   SandboxVerificationRequest,
@@ -621,6 +623,15 @@ export async function previewLinkedSecondPassExecution(
 ): Promise<LinkedSecondPassExecutionPreviewResult | null> {
   return safeInvoke<LinkedSecondPassExecutionPreviewResult>(
     "preview_linked_second_pass_execution_gate",
+    { request },
+  );
+}
+
+export async function previewFinalValidationExecution(
+  request: FinalValidationExecutionPreviewRequest,
+): Promise<FinalValidationExecutionPreviewResult | null> {
+  return safeInvoke<FinalValidationExecutionPreviewResult>(
+    "preview_final_validation_execution_gate",
     { request },
   );
 }

@@ -77,6 +77,8 @@ import type {
   MappingCheckpointExecutionPreviewResult,
   LinkedSecondPassExecutionPreviewRequest,
   LinkedSecondPassExecutionPreviewResult,
+  FinalValidationExecutionPreviewRequest,
+  FinalValidationExecutionPreviewResult,
   RestoreWriteEngineRequest,
   RestoreWriteEngineResult,
   RunBackupCommandRequest,
@@ -549,4 +551,17 @@ export interface AirBridgeService {
   previewLinkedSecondPassExecution(
     request: LinkedSecondPassExecutionPreviewRequest,
   ): Promise<LinkedSecondPassExecutionPreviewResult>;
+  /**
+   * Builds a final validation execution preview (dry-run / blocked only).
+   *
+   * Safety contract:
+   * - No Airtable API calls.
+   * - writesEnabled is always false.
+   * - noChangesMade is always true.
+   * - networkWritesAttempted is always false.
+   * - DryRunReady does NOT enable live final validation execution.
+   */
+  previewFinalValidationExecution(
+    request: FinalValidationExecutionPreviewRequest,
+  ): Promise<FinalValidationExecutionPreviewResult>;
 }

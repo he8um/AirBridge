@@ -77,6 +77,8 @@ import type {
   MappingCheckpointExecutionPreviewResult,
   LinkedSecondPassExecutionPreviewRequest,
   LinkedSecondPassExecutionPreviewResult,
+  FinalValidationExecutionPreviewRequest,
+  FinalValidationExecutionPreviewResult,
   RestoreWriteEngineRequest,
   RestoreWriteEngineResult,
   RunBackupCommandRequest,
@@ -965,6 +967,7 @@ export const liveAirBridgeService: AirBridgeService = {
   previewRecordWriteExecution,
   previewMappingCheckpointExecution,
   previewLinkedSecondPassExecution,
+  previewFinalValidationExecution,
 };
 
 async function previewLinkedSecondPassExecution(
@@ -999,6 +1002,49 @@ async function previewLinkedSecondPassExecution(
       },
       totalBatchCount: 0,
       batchSize: 10,
+      noChangesMade: true,
+      networkWritesAttempted: false,
+      writesEnabled: false,
+    };
+  }
+  return result;
+}
+
+async function previewFinalValidationExecution(
+  request: FinalValidationExecutionPreviewRequest,
+): Promise<FinalValidationExecutionPreviewResult> {
+  const result = await commands.previewFinalValidationExecution(request);
+  if (result === null) {
+    return {
+      status: "blocked",
+      mode: "liveBlocked",
+      message: "Final validation execution preview is not available in this context.",
+      checks: [],
+      summary: {
+        totalCheckCount: 8,
+        pendingCheckCount: 0,
+        nonPendingCheckCount: 8,
+        tableCount: 0,
+        fieldCount: 0,
+        recordCount: 0,
+        idMappingEntryCount: 0,
+        linkedCoverageCount: 0,
+        attachmentMetadataCount: 0,
+        manifestPresent: false,
+        note: "Preview unavailable.",
+      },
+      safetySnapshot: {
+        writeGateDisabled: true,
+        schemaWritePreviewReady: false,
+        recordWritePreviewReady: false,
+        mappingCheckpointPreviewReady: false,
+        linkedSecondPassPreviewReady: false,
+        finalValidationPolicySafe: false,
+        finalValidationEnforcementPolicySafe: false,
+        sensitiveDataSafe: false,
+        attachmentPhaseDisabledSafe: false,
+        liveWriteReadinessSatisfied: false,
+      },
       noChangesMade: true,
       networkWritesAttempted: false,
       writesEnabled: false,
