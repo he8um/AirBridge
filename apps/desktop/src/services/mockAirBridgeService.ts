@@ -102,6 +102,10 @@ import type {
   MappingCheckpointExecutionPreviewRequest,
   MappingCheckpointExecutionPreviewResult,
   MappingCheckpointPreviewStep,
+  LinkedSecondPassExecutionPreviewRequest,
+  LinkedSecondPassExecutionPreviewResult,
+  LinkedSecondPassPreviewBatch,
+  LinkedSecondPassFieldSummary,
   RunBackupCommandResponse,
   RecordWriteRequestPlanRequest,
   RecordWriteRequestPlanResult,
@@ -5960,6 +5964,7 @@ export const mockAirBridgeService: AirBridgeService = {
   previewSchemaWriteExecution: previewSchemaWriteExecutionImpl,
   previewRecordWriteExecution: previewRecordWriteExecutionImpl,
   previewMappingCheckpointExecution: previewMappingCheckpointExecutionImpl,
+  previewLinkedSecondPassExecution: previewLinkedSecondPassExecutionImpl,
 };
 
 function previewSchemaWriteExecutionImpl(
@@ -6469,6 +6474,147 @@ function previewMappingCheckpointExecutionImpl(
     },
     safetySnapshot,
     totalStepCount: steps.length,
+    noChangesMade: true,
+    networkWritesAttempted: false,
+    writesEnabled: false,
+  });
+}
+
+function previewLinkedSecondPassExecutionImpl(
+  request: LinkedSecondPassExecutionPreviewRequest,
+): Promise<LinkedSecondPassExecutionPreviewResult> {
+  const recordWritePreviewReady = request.recordWritePreviewReady ?? false;
+  const mappingCheckpointPreviewReady = request.mappingCheckpointPreviewReady ?? false;
+  const writePhaseOrderingSafe = request.writePhaseOrderingSafe ?? false;
+  const checkpointDurabilitySafe = request.checkpointDurabilitySafe ?? false;
+  const sensitiveDataSafe = request.sensitiveDataSafe ?? false;
+  const finalValidationEnforcementPresent = request.finalValidationEnforcementPresent ?? false;
+  const liveWriteReadinessSatisfied = request.liveWriteReadinessSatisfied ?? false;
+  const batchSize = Math.min(request.batchSize ?? 10, 10);
+  const batchSizeSafe = (request.batchSize ?? 10) <= 10;
+
+  const safetySnapshot = {
+    writeGateDisabled: true,
+    recordWritePreviewReady,
+    mappingCheckpointPreviewReady,
+    writePhaseOrderingSafe,
+    checkpointDurabilitySafe,
+    sensitiveDataSafe,
+    finalValidationEnforcementPresent,
+    liveWriteReadinessSatisfied,
+  };
+
+  const emptyMappingSummary = {
+    totalUpdateCount: 0,
+    tablesWithLinkedFields: 0,
+    totalLinkedFields: 0,
+    totalBatchCount: 0,
+    mappingCompleteBeforeSecondPass: false,
+    unresolvedLinkCount: 0,
+    note: "Linked second-pass preview unavailable — prerequisites not satisfied.",
+  };
+
+  const blockedReason: string | undefined = !recordWritePreviewReady
+    ? "LSEP-PRE-02: Record write execution preview has not returned DryRunReady."
+    : !mappingCheckpointPreviewReady
+      ? "LSEP-PRE-03: Mapping/checkpoint execution preview has not returned DryRunReady."
+      : !writePhaseOrderingSafe
+        ? "LSEP-PRE-04: Write phase ordering policy is not safe."
+        : !checkpointDurabilitySafe
+          ? "LSEP-PRE-05: Checkpoint durability policy is not safe."
+          : !sensitiveDataSafe
+            ? "LSEP-PRE-06: Sensitive data safety policy is not satisfied."
+            : !finalValidationEnforcementPresent
+              ? "LSEP-PRE-07: Final validation enforcement policy has not been verified."
+              : !liveWriteReadinessSatisfied
+                ? "LSEP-PRE-08: Live write readiness policy is not satisfied."
+                : !batchSizeSafe
+                  ? "LSEP-BATCH: Batch size exceeds the maximum safe value of 10."
+                  : undefined;
+
+  if (blockedReason !== undefined) {
+    const blockedBatch: LinkedSecondPassPreviewBatch = {
+      batchIndex: 0,
+      batchId: "LSEP-BLOCKED",
+      tableLabel: "blocked",
+      fieldLabel: "blocked",
+      status: "blocked",
+      updateCount: 0,
+      mappingCoverageCount: 0,
+      unresolvedLinkCount: 0,
+      note: "Safety prerequisites not satisfied. No linked second-pass batches can be previewed.",
+    };
+    return Promise.resolve<LinkedSecondPassExecutionPreviewResult>({
+      status: "blocked",
+      mode: "liveBlocked",
+      message: `Linked second-pass execution preview is blocked. ${blockedReason} Live linked record updates remain disabled.`,
+      batches: [blockedBatch],
+      mappingSummary: emptyMappingSummary,
+      fieldSummaries: [],
+      safetySnapshot,
+      totalBatchCount: 0,
+      batchSize,
+      blockedReason,
+      noChangesMade: true,
+      networkWritesAttempted: false,
+      writesEnabled: false,
+    });
+  }
+
+  const totalUpdateCount = request.totalUpdateCount ?? 0;
+  const tablesWithLinkedFields = request.tablesWithLinkedFields ?? 0;
+  const totalLinkedFields = request.totalLinkedFields ?? 0;
+  const fieldSummaries: LinkedSecondPassFieldSummary[] = request.fieldSummaries ?? [];
+
+  const batches: LinkedSecondPassPreviewBatch[] = [];
+  let batchIndex = 0;
+
+  for (const field of fieldSummaries) {
+    if (field.recordCount === 0) continue;
+    const effectiveBatchSize = batchSize > 0 ? batchSize : 1;
+    const nBatches = Math.ceil(field.recordCount / effectiveBatchSize);
+    for (let b = 0; b < nBatches; b++) {
+      const offset = b * effectiveBatchSize;
+      const count = Math.min(field.recordCount - offset, effectiveBatchSize);
+      batches.push({
+        batchIndex,
+        batchId: `LSEP-B${String(batchIndex).padStart(3, "0")}-${field.fieldLabel.toLowerCase().replace(/ /g, "-").slice(0, 20)}`,
+        tableLabel: field.tableLabel,
+        fieldLabel: field.fieldLabel,
+        status: "pending",
+        updateCount: count,
+        mappingCoverageCount: count,
+        unresolvedLinkCount: 0,
+        note: `Would apply remapped IDs for '${field.fieldLabel}' in '${field.tableLabel}' — batch ${b + 1} of ${nBatches}. ${count} record(s). No raw record IDs present in this preview.`,
+      });
+      batchIndex++;
+    }
+  }
+
+  const totalUnresolved = fieldSummaries.reduce((s, f) => s + f.unresolvedLinkCount, 0);
+  const unresolvedNote =
+    totalUnresolved > 0
+      ? ` ${totalUnresolved} unresolved link(s) would be skipped — target record IDs are unavailable until execution.`
+      : " No unresolved links detected.";
+
+  return Promise.resolve<LinkedSecondPassExecutionPreviewResult>({
+    status: "dryRunReady",
+    mode: "dryRunOnly",
+    message: `Linked second-pass execution preview is ready (dry-run only). ${totalLinkedFields} linked field(s) across ${tablesWithLinkedFields} table(s), ${batches.length} batch(es), ${totalUpdateCount} record(s) to update.${unresolvedNote} Live linked record updates remain disabled. This preview does not start any restore execution. No checkpoint files are written. No record IDs are present in this preview.`,
+    batches,
+    mappingSummary: {
+      totalUpdateCount,
+      tablesWithLinkedFields,
+      totalLinkedFields,
+      totalBatchCount: batches.length,
+      mappingCompleteBeforeSecondPass: true,
+      unresolvedLinkCount: totalUnresolved,
+      note: `Would apply old-to-new ID mapping across ${totalLinkedFields} linked field(s) in ${tablesWithLinkedFields} table(s). ${totalUpdateCount} record(s) require second-pass updates. No raw record IDs present in this preview.`,
+    },
+    fieldSummaries,
+    safetySnapshot,
+    totalBatchCount: request.secondPassBatchCount ?? batches.length,
+    batchSize,
     noChangesMade: true,
     networkWritesAttempted: false,
     writesEnabled: false,

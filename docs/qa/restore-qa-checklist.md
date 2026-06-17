@@ -1354,6 +1354,51 @@ Record any failures here with a brief description and steps to reproduce.
 
 ---
 
+## Linked Second-Pass Execution Preview Checklist
+
+### Before testing
+
+- [ ] Confirm `preview_linked_second_pass_execution_gate` is registered in the Tauri invoke handler.
+- [ ] Confirm `LinkedSecondPassExecutionPreviewRequest` has no `token` field.
+- [ ] Confirm `LinkedSecondPassExecutionPreviewResult` has no `token`, `writesEnabled: true`, `"succeeded"` status, old/new record IDs, raw record payload, attachment URL, or raw HTTP body.
+
+### During testing
+
+- [ ] Missing record write preview prerequisite returns `blocked` with LSEP-PRE-02 reason.
+- [ ] Missing mapping/checkpoint preview prerequisite returns `blocked` with LSEP-PRE-03 reason.
+- [ ] Missing write phase ordering safe prerequisite returns `blocked`.
+- [ ] Missing checkpoint durability safe prerequisite returns `blocked`.
+- [ ] Missing sensitive data safe prerequisite returns `blocked`.
+- [ ] Missing final validation enforcement prerequisite returns `blocked`.
+- [ ] Missing live write readiness prerequisite returns `blocked`.
+- [ ] Batch size > 10 returns `blocked`.
+- [ ] All 8 prerequisites satisfied returns `dryRunReady`.
+- [ ] Unresolved links produce a non-zero count in `mappingSummary.unresolvedLinkCount` — status is still `dryRunReady`.
+- [ ] Batch `updateCount` never exceeds `batchSize` (≤ 10).
+- [ ] Batch ordering is deterministic across repeated calls with the same input.
+- [ ] `writesEnabled` is `false` in every result.
+- [ ] `noChangesMade` is `true` in every result.
+- [ ] `networkWritesAttempted` is `false` in every result.
+- [ ] No token field appears in the serialized result.
+- [ ] No absolute path appears in the serialized result.
+- [ ] No old or new record ID appears in the serialized result.
+- [ ] No raw record payload or field values appear in the serialized result.
+- [ ] No attachment URL appears in the serialized result.
+- [ ] No raw HTTP request or response body appears in the serialized result.
+- [ ] `DryRunReady` message explicitly states live linked record updates remain disabled.
+- [ ] `DryRunReady` message explicitly states the preview does not start any restore execution.
+- [ ] `DryRunReady` message explicitly states no checkpoint files are written.
+- [ ] `DryRunReady` message explicitly states no record IDs are present.
+- [ ] Panel renders `data-testid="restore-lsep-panel"`.
+- [ ] Panel renders execution-disabled notice.
+- [ ] Panel shows `data-testid="lsep-dry-run-badge"` when `dryRunReady`.
+- [ ] Panel shows `data-testid="lsep-blocked-badge"` when `blocked`.
+- [ ] Panel shows `data-testid="lsep-execution-disabled-tag"` whenever result is present.
+- [ ] Panel shows `data-testid="lsep-no-changes-made"` whenever result is present.
+- [ ] Panel has no execute button, no enable button, no token input.
+
+---
+
 ## Mapping Checkpoint Execution Preview Checklist
 
 ### Before testing

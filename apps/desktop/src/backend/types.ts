@@ -2915,3 +2915,103 @@ export interface MappingCheckpointExecutionPreviewResult {
   networkWritesAttempted: boolean;
   writesEnabled: boolean;
 }
+
+// ── Linked Second-Pass Execution Preview ──────────────────────────────────────
+
+export type LinkedSecondPassExecutionPreviewStatus = "dryRunReady" | "blocked";
+export type LinkedSecondPassPreviewBatchStatus = "pending" | "blocked" | "skipped";
+export type LinkedSecondPassPreviewMode = "dryRunOnly" | "liveBlocked";
+
+export interface LinkedSecondPassPreviewBatch {
+  batchIndex: number;
+  batchId: string;
+  tableLabel: string;
+  fieldLabel: string;
+  status: LinkedSecondPassPreviewBatchStatus;
+  updateCount: number;
+  mappingCoverageCount: number;
+  unresolvedLinkCount: number;
+  note: string;
+}
+
+export interface LinkedSecondPassMappingSummary {
+  totalUpdateCount: number;
+  tablesWithLinkedFields: number;
+  totalLinkedFields: number;
+  totalBatchCount: number;
+  mappingCompleteBeforeSecondPass: boolean;
+  unresolvedLinkCount: number;
+  note: string;
+}
+
+export interface LinkedSecondPassFieldSummary {
+  tableLabel: string;
+  fieldLabel: string;
+  recordCount: number;
+  batchCount: number;
+  unresolvedLinkCount: number;
+}
+
+export interface LinkedSecondPassSafetySnapshot {
+  writeGateDisabled: boolean;
+  recordWritePreviewReady: boolean;
+  mappingCheckpointPreviewReady: boolean;
+  writePhaseOrderingSafe: boolean;
+  checkpointDurabilitySafe: boolean;
+  sensitiveDataSafe: boolean;
+  finalValidationEnforcementPresent: boolean;
+  liveWriteReadinessSatisfied: boolean;
+}
+
+/**
+ * Request for the linked second-pass execution preview.
+ *
+ * Safety contract:
+ * - No token field.
+ * - No full filesystem path.
+ * - No raw record payloads.
+ * - No old or new record IDs.
+ */
+export interface LinkedSecondPassExecutionPreviewRequest {
+  packageFilename?: string;
+  recordWritePreviewReady?: boolean;
+  mappingCheckpointPreviewReady?: boolean;
+  secondPassBatchCount?: number;
+  totalUpdateCount?: number;
+  tablesWithLinkedFields?: number;
+  totalLinkedFields?: number;
+  batchSize?: number;
+  fieldSummaries?: LinkedSecondPassFieldSummary[];
+  writePhaseOrderingSafe?: boolean;
+  checkpointDurabilitySafe?: boolean;
+  sensitiveDataSafe?: boolean;
+  finalValidationEnforcementPresent?: boolean;
+  liveWriteReadinessSatisfied?: boolean;
+}
+
+/**
+ * Result of the linked second-pass execution preview.
+ *
+ * Safety invariants:
+ * - writesEnabled is always false.
+ * - noChangesMade is always true.
+ * - networkWritesAttempted is always false.
+ * - No token, full path, old/new record IDs, raw record payload, raw HTTP, or attachment URL.
+ * - DryRunReady does NOT enable live linked record updates.
+ * - DryRunReady does NOT introduce a restore success state.
+ */
+export interface LinkedSecondPassExecutionPreviewResult {
+  status: LinkedSecondPassExecutionPreviewStatus;
+  mode: LinkedSecondPassPreviewMode;
+  message: string;
+  batches: LinkedSecondPassPreviewBatch[];
+  mappingSummary: LinkedSecondPassMappingSummary;
+  fieldSummaries: LinkedSecondPassFieldSummary[];
+  safetySnapshot: LinkedSecondPassSafetySnapshot;
+  totalBatchCount: number;
+  batchSize: number;
+  blockedReason?: string;
+  noChangesMade: boolean;
+  networkWritesAttempted: boolean;
+  writesEnabled: boolean;
+}

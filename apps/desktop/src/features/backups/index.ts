@@ -20,6 +20,7 @@ export { RestoreLiveWriteReadinessPolicyPanel } from "./RestoreLiveWriteReadines
 export { RestoreSchemaWriteExecutionPreviewPanel } from "./RestoreSchemaWriteExecutionPreviewPanel";
 export { RestoreRecordWriteExecutionPreviewPanel } from "./RestoreRecordWriteExecutionPreviewPanel";
 export { RestoreMappingCheckpointExecutionPreviewPanel } from "./RestoreMappingCheckpointExecutionPreviewPanel";
+export { RestoreLinkedSecondPassExecutionPreviewPanel } from "./RestoreLinkedSecondPassExecutionPreviewPanel";
 export { JobHistoryPanel } from "./JobHistoryPanel";
 export { RestoreRecordImportPlanPanel } from "./RestoreRecordImportPlanPanel";
 export { BackupConfirmationBox } from "./BackupConfirmationBox";

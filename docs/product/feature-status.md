@@ -124,6 +124,16 @@ The preview checks eight prerequisites (MCEP-PRE-01 through MCEP-PRE-08): write 
 
 `DryRunReady` does NOT enable live mapping capture, does NOT persist checkpoint files, does NOT start any restore execution. `writesEnabled` is always `false`, `noChangesMade` is always `true`, `networkWritesAttempted` is always `false`. The result status is never `"succeeded"`. No record IDs, field values, attachment URLs, or raw HTTP data appear in any result field.
 
+### Linked Second-Pass Execution Preview Foundation
+
+The linked second-pass execution preview (`preview_linked_second_pass_execution_gate`) converts declared safety prerequisites and per-field summaries into a deterministic batch list showing which linked fields require second-pass updates, how many batches they require, and how many unresolved links exist. No token is accepted or returned. No Airtable API calls are made. No checkpoint files are written.
+
+The batch builder groups records per linked-field into batches of at most 10, ordered by field and batch index. Each batch carries only a table label, field label, update count, mapping coverage count, and unresolved-link count — no raw record IDs, field values, or HTTP data.
+
+The preview checks eight prerequisites (LSEP-PRE-01 through LSEP-PRE-08): write gate disabled, record write preview `DryRunReady`, mapping/checkpoint preview `DryRunReady`, write phase ordering safe, checkpoint durability safe, sensitive data safe, final validation enforcement present, and live write readiness satisfied. If any prerequisite is missing, the result is `Blocked`. If all prerequisites are satisfied, the result is `DryRunReady` with `mode = DryRunOnly`.
+
+`DryRunReady` does NOT enable live linked record updates, does NOT persist checkpoint files, does NOT call any Airtable endpoint, and does NOT start any restore execution. Unresolved links produce a warning count in the summary — they do not cause `Blocked`. `writesEnabled` is always `false`, `noChangesMade` is always `true`, `networkWritesAttempted` is always `false`. The result status is never `"succeeded"`. Live checkpoint persistence, final validation execution, and end-to-end restore execution remain pending.
+
 ---
 
 ## Related Documents

@@ -75,6 +75,8 @@ import type {
   RecordWriteExecutionPreviewResult,
   MappingCheckpointExecutionPreviewRequest,
   MappingCheckpointExecutionPreviewResult,
+  LinkedSecondPassExecutionPreviewRequest,
+  LinkedSecondPassExecutionPreviewResult,
   RestoreWriteEngineRequest,
   RestoreWriteEngineResult,
   RunBackupCommandRequest,
@@ -962,4 +964,45 @@ export const liveAirBridgeService: AirBridgeService = {
   previewSchemaWriteExecution,
   previewRecordWriteExecution,
   previewMappingCheckpointExecution,
+  previewLinkedSecondPassExecution,
 };
+
+async function previewLinkedSecondPassExecution(
+  request: LinkedSecondPassExecutionPreviewRequest,
+): Promise<LinkedSecondPassExecutionPreviewResult> {
+  const result = await commands.previewLinkedSecondPassExecution(request);
+  if (result === null) {
+    return {
+      status: "blocked",
+      mode: "liveBlocked",
+      message: "Linked second-pass execution preview is not available in this context.",
+      batches: [],
+      mappingSummary: {
+        totalUpdateCount: 0,
+        tablesWithLinkedFields: 0,
+        totalLinkedFields: 0,
+        totalBatchCount: 0,
+        mappingCompleteBeforeSecondPass: false,
+        unresolvedLinkCount: 0,
+        note: "Preview unavailable.",
+      },
+      fieldSummaries: [],
+      safetySnapshot: {
+        writeGateDisabled: true,
+        recordWritePreviewReady: false,
+        mappingCheckpointPreviewReady: false,
+        writePhaseOrderingSafe: false,
+        checkpointDurabilitySafe: false,
+        sensitiveDataSafe: false,
+        finalValidationEnforcementPresent: false,
+        liveWriteReadinessSatisfied: false,
+      },
+      totalBatchCount: 0,
+      batchSize: 10,
+      noChangesMade: true,
+      networkWritesAttempted: false,
+      writesEnabled: false,
+    };
+  }
+  return result;
+}

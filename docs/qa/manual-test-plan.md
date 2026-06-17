@@ -2287,3 +2287,53 @@ These test cases cover the command contract layer: confirmation enforcement, out
 - Steps:
   1. Run `cargo test -- mapping_checkpoint_execution_preview::tests`.
 - Expected result: All Rust tests in the `mapping_checkpoint_execution_preview` module pass. `writesEnabled` is always `false`. `noChangesMade` is always `true`. `networkWritesAttempted` is always `false`. No token, absolute path, attachment URL, record ID, field value, or `"succeeded"` appears in any serialized result.
+
+
+---
+
+**TC-LSEP-01: Blocked when prerequisites missing**
+
+- Preconditions: Empty/default request (no prerequisites satisfied).
+- Steps:
+  1. Invoke `preview_linked_second_pass_execution_gate` with an empty request `{}`.
+  2. Inspect the result.
+- Expected result: `status = "blocked"`. `blockedReason` contains `LSEP-PRE-02`. `writesEnabled = false`. `noChangesMade = true`. `networkWritesAttempted = false`.
+
+**TC-LSEP-02: Blocked when mapping/checkpoint preview not ready**
+
+- Preconditions: All prerequisites set to safe except `mappingCheckpointPreviewReady = false`.
+- Steps:
+  1. Invoke `preview_linked_second_pass_execution_gate` with `mappingCheckpointPreviewReady: false` and all other prerequisites satisfied.
+  2. Inspect the result.
+- Expected result: `status = "blocked"`. `blockedReason` contains `LSEP-PRE-03`. `writesEnabled = false`.
+
+**TC-LSEP-03: DryRunReady for safe dry-run plan**
+
+- Preconditions: All 8 prerequisites satisfied; sensible field summaries provided.
+- Steps:
+  1. Invoke `preview_linked_second_pass_execution_gate` with a fully safe request.
+  2. Inspect the result.
+- Expected result: `status = "dryRunReady"`. `mode = "dryRunOnly"`. `writesEnabled = false`. `noChangesMade = true`. `networkWritesAttempted = false`. Batches have ordered indices.
+
+**TC-LSEP-04: Unresolved links produce warning, not blocked**
+
+- Preconditions: All prerequisites satisfied; field summaries contain `unresolvedLinkCount > 0`.
+- Steps:
+  1. Invoke `preview_linked_second_pass_execution_gate` with `fieldSummaries[].unresolvedLinkCount > 0`.
+  2. Inspect result status and `mappingSummary.unresolvedLinkCount`.
+- Expected result: `status = "dryRunReady"`. `mappingSummary.unresolvedLinkCount > 0`. Message contains "unresolved".
+
+**TC-LSEP-05: Writes remain disabled after preview**
+
+- Preconditions: All prerequisites satisfied.
+- Steps:
+  1. Invoke `preview_linked_second_pass_execution_gate` with all safe inputs.
+  2. Check `evaluate_write_gate()` return value before and after.
+- Expected result: `evaluate_write_gate()` returns `Disabled` before and after. `writesEnabled` in the preview result is `false`.
+
+**TC-LSEP-06: Safety invariants in all result states**
+
+- Preconditions: Any state.
+- Steps:
+  1. Run `cargo test -- linked_second_pass_execution_preview::tests`.
+- Expected result: All Rust tests in the `linked_second_pass_execution_preview` module pass. `writesEnabled` is always `false`. `noChangesMade` is always `true`. `networkWritesAttempted` is always `false`. No token, absolute path, attachment URL, old/new record ID, field value, or `"succeeded"` appears in any serialized result.

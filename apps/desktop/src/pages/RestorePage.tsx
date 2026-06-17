@@ -27,6 +27,7 @@ import { RestoreLiveWriteReadinessPolicyPanel } from "../features/backups/Restor
 import { RestoreSchemaWriteExecutionPreviewPanel } from "../features/backups/RestoreSchemaWriteExecutionPreviewPanel";
 import { RestoreRecordWriteExecutionPreviewPanel } from "../features/backups/RestoreRecordWriteExecutionPreviewPanel";
 import { RestoreMappingCheckpointExecutionPreviewPanel } from "../features/backups/RestoreMappingCheckpointExecutionPreviewPanel";
+import { RestoreLinkedSecondPassExecutionPreviewPanel } from "../features/backups/RestoreLinkedSecondPassExecutionPreviewPanel";
 import { RestoreWriteEnginePanel } from "../features/backups/RestoreWriteEnginePanel";
 import { liveAirBridgeService } from "../services/liveAirBridgeService";
 import type { BackupPackageInspectionResult } from "../backend/types";
@@ -59,6 +60,7 @@ import type {
   SchemaWriteExecutionPreviewResult,
   RecordWriteExecutionPreviewResult,
   MappingCheckpointExecutionPreviewResult,
+  LinkedSecondPassExecutionPreviewResult,
 } from "../backend/types";
 
 export function RestorePage() {
@@ -127,6 +129,8 @@ export function RestorePage() {
     null,
   );
   const [mcepLoading, setMcepLoading] = useState(false);
+  const [lsepResult, setLsepResult] = useState<LinkedSecondPassExecutionPreviewResult | null>(null);
+  const [lsepLoading, setLsepLoading] = useState(false);
 
   return (
     <div className="page">
@@ -867,6 +871,42 @@ export function RestorePage() {
                   throw new Error("Mapping/checkpoint execution preview failed.");
                 } finally {
                   setMcepLoading(false);
+                }
+              }}
+            />
+
+            <div className="divider" style={{ margin: 0 }} />
+
+            {/* Linked second-pass execution preview — dry-run only. No live linked updates. No execute button. No token. No record IDs. No checkpoint files. DryRunReady does NOT enable writes. */}
+            <RestoreLinkedSecondPassExecutionPreviewPanel
+              result={lsepResult}
+              loading={lsepLoading}
+              request={{
+                packageFilename: inspection?.filename ?? undefined,
+                recordWritePreviewReady: rwepResult?.status === "dryRunReady",
+                mappingCheckpointPreviewReady: mcepResult?.status === "dryRunReady",
+                secondPassBatchCount: rwepResult?.secondPassBatchCount ?? 0,
+                totalUpdateCount: rwepResult?.totalRecordCount ?? 0,
+                tablesWithLinkedFields: schemaPlan?.tableSteps?.length ?? 0,
+                totalLinkedFields: schemaPlan?.tableSteps?.length ?? 0,
+                writePhaseOrderingSafe: true,
+                checkpointDurabilitySafe: true,
+                sensitiveDataSafe: true,
+                finalValidationEnforcementPresent: true,
+                liveWriteReadinessSatisfied:
+                  lwrResult?.status === "ready" || lwrResult?.status === "warning",
+              }}
+              onPreview={async (req) => {
+                setLsepLoading(true);
+                try {
+                  const r = await liveAirBridgeService.previewLinkedSecondPassExecution(req);
+                  setLsepResult(r);
+                  return r;
+                } catch {
+                  setLsepResult(null);
+                  throw new Error("Linked second-pass execution preview failed.");
+                } finally {
+                  setLsepLoading(false);
                 }
               }}
             />

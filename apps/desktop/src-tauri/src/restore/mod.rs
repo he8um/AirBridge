@@ -11,6 +11,7 @@ pub mod failure_modes_policy;
 pub mod final_validation_enforcement_policy;
 pub mod final_validation_policy;
 pub mod linked_record_updates;
+pub mod linked_second_pass_execution_preview;
 pub mod live_write_confirmation_policy;
 pub mod live_write_readiness_policy;
 pub mod mapping_checkpoint_execution_preview;

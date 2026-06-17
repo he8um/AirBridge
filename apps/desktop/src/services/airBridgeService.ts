@@ -75,6 +75,8 @@ import type {
   RecordWriteExecutionPreviewResult,
   MappingCheckpointExecutionPreviewRequest,
   MappingCheckpointExecutionPreviewResult,
+  LinkedSecondPassExecutionPreviewRequest,
+  LinkedSecondPassExecutionPreviewResult,
   RestoreWriteEngineRequest,
   RestoreWriteEngineResult,
   RunBackupCommandRequest,
@@ -530,4 +532,21 @@ export interface AirBridgeService {
   previewMappingCheckpointExecution(
     request: MappingCheckpointExecutionPreviewRequest,
   ): Promise<MappingCheckpointExecutionPreviewResult>;
+  /**
+   * Builds an ordered linked second-pass execution preview (dry-run / blocked only).
+   *
+   * Safety contract — this command:
+   * - Makes no Airtable API calls.
+   * - Does not create, update, or delete any record.
+   * - Does not write any checkpoint file (real, temp, or mock).
+   * - Does not accept or return a token, full path, old/new record ID, record payload,
+   *   raw HTTP body, or attachment URL.
+   * - writesEnabled is always false.
+   * - noChangesMade is always true.
+   * - networkWritesAttempted is always false.
+   * - DryRunReady does NOT enable live linked record updates.
+   */
+  previewLinkedSecondPassExecution(
+    request: LinkedSecondPassExecutionPreviewRequest,
+  ): Promise<LinkedSecondPassExecutionPreviewResult>;
 }
