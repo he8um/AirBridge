@@ -1786,3 +1786,52 @@ Record any failures here with a brief description and steps to reproduce.
 - [ ] `safety_snapshot.write_gate_disabled` is always `true`.
 - [ ] `evaluate_write_gate()` returns `Disabled` before and after any orchestrator call.
 - [ ] Run `cargo test -- restore_orchestrator::tests` — all tests pass.
+
+---
+
+## Sandbox Gate Contract Foundation Checklist (internal module)
+
+### Before testing
+
+- [ ] Confirm `evaluate_sandbox_gate_contract` is internal only — no Tauri command is registered for it.
+- [ ] Confirm `SandboxGateContractRequest` has no `token` field, no `output_path` field, no record payload field, no old/new record ID field, no attachment URL field.
+- [ ] Confirm `SandboxGateContractResult` has no `token`, no full path, no old/new record IDs, no record payload, no raw HTTP body, no attachment URL, no `"armed"` or `"enabled"` or `"succeeded"` status, no `writesEnabled: true`, no `readsEnabled: true`.
+- [ ] Confirm no UI execute button or panel calls `evaluate_sandbox_gate_contract`.
+- [ ] Confirm `SandboxGateContractMode` has only `disabled` and `sandboxOnlyCandidate` — no `production` mode.
+- [ ] Confirm `SandboxGateContractStatus` has only `disabled`, `blocked`, and `eligibleButNotArmed` — no `armed`, `enabled`, `succeeded`, `complete`, or `done`.
+- [ ] Confirm `evaluate_write_gate()` is never modified by this module.
+
+### During testing (Rust unit tests only)
+
+- [ ] Mode `disabled` returns `disabled` status with empty prerequisites.
+- [ ] Sandbox not safe returns `blocked` with SGC-PRE-01 in `blocked_reason`.
+- [ ] Target not empty returns `blocked` with SGC-PRE-02 in `blocked_reason`.
+- [ ] Confirmation gate not declared returns `blocked` with SGC-PRE-03 in `blocked_reason`.
+- [ ] Destructive operation policy unsafe returns `blocked` with SGC-PRE-04 in `blocked_reason`.
+- [ ] Attachment phase not safe returns `blocked` with SGC-PRE-05 in `blocked_reason`.
+- [ ] Live write readiness not safe returns `blocked` with SGC-PRE-06 in `blocked_reason`.
+- [ ] Orchestrator not present returns `blocked` with SGC-PRE-07 in `blocked_reason`.
+- [ ] Schema executor not present returns `blocked` with SGC-PRE-08 in `blocked_reason`.
+- [ ] Record executor not present returns `blocked` with SGC-PRE-09 in `blocked_reason`.
+- [ ] Linked executor not present returns `blocked` with SGC-PRE-10 in `blocked_reason`.
+- [ ] Final validation reader not present returns `blocked` with SGC-PRE-11 in `blocked_reason`.
+- [ ] All prerequisites satisfied → `eligibleButNotArmed` result (gate NOT armed, gate NOT enabled).
+- [ ] `eligibleButNotArmed` result message explicitly says "NOT armed" and "NOT enabled".
+- [ ] `writesEnabled` is `false` in every result.
+- [ ] `readsEnabled` is `false` in every result.
+- [ ] `networkReadsAttempted` is `false` in every result.
+- [ ] `networkWritesAttempted` is `false` in every result.
+- [ ] `noChangesMade` is `true` in every result.
+- [ ] `safety_snapshot.write_gate_disabled` is always `true`.
+- [ ] `total_prereq_count` equals `prerequisites.len()` (12 when all satisfied).
+- [ ] Prerequisite ordering is deterministic (SGC-PRE-01 first, SGC-PRE-12 last).
+- [ ] All prerequisite IDs use the `SGC-PRE-` prefix.
+- [ ] No token (`pat_`) in the serialized result.
+- [ ] No absolute path in the serialized result.
+- [ ] No old or new record ID in the serialized result.
+- [ ] No raw record payload or field values in the serialized result.
+- [ ] No attachment URL in the serialized result.
+- [ ] No `"armed"`, `"enabled"`, `"succeeded"`, `"restoreComplete"`, or `"restoreSuccess"` in any serialized result.
+- [ ] No `"production"` in mode serialization.
+- [ ] `evaluate_write_gate()` returns `Disabled` before and after any gate contract call.
+- [ ] Run `cargo test -- sandbox_gate_contract::tests` — all tests pass.

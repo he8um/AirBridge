@@ -2825,3 +2825,105 @@ These test cases cover the command contract layer: confirmation enforcement, out
 - Steps:
   1. Run `cargo test -- restore_orchestrator::tests`.
 - Expected result: All Rust tests pass. `writesEnabled` is always `false`. `readsEnabled` is always `false`. `noChangesMade` is always `true`. `networkReadsAttempted` is always `false`. `networkWritesAttempted` is always `false`. No token, absolute path, record payload, attachment URL, old/new record ID, `"succeeded"`, `"completed"`, or `"restoreSuccess"` appears in any serialized result. Phase ordering is deterministic. No production mode exists.
+
+---
+
+## Sandbox Gate Contract Foundation Tests
+
+**TC-SGC-01: Disabled mode returns Disabled immediately**
+
+- Preconditions: Internal module available.
+- Steps:
+  1. Call `evaluate_sandbox_gate_contract` with `mode: disabled` and all other fields `false`.
+- Expected result: Result status is `disabled`. `prerequisites` is empty. `writesEnabled` is `false`. `readsEnabled` is `false`. `noChangesMade` is `true`. `networkReadsAttempted` is `false`. `networkWritesAttempted` is `false`. `blocked_reason` is absent.
+
+**TC-SGC-02: Blocked when sandbox not safe**
+
+- Preconditions: Internal module available.
+- Steps:
+  1. Call `evaluate_sandbox_gate_contract` with `mode: sandboxOnlyCandidate`, `sandbox_verification_safe: false`, all other prerequisite fields `true`.
+- Expected result: Result status is `blocked`. `blocked_reason` contains `SGC-PRE-01`.
+
+**TC-SGC-03: Blocked when target not empty**
+
+- Preconditions: Internal module available.
+- Steps:
+  1. Call `evaluate_sandbox_gate_contract` with `mode: sandboxOnlyCandidate`, `target_empty_safe: false`, all other prerequisite fields `true`.
+- Expected result: Result status is `blocked`. `blocked_reason` contains `SGC-PRE-02`.
+
+**TC-SGC-04: Blocked when confirmation gate not declared**
+
+- Preconditions: Internal module available.
+- Steps:
+  1. Call `evaluate_sandbox_gate_contract` with `mode: sandboxOnlyCandidate`, `confirmation_gate_declared: false`, all other prerequisite fields `true`.
+- Expected result: Result status is `blocked`. `blocked_reason` contains `SGC-PRE-03`.
+
+**TC-SGC-05: Blocked when destructive operation policy unsafe**
+
+- Preconditions: Internal module available.
+- Steps:
+  1. Call `evaluate_sandbox_gate_contract` with `mode: sandboxOnlyCandidate`, `destructive_operation_policy_safe: false`, all other prerequisite fields `true`.
+- Expected result: Result status is `blocked`. `blocked_reason` contains `SGC-PRE-04`.
+
+**TC-SGC-06: Blocked when attachment phase unsafe**
+
+- Preconditions: Internal module available.
+- Steps:
+  1. Call `evaluate_sandbox_gate_contract` with `mode: sandboxOnlyCandidate`, `attachment_phase_disabled_safe: false`, all other prerequisite fields `true`.
+- Expected result: Result status is `blocked`. `blocked_reason` contains `SGC-PRE-05`.
+
+**TC-SGC-07: Blocked when live write readiness not safe**
+
+- Preconditions: Internal module available.
+- Steps:
+  1. Call `evaluate_sandbox_gate_contract` with `mode: sandboxOnlyCandidate`, `live_write_readiness_safe: false`, all other prerequisite fields `true`.
+- Expected result: Result status is `blocked`. `blocked_reason` contains `SGC-PRE-06`.
+
+**TC-SGC-08: Blocked when restore orchestrator not present**
+
+- Preconditions: Internal module available.
+- Steps:
+  1. Call `evaluate_sandbox_gate_contract` with `mode: sandboxOnlyCandidate`, `restore_orchestrator_present: false`, all other prerequisite fields `true`.
+- Expected result: Result status is `blocked`. `blocked_reason` contains `SGC-PRE-07`.
+
+**TC-SGC-09: Blocked when schema executor not present**
+
+- Preconditions: Internal module available.
+- Steps:
+  1. Call `evaluate_sandbox_gate_contract` with `mode: sandboxOnlyCandidate`, `schema_executor_present: false`, all other prerequisite fields `true`.
+- Expected result: Result status is `blocked`. `blocked_reason` contains `SGC-PRE-08`.
+
+**TC-SGC-10: Blocked when record executor not present**
+
+- Preconditions: Internal module available.
+- Steps:
+  1. Call `evaluate_sandbox_gate_contract` with `mode: sandboxOnlyCandidate`, `record_executor_present: false`, all other prerequisite fields `true`.
+- Expected result: Result status is `blocked`. `blocked_reason` contains `SGC-PRE-09`.
+
+**TC-SGC-11: Blocked when linked executor not present**
+
+- Preconditions: Internal module available.
+- Steps:
+  1. Call `evaluate_sandbox_gate_contract` with `mode: sandboxOnlyCandidate`, `linked_executor_present: false`, all other prerequisite fields `true`.
+- Expected result: Result status is `blocked`. `blocked_reason` contains `SGC-PRE-10`.
+
+**TC-SGC-12: Blocked when final validation reader not present**
+
+- Preconditions: Internal module available.
+- Steps:
+  1. Call `evaluate_sandbox_gate_contract` with `mode: sandboxOnlyCandidate`, `final_validation_reader_present: false`, all other prerequisite fields `true`.
+- Expected result: Result status is `blocked`. `blocked_reason` contains `SGC-PRE-11`.
+
+**TC-SGC-13: EligibleButNotArmed when all prerequisites satisfied**
+
+- Preconditions: Internal module available.
+- Steps:
+  1. Call `evaluate_sandbox_gate_contract` with `mode: sandboxOnlyCandidate` and all prerequisite fields `true`.
+- Expected result: Result status is `eligibleButNotArmed`. `blocked_reason` is absent. `writesEnabled` is `false`. `readsEnabled` is `false`. `noChangesMade` is `true`. `networkReadsAttempted` is `false`. `networkWritesAttempted` is `false`. `safety_snapshot.write_gate_disabled` is `true`. `total_prereq_count` is 12. Message contains "NOT armed" and "NOT enabled".
+
+**TC-SGC-14: Safety invariants in all result states**
+
+- Preconditions: Any state.
+- Steps:
+  1. Run `cargo test -- sandbox_gate_contract::tests`.
+- Expected result: All Rust tests pass. `writesEnabled` is always `false`. `readsEnabled` is always `false`. `noChangesMade` is always `true`. `networkReadsAttempted` is always `false`. `networkWritesAttempted` is always `false`. No token, absolute path, record payload, attachment URL, old/new record ID, `"armed"`, `"enabled"`, `"succeeded"`, or `"restoreSuccess"` appears in any serialized result. Prerequisite ordering is deterministic (SGC-PRE-01 first, SGC-PRE-12 last). No production mode exists. `evaluate_write_gate()` is never modified.

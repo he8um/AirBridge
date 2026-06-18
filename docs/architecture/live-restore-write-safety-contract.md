@@ -269,6 +269,23 @@ Attachment re-upload is a separate feature that requires its own safety contract
 
 ---
 
+## 17. Sandbox Gate Contract Foundation
+
+The sandbox gate contract (`evaluate_sandbox_gate_contract` in `restore/sandbox_gate_contract.rs`) evaluates whether all prerequisites for a future sandbox-only gate enablement are present. It enforces the following invariants:
+
+- `evaluate_write_gate()` is called internally (SGC-PRE-12) and always returns `Disabled/DisabledByProductPolicy`. The function is never modified by this module.
+- The gate contract never arms the gate and never enables execution. `EligibleButNotArmed` is a diagnostic status only — it does not unlock any execution path.
+- No Airtable API calls are made under any status.
+- No restore execution, network read, or network write becomes reachable through this module.
+- `writesEnabled` is always `false`. `readsEnabled` is always `false`. `noChangesMade` is always `true`. `networkReadsAttempted` is always `false`. `networkWritesAttempted` is always `false`.
+- No `Armed`, `Enabled`, `Succeeded`, `Complete`, or `Done` status variant exists.
+- No `production` mode variant exists — only `disabled` and `sandboxOnlyCandidate`.
+- The result contains no token, no full path, no old/new record IDs, no raw record payload, no raw HTTP body, and no attachment URL.
+- Mode `disabled` (default) returns `Disabled` immediately — no prerequisites are evaluated.
+- Prerequisites are evaluated in the order SGC-PRE-01 through SGC-PRE-12; the first failing prerequisite blocks the result with its ID in `blocked_reason`.
+
+---
+
 ## Summary Checklist
 
 Before `evaluate_write_gate()` may return an enabled decision:

@@ -1,7 +1,7 @@
 # Feature Status Matrix
 
 **Version:** 0.1.0-alpha  
-**Updated:** 2026-06-15
+**Updated:** 2026-06-18
 
 This matrix describes the current status of each feature area. Status values:
 
@@ -191,6 +191,16 @@ The restore orchestrator foundation (`build_restore_orchestrator_plan` in `resto
 The orchestrator checks twelve prerequisites (ORCH-PRE-01 through ORCH-PRE-12): write gate disabled, mode must be `sandboxOnly`, sandbox environment verified, target empty verified, write phase ordering policy safe, failure modes policy safe, rollback limitation policy safe, live write readiness safe, schema write executor foundation safe, record write executor foundation safe, linked second-pass executor foundation safe, and final validation reader foundation safe. If any prerequisite is missing, the result is `Blocked`. If all prerequisites are satisfied, the result is `NotExecuted` — because `evaluate_write_gate()` currently always returns `Disabled`.
 
 The orchestrator never makes network calls, never returns a token, full path, record payload, raw HTTP body, old/new record IDs, or attachment URL. `writesEnabled` is always `false`, `readsEnabled` is always `false`, `noChangesMade` is always `true`, `networkReadsAttempted` is always `false`, `networkWritesAttempted` is always `false`. No production-target mode exists. No UI execute button is provided. Future sandbox-only gate enablement, live restore execution, and end-to-end restore remain separate pending work.
+
+### Sandbox Gate Contract Foundation (internal)
+
+The sandbox gate contract foundation (`evaluate_sandbox_gate_contract` in `restore/sandbox_gate_contract.rs`) is an internal Rust module — it is not exposed as a Tauri command and has no UI surface. It evaluates whether all prerequisites for a future sandbox-only gate enablement are present, without enabling anything. No Airtable API calls are made. No gate is armed. No restore execution is started.
+
+The contract checks twelve prerequisites (SGC-PRE-01 through SGC-PRE-12): sandbox verification safe, target empty safe, explicit confirmation gate declared, destructive operation policy safe, attachment phase disabled policy safe, live write readiness safe, restore orchestrator present and default-blocked, schema executor present and default-blocked, record executor present and default-blocked, linked second-pass executor present and default-blocked, final validation reader present and default-blocked, and write gate default remains `Disabled/DisabledByProductPolicy`. The prerequisites are evaluated in order; the first missing or unsafe prerequisite blocks the result.
+
+The contract has three possible statuses: `disabled` (default — mode is `disabled`, no prerequisites evaluated), `blocked` (one or more prerequisites missing or unsafe), and `eligibleButNotArmed` (all prerequisites satisfied — this does NOT arm the gate or enable execution). The mode variants are `disabled` and `sandboxOnlyCandidate` — no `production` mode exists.
+
+`evaluate_write_gate()` is called internally and its result reported as SGC-PRE-12. `evaluate_write_gate()` always returns `Disabled/DisabledByProductPolicy` and is never modified by this module. `writesEnabled` is always `false`, `readsEnabled` is always `false`, `noChangesMade` is always `true`, `networkReadsAttempted` is always `false`, `networkWritesAttempted` is always `false`. `eligibleButNotArmed` is not equivalent to `enabled` — it is a forward-looking diagnostic status only. No arming, armed flag, success state, or enabled state exists in this module.
 
 ---
 
