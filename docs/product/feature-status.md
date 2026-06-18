@@ -160,6 +160,14 @@ The executor checks seven prerequisites (SWEX-PRE-01 through SWEX-PRE-07): write
 
 The executor never makes network calls, never returns a token, full path, record payload, raw HTTP body, old/new record IDs, or attachment URL. `writesEnabled` is always `false`, `noChangesMade` is always `true`, `networkWritesAttempted` is always `false`. No production-target mode exists. No UI execute button is provided. Record writes, linked record updates, and live final validation reads remain pending.
 
+### Record Write Executor Foundation (internal)
+
+The record write executor foundation (`build_record_write_executor_plan` in `restore/record_write_executor.rs`) is an internal Rust module — it is not exposed as a Tauri command and has no UI surface. It builds an ordered batch plan of typed internal record operation descriptors (first-pass create batches before second-pass linked-update batches) from an existing `RecordWriteRequestPlan`. No Airtable API calls are made at any point.
+
+The executor checks nine prerequisites (RWEX-PRE-01 through RWEX-PRE-09): write gate disabled, mode must be `sandboxOnly`, explicit internal write flag set, sandbox environment verified, target empty verified, schema write executor foundation safe, rate-limit/backoff policy compliant, checkpoint metadata store safe, and live-write readiness satisfied. If any prerequisite is missing, the result is `Blocked`. If all prerequisites are satisfied and no oversized batches are found, the result is `NotExecuted` — because `evaluate_write_gate()` currently always returns `Disabled`. The `DryRunOnly` status is defined for future use but is currently unreachable.
+
+The executor never makes network calls, never returns a token, full path, record payload, raw HTTP body, old/new record IDs, or attachment URL. `writesEnabled` is always `false`, `noChangesMade` is always `true`, `networkWritesAttempted` is always `false`. Batch size is validated against a maximum of 10 records. No production-target mode exists. No UI execute button is provided. Linked record ID mapping, live final validation reads, and end-to-end restore execution remain pending.
+
 ---
 
 ## Related Documents

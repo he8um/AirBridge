@@ -2489,3 +2489,69 @@ These test cases cover the command contract layer: confirmation enforcement, out
 - Steps:
   1. Run `cargo test -- schema_write_executor::tests`.
 - Expected result: All Rust tests pass. `writesEnabled` is always `false`. `noChangesMade` is always `true`. `networkWritesAttempted` is always `false`. No token, absolute path, attachment URL, old/new record ID, or `"succeeded"` appears in any serialized result. Steps are ordered tables-first.
+
+### Record Write Executor Foundation Test Cases (internal — Rust only)
+
+**TC-RWEX-01: Blocked when mode is disabled**
+
+- Preconditions: Any state (internal Rust test only).
+- Steps:
+  1. Call `build_record_write_executor_plan` with `mode: disabled` and a valid request plan.
+- Expected result: `status = "blocked"`. `blockedReason` contains `RWEX-PRE-02`. `writesEnabled = false`. `noChangesMade = true`. `networkWritesAttempted = false`.
+
+**TC-RWEX-02: Blocked when explicit internal write flag not set**
+
+- Preconditions: Any state.
+- Steps:
+  1. Call `build_record_write_executor_plan` with `mode: sandboxOnly` and `explicitInternalRecordWriteRequested: false`.
+- Expected result: `status = "blocked"`. `blockedReason` contains `RWEX-PRE-03`.
+
+**TC-RWEX-03: Blocked when sandbox not verified**
+
+- Preconditions: Any state.
+- Steps:
+  1. Call `build_record_write_executor_plan` with `mode: sandboxOnly`, explicit flag set, but `sandboxVerified: false`.
+- Expected result: `status = "blocked"`. `blockedReason` contains `RWEX-PRE-04`.
+
+**TC-RWEX-04: Blocked when target not empty**
+
+- Preconditions: Any state.
+- Steps:
+  1. Call `build_record_write_executor_plan` with `targetEmptyVerified: false`.
+- Expected result: `status = "blocked"`. `blockedReason` contains `RWEX-PRE-05`.
+
+**TC-RWEX-05: Blocked when schema executor not safe**
+
+- Preconditions: Any state.
+- Steps:
+  1. Call `build_record_write_executor_plan` with `schemaExecutorSafe: false`.
+- Expected result: `status = "blocked"`. `blockedReason` contains `RWEX-PRE-06`.
+
+**TC-RWEX-06: Blocked when rate-limit policy not safe**
+
+- Preconditions: Any state.
+- Steps:
+  1. Call `build_record_write_executor_plan` with `rateLimitBackoffSafe: false`.
+- Expected result: `status = "blocked"`. `blockedReason` contains `RWEX-PRE-07`.
+
+**TC-RWEX-07: NotExecuted when all prerequisites satisfied**
+
+- Preconditions: Any state.
+- Steps:
+  1. Call `build_record_write_executor_plan` with all prerequisites satisfied and a ready request plan.
+- Expected result: `status = "notExecuted"`. `mode = "disabled"`. `writesEnabled = false`. `noChangesMade = true`. `networkWritesAttempted = false`. Batches list is non-empty. First-pass create batches precede second-pass linked-update batches.
+
+**TC-RWEX-08: Write gate remains disabled**
+
+- Preconditions: Any state.
+- Steps:
+  1. Call `build_record_write_executor_plan` with all prerequisites satisfied.
+  2. Call `evaluate_write_gate()`.
+- Expected result: Write gate still returns `status = "Disabled"`. The executor call does not affect write gate state.
+
+**TC-RWEX-09: Safety invariants in all result states**
+
+- Preconditions: Any state.
+- Steps:
+  1. Run `cargo test -- record_write_executor::foundation_tests`.
+- Expected result: All Rust tests pass. `writesEnabled` is always `false`. `noChangesMade` is always `true`. `networkWritesAttempted` is always `false`. No token, absolute path, record payload, attachment URL, old/new record ID, or `"succeeded"` appears in any serialized result. Batches are ordered first-pass before second-pass. Batch indices are sequential.

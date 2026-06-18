@@ -1484,6 +1484,43 @@ Record any failures here with a brief description and steps to reproduce.
 
 ---
 
+## Record Write Executor Foundation Checklist (internal module)
+
+### Before testing
+
+- [ ] Confirm `build_record_write_executor_plan` is internal only — no Tauri command is registered for it.
+- [ ] Confirm `RecordWriteExecutorRequest` has no `token` field, no `output_path` field, no record payload field, no old/new record ID field, no attachment URL field.
+- [ ] Confirm `RecordWriteExecutorResult` has no `token`, no full path, no old/new record IDs, no record payload, no raw HTTP body, no attachment URL, no `"succeeded"` status, no `writesEnabled: true`.
+- [ ] Confirm no UI execute button or panel calls `build_record_write_executor_plan`.
+- [ ] Confirm `RecordWriteExecutorMode` has only `disabled` and `sandboxOnly` — no `production` mode.
+
+### During testing (Rust unit tests only)
+
+- [ ] Mode `disabled` returns `blocked` with RWEX-PRE-02 reason.
+- [ ] Explicit internal write flag not set returns `blocked` with RWEX-PRE-03 reason.
+- [ ] Sandbox not verified returns `blocked` with RWEX-PRE-04 reason.
+- [ ] Target not empty returns `blocked` with RWEX-PRE-05 reason.
+- [ ] Schema executor not safe returns `blocked` with RWEX-PRE-06 reason.
+- [ ] Rate-limit/backoff not safe returns `blocked` with RWEX-PRE-07 reason.
+- [ ] Checkpoint store not safe returns `blocked` with RWEX-PRE-08 reason.
+- [ ] Live write readiness not satisfied returns `blocked` with RWEX-PRE-09 reason.
+- [ ] Request plan blocked returns `blocked`.
+- [ ] All prerequisites satisfied → `notExecuted` result (write gate still disabled).
+- [ ] `writesEnabled` is `false` in every result.
+- [ ] `networkWritesAttempted` is `false` in every result.
+- [ ] `noChangesMade` is `true` in every result.
+- [ ] No token (`pat_`) in the serialized result.
+- [ ] No absolute path in the serialized result.
+- [ ] No `"succeeded"`, `"restoreComplete"`, or `"restoreSuccess"` in any result.
+- [ ] Batches are ordered: first-pass create batches before second-pass linked-update batches.
+- [ ] Batch indices are sequential (0-based, no gaps).
+- [ ] No batch record_count exceeds 10.
+- [ ] `safety_snapshot.write_gate_disabled` is always `true`.
+- [ ] `evaluate_write_gate()` returns `Disabled` before and after any executor call.
+- [ ] Run `cargo test -- record_write_executor::foundation_tests` — all tests pass.
+
+---
+
 ## Linked Second-Pass Execution Preview Checklist
 
 ### Before testing
