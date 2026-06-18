@@ -1521,6 +1521,46 @@ Record any failures here with a brief description and steps to reproduce.
 
 ---
 
+## Linked Second-Pass Executor Foundation Checklist (internal module)
+
+### Before testing
+
+- [ ] Confirm `build_linked_second_pass_executor_plan` is internal only — no Tauri command is registered for it.
+- [ ] Confirm `LinkedSecondPassExecutorRequest` has no `token` field, no `output_path` field, no record payload field, no old/new record ID field, no attachment URL field.
+- [ ] Confirm `LinkedSecondPassExecutorResult` has no `token`, no full path, no old/new record IDs, no record payload, no raw HTTP body, no attachment URL, no `"succeeded"` status, no `writesEnabled: true`.
+- [ ] Confirm no UI execute button or panel calls `build_linked_second_pass_executor_plan`.
+- [ ] Confirm `LinkedSecondPassExecutorMode` has only `disabled` and `sandboxOnly` — no `production` mode.
+
+### During testing (Rust unit tests only)
+
+- [ ] Mode `disabled` returns `blocked` with LSEX-PRE-02 reason.
+- [ ] Explicit internal flag not set returns `blocked` with LSEX-PRE-03 reason.
+- [ ] Sandbox not verified returns `blocked` with LSEX-PRE-04 reason.
+- [ ] Target not empty returns `blocked` with LSEX-PRE-05 reason.
+- [ ] Record executor not safe returns `blocked` with LSEX-PRE-06 reason.
+- [ ] Linked second-pass preview not ready returns `blocked` with LSEX-PRE-07 reason.
+- [ ] Linked second-pass preview status `Blocked` returns `blocked` with LSEX-PRE-07 reason.
+- [ ] Mapping/checkpoint preview not ready returns `blocked` with LSEX-PRE-08 reason.
+- [ ] Sensitive data not safe returns `blocked` with LSEX-PRE-09 reason.
+- [ ] Live write readiness not satisfied returns `blocked` with LSEX-PRE-10 reason.
+- [ ] Batch size > 10 returns `blocked`.
+- [ ] All prerequisites satisfied → `notExecuted` result (write gate still disabled).
+- [ ] Unresolved optional links are warning-safe when preview returned DryRunReady.
+- [ ] `writesEnabled` is `false` in every result.
+- [ ] `networkWritesAttempted` is `false` in every result.
+- [ ] `noChangesMade` is `true` in every result.
+- [ ] No token (`pat_`) in the serialized result.
+- [ ] No absolute path in the serialized result.
+- [ ] No old or new record ID in the serialized result.
+- [ ] No `"succeeded"`, `"restoreComplete"`, or `"restoreSuccess"` in any result.
+- [ ] Batch indices are sequential (0-based, no gaps).
+- [ ] Field ordering is preserved from field_summaries.
+- [ ] No batch update_count exceeds 10.
+- [ ] `safety_snapshot.write_gate_disabled` is always `true`.
+- [ ] Run `cargo test -- linked_second_pass_executor::tests` — all tests pass.
+
+---
+
 ## Linked Second-Pass Execution Preview Checklist
 
 ### Before testing

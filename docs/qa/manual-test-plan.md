@@ -2555,3 +2555,69 @@ These test cases cover the command contract layer: confirmation enforcement, out
 - Steps:
   1. Run `cargo test -- record_write_executor::foundation_tests`.
 - Expected result: All Rust tests pass. `writesEnabled` is always `false`. `noChangesMade` is always `true`. `networkWritesAttempted` is always `false`. No token, absolute path, record payload, attachment URL, old/new record ID, or `"succeeded"` appears in any serialized result. Batches are ordered first-pass before second-pass. Batch indices are sequential.
+
+### Linked Second-Pass Executor Foundation Test Cases (internal — Rust only)
+
+**TC-LSEX-01: Blocked when mode is disabled**
+
+- Preconditions: Any state (internal Rust test only).
+- Steps:
+  1. Call `build_linked_second_pass_executor_plan` with `mode: disabled` and valid prerequisites.
+- Expected result: `status = "blocked"`. `blockedReason` contains `LSEX-PRE-02`. `writesEnabled = false`. `noChangesMade = true`. `networkWritesAttempted = false`.
+
+**TC-LSEX-02: Blocked when explicit internal flag not set**
+
+- Preconditions: Any state.
+- Steps:
+  1. Call `build_linked_second_pass_executor_plan` with `mode: sandboxOnly` and `explicitInternalLinkedSecondPassRequested: false`.
+- Expected result: `status = "blocked"`. `blockedReason` contains `LSEX-PRE-03`.
+
+**TC-LSEX-03: Blocked when record executor not safe**
+
+- Preconditions: Any state.
+- Steps:
+  1. Call `build_linked_second_pass_executor_plan` with `recordExecutorSafe: false`.
+- Expected result: `status = "blocked"`. `blockedReason` contains `LSEX-PRE-06`.
+
+**TC-LSEX-04: Blocked when linked second-pass preview blocked**
+
+- Preconditions: Any state.
+- Steps:
+  1. Call `build_linked_second_pass_executor_plan` with `linkedSecondPassPreviewStatus: blocked`.
+- Expected result: `status = "blocked"`. `blockedReason` contains `LSEX-PRE-07`.
+
+**TC-LSEX-05: Blocked when batch size exceeds maximum**
+
+- Preconditions: Any state.
+- Steps:
+  1. Call `build_linked_second_pass_executor_plan` with `batchSize: 11`.
+- Expected result: `status = "blocked"`. `blockedReason` contains `LSEX-BATCH-SIZE`.
+
+**TC-LSEX-06: Unresolved optional links are warning-safe**
+
+- Preconditions: Any state.
+- Steps:
+  1. Call `build_linked_second_pass_executor_plan` with all prerequisites satisfied and field_summaries containing `unresolved_link_count > 0`.
+- Expected result: `status = "notExecuted"` (not blocked). Unresolved links do not block the executor when the preview returned DryRunReady.
+
+**TC-LSEX-07: NotExecuted when all prerequisites satisfied**
+
+- Preconditions: Any state.
+- Steps:
+  1. Call `build_linked_second_pass_executor_plan` with all prerequisites satisfied and valid field summaries.
+- Expected result: `status = "notExecuted"`. `mode = "disabled"`. `writesEnabled = false`. `noChangesMade = true`. `networkWritesAttempted = false`. Batches list is non-empty. Field ordering is preserved. Batch indices are sequential.
+
+**TC-LSEX-08: Write gate remains disabled**
+
+- Preconditions: Any state.
+- Steps:
+  1. Call `build_linked_second_pass_executor_plan` with all prerequisites satisfied.
+  2. Call `evaluate_write_gate()`.
+- Expected result: Write gate still returns `status = "Disabled"`. The executor call does not affect write gate state.
+
+**TC-LSEX-09: Safety invariants in all result states**
+
+- Preconditions: Any state.
+- Steps:
+  1. Run `cargo test -- linked_second_pass_executor::tests`.
+- Expected result: All Rust tests pass. `writesEnabled` is always `false`. `noChangesMade` is always `true`. `networkWritesAttempted` is always `false`. No token, absolute path, record payload, attachment URL, old/new record ID, or `"succeeded"` appears in any serialized result. Batch indices are sequential. Field ordering from field_summaries is preserved.

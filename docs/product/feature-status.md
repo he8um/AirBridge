@@ -168,6 +168,14 @@ The executor checks nine prerequisites (RWEX-PRE-01 through RWEX-PRE-09): write 
 
 The executor never makes network calls, never returns a token, full path, record payload, raw HTTP body, old/new record IDs, or attachment URL. `writesEnabled` is always `false`, `noChangesMade` is always `true`, `networkWritesAttempted` is always `false`. Batch size is validated against a maximum of 10 records. No production-target mode exists. No UI execute button is provided. Linked record ID mapping, live final validation reads, and end-to-end restore execution remain pending.
 
+### Linked Second-Pass Executor Foundation (internal)
+
+The linked second-pass executor foundation (`build_linked_second_pass_executor_plan` in `restore/linked_second_pass_executor.rs`) is an internal Rust module — it is not exposed as a Tauri command and has no UI surface. It builds an ordered internal batch plan from per-field summaries (preserving field ordering, splitting into batches of at most 10), covering second-pass linked record update operations. No Airtable API calls are made at any point.
+
+The executor checks ten prerequisites (LSEX-PRE-01 through LSEX-PRE-10): write gate disabled, mode must be `sandboxOnly`, explicit internal flag set, sandbox environment verified, target empty verified, record write executor foundation safe, linked second-pass preview `DryRunReady`, mapping/checkpoint preview `DryRunReady`, sensitive data safety satisfied, and live-write readiness satisfied. Batch sizes are validated against a maximum of 10. Unresolved optional links are warning-safe when the linked second-pass preview already returned `DryRunReady`. If any prerequisite is missing, the result is `Blocked`. If all prerequisites are satisfied, the result is `NotExecuted` — because `evaluate_write_gate()` currently always returns `Disabled`. The `DryRunOnly` status is defined for future use but is currently unreachable.
+
+The executor never makes network calls, never returns a token, full path, record payload, raw HTTP body, old/new record IDs, or attachment URL. `writesEnabled` is always `false`, `noChangesMade` is always `true`, `networkWritesAttempted` is always `false`. No production-target mode exists. No UI execute button is provided. Live final validation reads and end-to-end restore execution remain pending.
+
 ---
 
 ## Related Documents
