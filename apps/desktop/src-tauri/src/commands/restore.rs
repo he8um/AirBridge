@@ -373,15 +373,9 @@ pub fn preview_record_write_request_plan(
     // Build a synthetic record import plan from the counts in the request, then run
     // both the request plan builder and the executor skeleton.
     use crate::restore::plan::RestoreTargetMode;
-    use crate::restore::record_import_batches::{
-        build_checkpoint_plan, build_first_pass_batches, build_second_pass_batches,
-        AIRTABLE_WRITE_BATCH_SIZE,
-    };
+    use crate::restore::record_import_batches::AIRTABLE_WRITE_BATCH_SIZE;
     use crate::restore::record_import_plan::RestoreRecordImportPlanRequest;
-    use crate::restore::record_import_plan::{
-        RecordImportFieldInput, RecordImportTableInput, RestoreRecordImportPlan,
-        RestoreRecordImportPlanStatus, RestoreRetryPolicy,
-    };
+    use crate::restore::record_import_plan::{RecordImportFieldInput, RecordImportTableInput};
     use crate::restore::record_import_planner::create_record_import_plan;
 
     // Synthesise a minimal per-table batch distribution from the counts.

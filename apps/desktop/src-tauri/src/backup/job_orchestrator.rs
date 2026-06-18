@@ -7,8 +7,8 @@ use crate::backup::export_engine::{run_export, ExportEngineError};
 use crate::backup::export_result::build_package_input;
 use crate::backup::format::FORMAT_VERSION;
 use crate::backup::job::{
-    BackupJobError, BackupJobId, BackupJobPackageSummary, BackupJobPhase, BackupJobProgress,
-    BackupJobRequest, BackupJobResult, BackupJobStatus, BackupJobTableResult, BackupJobWarning,
+    BackupJobError, BackupJobPackageSummary, BackupJobPhase, BackupJobRequest, BackupJobResult,
+    BackupJobTableResult, BackupJobWarning,
 };
 use crate::backup::job_events::BackupJobEvent;
 use crate::backup::job_result::{
@@ -53,15 +53,6 @@ impl<T: HttpTransport> BackupJobOrchestrator<T> {
 
     fn emit(&mut self, event: BackupJobEvent) {
         self.events.push(event);
-    }
-
-    fn current_progress(phase: BackupJobPhase, message: &str) -> BackupJobProgress {
-        BackupJobProgress {
-            phase,
-            message: message.to_string(),
-            tables_completed: 0,
-            total_tables: None,
-        }
     }
 
     /// Run the full backup pipeline, writing the package to `output_path`.
@@ -442,6 +433,7 @@ mod tests {
     use crate::airtable::auth::AirtableToken;
     use crate::airtable::http::{MockHttpTransport, SequentialMockTransport};
     use crate::backup::export_engine::TableExportSpec;
+    use crate::backup::job::{BackupJobId, BackupJobStatus};
     use crate::backup::validation::ValidationStatus;
     use tempfile::tempdir;
 
