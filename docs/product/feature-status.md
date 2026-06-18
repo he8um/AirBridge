@@ -176,6 +176,14 @@ The executor checks ten prerequisites (LSEX-PRE-01 through LSEX-PRE-10): write g
 
 The executor never makes network calls, never returns a token, full path, record payload, raw HTTP body, old/new record IDs, or attachment URL. `writesEnabled` is always `false`, `noChangesMade` is always `true`, `networkWritesAttempted` is always `false`. No production-target mode exists. No UI execute button is provided. Live final validation reads and end-to-end restore execution remain pending.
 
+### Final Validation Reader Foundation (internal)
+
+The final validation reader foundation (`build_final_validation_reader_plan` in `restore/final_validation_reader.rs`) is an internal Rust module — it is not exposed as a Tauri command and has no UI surface. It builds an ordered internal check plan of eight typed validation read descriptors (schema/table count, field count, record count, ID mapping coverage, linked field coverage, attachment metadata-only, manifest/checksum, final completion guard) from declared safe counts in the request. No Airtable API calls are made at any point.
+
+The reader checks eleven prerequisites (FVRD-PRE-01 through FVRD-PRE-11): validation read gate disabled, mode must be `sandboxOnly`, explicit internal validation read flag set, sandbox environment verified, schema write executor foundation safe, record write executor foundation safe, linked second-pass executor foundation safe, final validation execution preview `DryRunReady`, final validation enforcement policy safe, sensitive data safety satisfied, and attachment phase disabled policy safe. If any prerequisite is missing, the result is `Blocked`. If all prerequisites are satisfied, the result is `NotExecuted` — because the validation read gate (backed by `evaluate_write_gate()`) currently always returns `Disabled`. The `DryRunOnly` status is defined for future use but is currently unreachable.
+
+The manifest/checksum check (`FVRD-CHK-MANIFEST`) is `Skipped` when no manifest is present. The attachment check (`FVRD-CHK-ATTACH`) is metadata-only — no binary retrieval, no attachment URL is returned. No raw record IDs appear in any check descriptor. The reader never makes network calls, never returns a token, full path, record payload, raw HTTP body, old/new record IDs, or attachment URL. `readsEnabled` is always `false`, `writesEnabled` is always `false`, `noChangesMade` is always `true`, `networkReadsAttempted` is always `false`, `networkWritesAttempted` is always `false`. No production-target mode exists. No UI execute button is provided. Live validation reads and end-to-end restore execution remain pending.
+
 ---
 
 ## Related Documents

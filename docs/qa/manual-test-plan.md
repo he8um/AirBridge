@@ -2621,3 +2621,105 @@ These test cases cover the command contract layer: confirmation enforcement, out
 - Steps:
   1. Run `cargo test -- linked_second_pass_executor::tests`.
 - Expected result: All Rust tests pass. `writesEnabled` is always `false`. `noChangesMade` is always `true`. `networkWritesAttempted` is always `false`. No token, absolute path, record payload, attachment URL, old/new record ID, or `"succeeded"` appears in any serialized result. Batch indices are sequential. Field ordering from field_summaries is preserved.
+
+---
+
+## Final Validation Reader Foundation (internal module — TC-FVRD-*)
+
+**TC-FVRD-01: Blocked when mode is disabled**
+
+- Preconditions: Internal module available.
+- Steps:
+  1. Call `build_final_validation_reader_plan` with `mode: Disabled` and all other prerequisites satisfied.
+- Expected result: Result status is `Blocked`. `blocked_reason` contains `FVRD-PRE-02`. `readsEnabled` is `false`. `writesEnabled` is `false`. `noChangesMade` is `true`. `networkReadsAttempted` is `false`. `networkWritesAttempted` is `false`.
+
+**TC-FVRD-02: Blocked when explicit internal flag is not set**
+
+- Preconditions: Internal module available.
+- Steps:
+  1. Call `build_final_validation_reader_plan` with `explicit_internal_final_validation_read_requested: false` and all other prerequisites satisfied.
+- Expected result: Result status is `Blocked`. `blocked_reason` contains `FVRD-PRE-03`. No Airtable reads are attempted.
+
+**TC-FVRD-03: Blocked when sandbox not verified**
+
+- Preconditions: Internal module available.
+- Steps:
+  1. Call `build_final_validation_reader_plan` with `sandbox_verified: false` and all other prerequisites satisfied.
+- Expected result: Result status is `Blocked`. `blocked_reason` contains `FVRD-PRE-04`. No Airtable reads are attempted.
+
+**TC-FVRD-04: Blocked when schema executor not safe**
+
+- Preconditions: Internal module available.
+- Steps:
+  1. Call `build_final_validation_reader_plan` with `schema_executor_safe: false` and all other prerequisites satisfied.
+- Expected result: Result status is `Blocked`. `blocked_reason` contains `FVRD-PRE-05`. No Airtable reads are attempted.
+
+**TC-FVRD-05: Blocked when record executor not safe**
+
+- Preconditions: Internal module available.
+- Steps:
+  1. Call `build_final_validation_reader_plan` with `record_executor_safe: false` and all other prerequisites satisfied.
+- Expected result: Result status is `Blocked`. `blocked_reason` contains `FVRD-PRE-06`. No Airtable reads are attempted.
+
+**TC-FVRD-06: Blocked when linked executor not safe**
+
+- Preconditions: Internal module available.
+- Steps:
+  1. Call `build_final_validation_reader_plan` with `linked_executor_safe: false` and all other prerequisites satisfied.
+- Expected result: Result status is `Blocked`. `blocked_reason` contains `FVRD-PRE-07`. No Airtable reads are attempted.
+
+**TC-FVRD-07: Blocked when final validation preview not ready**
+
+- Preconditions: Internal module available.
+- Steps:
+  1. Call `build_final_validation_reader_plan` with `final_validation_preview_ready: false` and all other prerequisites satisfied.
+- Expected result: Result status is `Blocked`. `blocked_reason` contains `FVRD-PRE-08`. No Airtable reads are attempted.
+
+**TC-FVRD-08: Blocked when enforcement policy not safe**
+
+- Preconditions: Internal module available.
+- Steps:
+  1. Call `build_final_validation_reader_plan` with `final_validation_enforcement_safe: false` and all other prerequisites satisfied.
+- Expected result: Result status is `Blocked`. `blocked_reason` contains `FVRD-PRE-09`. No Airtable reads are attempted.
+
+**TC-FVRD-09: Blocked when sensitive data not safe**
+
+- Preconditions: Internal module available.
+- Steps:
+  1. Call `build_final_validation_reader_plan` with `sensitive_data_safe: false` and all other prerequisites satisfied.
+- Expected result: Result status is `Blocked`. `blocked_reason` contains `FVRD-PRE-10`. No Airtable reads are attempted.
+
+**TC-FVRD-10: Blocked when attachment phase not safe**
+
+- Preconditions: Internal module available.
+- Steps:
+  1. Call `build_final_validation_reader_plan` with `attachment_phase_disabled_safe: false` and all other prerequisites satisfied.
+- Expected result: Result status is `Blocked`. `blocked_reason` contains `FVRD-PRE-11`. No Airtable reads are attempted.
+
+**TC-FVRD-11: NotExecuted when all prerequisites satisfied**
+
+- Preconditions: Internal module available.
+- Steps:
+  1. Call `build_final_validation_reader_plan` with all prerequisites satisfied.
+- Expected result: Result status is `NotExecuted`. `blocked_reason` is `None`. `readsEnabled` is `false`. `writesEnabled` is `false`. `noChangesMade` is `true`. `networkReadsAttempted` is `false`. `networkWritesAttempted` is `false`. `safety_snapshot.read_gate_disabled` is `true`.
+
+**TC-FVRD-12: Manifest check skipped when not present**
+
+- Preconditions: Internal module available; all prerequisites satisfied.
+- Steps:
+  1. Call `build_final_validation_reader_plan` with `manifest_present: false`.
+- Expected result: `FVRD-CHK-MANIFEST` check has status `Skipped`. All other checks have status `Pending`.
+
+**TC-FVRD-13: Check order is deterministic**
+
+- Preconditions: Internal module available; all prerequisites satisfied.
+- Steps:
+  1. Call `build_final_validation_reader_plan` twice with identical inputs.
+- Expected result: Both results have identical check ID ordering. First check is `FVRD-CHK-SCHEMA`. Last check is `FVRD-CHK-GUARD`.
+
+**TC-FVRD-14: Safety invariants in all result states**
+
+- Preconditions: Any state.
+- Steps:
+  1. Run `cargo test -- final_validation_reader::tests`.
+- Expected result: All Rust tests pass. `readsEnabled` is always `false`. `writesEnabled` is always `false`. `noChangesMade` is always `true`. `networkReadsAttempted` is always `false`. `networkWritesAttempted` is always `false`. No token, absolute path, record payload, attachment URL, old/new record ID, or `"succeeded"` appears in any serialized result. Check ordering is deterministic. Attach check note does not mention binary retrieval.

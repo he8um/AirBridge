@@ -1693,3 +1693,51 @@ Record any failures here with a brief description and steps to reproduce.
 - [ ] Panel shows `data-testid="rwep-writes-disabled-tag"` whenever result is present.
 - [ ] Panel shows `data-testid="rwep-no-changes-made"` whenever result is present.
 - [ ] Panel has no execute button, no enable button, no token input.
+
+---
+
+## Final Validation Reader Foundation Checklist (internal module)
+
+### Before testing
+
+- [ ] Confirm `build_final_validation_reader_plan` is internal only — no Tauri command is registered for it.
+- [ ] Confirm `FinalValidationReaderRequest` has no `token` field, no `output_path` field, no record payload field, no old/new record ID field, no attachment URL field.
+- [ ] Confirm `FinalValidationReaderResult` has no `token`, no full path, no old/new record IDs, no record payload, no raw HTTP body, no attachment URL, no `"succeeded"` status, no `readsEnabled: true`, no `writesEnabled: true`.
+- [ ] Confirm no UI execute button or panel calls `build_final_validation_reader_plan`.
+- [ ] Confirm `FinalValidationReaderMode` has only `disabled` and `sandboxOnly` — no `production` mode.
+
+### During testing (Rust unit tests only)
+
+- [ ] Mode `disabled` returns `blocked` with FVRD-PRE-02 reason.
+- [ ] Explicit internal read flag not set returns `blocked` with FVRD-PRE-03 reason.
+- [ ] Sandbox not verified returns `blocked` with FVRD-PRE-04 reason.
+- [ ] Schema executor not safe returns `blocked` with FVRD-PRE-05 reason.
+- [ ] Record executor not safe returns `blocked` with FVRD-PRE-06 reason.
+- [ ] Linked executor not safe returns `blocked` with FVRD-PRE-07 reason.
+- [ ] Final validation preview not ready returns `blocked` with FVRD-PRE-08 reason.
+- [ ] Enforcement policy not safe returns `blocked` with FVRD-PRE-09 reason.
+- [ ] Sensitive data not safe returns `blocked` with FVRD-PRE-10 reason.
+- [ ] Attachment phase not safe returns `blocked` with FVRD-PRE-11 reason.
+- [ ] All prerequisites satisfied → `notExecuted` result (validation read gate still disabled).
+- [ ] `readsEnabled` is `false` in every result.
+- [ ] `writesEnabled` is `false` in every result.
+- [ ] `networkReadsAttempted` is `false` in every result.
+- [ ] `networkWritesAttempted` is `false` in every result.
+- [ ] `noChangesMade` is `true` in every result.
+- [ ] No token (`pat_`) in the serialized result.
+- [ ] No absolute path in the serialized result.
+- [ ] No old or new record ID in the serialized result.
+- [ ] No raw record payload or field values in the serialized result.
+- [ ] No attachment URL in the serialized result.
+- [ ] No `"succeeded"`, `"restoreComplete"`, or `"restoreSuccess"` in any result.
+- [ ] Checks are ordered: FVRD-CHK-SCHEMA first, FVRD-CHK-GUARD last.
+- [ ] FVRD-CHK-MANIFEST is `skipped` when `manifest_present` is false.
+- [ ] FVRD-CHK-MANIFEST is `pending` when `manifest_present` is true.
+- [ ] FVRD-CHK-ATTACH note does not mention binary retrieval.
+- [ ] `total_check_count` equals `checks.len()`.
+- [ ] `pending_check_count` equals the number of checks with status `pending`.
+- [ ] `expected_count` in each check reflects the corresponding request count field.
+- [ ] `safety_snapshot.read_gate_disabled` is always `true`.
+- [ ] `safety_snapshot.write_gate_disabled` is always `true`.
+- [ ] `evaluate_write_gate()` returns `Disabled` before and after any reader call.
+- [ ] Run `cargo test -- final_validation_reader::tests` — all tests pass.
