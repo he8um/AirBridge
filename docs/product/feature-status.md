@@ -184,6 +184,14 @@ The reader checks eleven prerequisites (FVRD-PRE-01 through FVRD-PRE-11): valida
 
 The manifest/checksum check (`FVRD-CHK-MANIFEST`) is `Skipped` when no manifest is present. The attachment check (`FVRD-CHK-ATTACH`) is metadata-only — no binary retrieval, no attachment URL is returned. No raw record IDs appear in any check descriptor. The reader never makes network calls, never returns a token, full path, record payload, raw HTTP body, old/new record IDs, or attachment URL. `readsEnabled` is always `false`, `writesEnabled` is always `false`, `noChangesMade` is always `true`, `networkReadsAttempted` is always `false`, `networkWritesAttempted` is always `false`. No production-target mode exists. No UI execute button is provided. Live validation reads and end-to-end restore execution remain pending.
 
+### Restore Orchestrator Foundation (internal)
+
+The restore orchestrator foundation (`build_restore_orchestrator_plan` in `restore/restore_orchestrator.rs`) is an internal Rust module — it is not exposed as a Tauri command and has no UI surface. It builds a deterministic eight-phase orchestration plan sequencing all existing executor foundations: (1) schema write executor, (2) schema checkpoint boundary, (3) record write executor, (4) record checkpoint boundary, (5) linked second-pass executor, (6) linked phase checkpoint boundary, (7) final validation reader, (8) final guard. No Airtable API calls are made at any point. No checkpoint files are written.
+
+The orchestrator checks twelve prerequisites (ORCH-PRE-01 through ORCH-PRE-12): write gate disabled, mode must be `sandboxOnly`, sandbox environment verified, target empty verified, write phase ordering policy safe, failure modes policy safe, rollback limitation policy safe, live write readiness safe, schema write executor foundation safe, record write executor foundation safe, linked second-pass executor foundation safe, and final validation reader foundation safe. If any prerequisite is missing, the result is `Blocked`. If all prerequisites are satisfied, the result is `NotExecuted` — because `evaluate_write_gate()` currently always returns `Disabled`.
+
+The orchestrator never makes network calls, never returns a token, full path, record payload, raw HTTP body, old/new record IDs, or attachment URL. `writesEnabled` is always `false`, `readsEnabled` is always `false`, `noChangesMade` is always `true`, `networkReadsAttempted` is always `false`, `networkWritesAttempted` is always `false`. No production-target mode exists. No UI execute button is provided. Future sandbox-only gate enablement, live restore execution, and end-to-end restore remain separate pending work.
+
 ---
 
 ## Related Documents

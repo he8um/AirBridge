@@ -2723,3 +2723,105 @@ These test cases cover the command contract layer: confirmation enforcement, out
 - Steps:
   1. Run `cargo test -- final_validation_reader::tests`.
 - Expected result: All Rust tests pass. `readsEnabled` is always `false`. `writesEnabled` is always `false`. `noChangesMade` is always `true`. `networkReadsAttempted` is always `false`. `networkWritesAttempted` is always `false`. No token, absolute path, record payload, attachment URL, old/new record ID, or `"succeeded"` appears in any serialized result. Check ordering is deterministic. Attach check note does not mention binary retrieval.
+
+---
+
+## Restore Orchestrator Foundation (internal module — TC-ORCH-*)
+
+**TC-ORCH-01: Blocked when mode is disabled**
+
+- Preconditions: Internal module available.
+- Steps:
+  1. Call `build_restore_orchestrator_plan` with `mode: Disabled` and all other prerequisites satisfied.
+- Expected result: Result status is `Blocked`. `blocked_reason` contains `ORCH-PRE-02`. `writesEnabled` is `false`. `readsEnabled` is `false`. `noChangesMade` is `true`. `networkReadsAttempted` is `false`. `networkWritesAttempted` is `false`.
+
+**TC-ORCH-02: Blocked when sandbox not verified**
+
+- Preconditions: Internal module available.
+- Steps:
+  1. Call `build_restore_orchestrator_plan` with `sandbox_verified: false` and all other prerequisites satisfied.
+- Expected result: Result status is `Blocked`. `blocked_reason` contains `ORCH-PRE-03`. No Airtable calls attempted.
+
+**TC-ORCH-03: Blocked when target not empty**
+
+- Preconditions: Internal module available.
+- Steps:
+  1. Call `build_restore_orchestrator_plan` with `target_empty_verified: false` and all other prerequisites satisfied.
+- Expected result: Result status is `Blocked`. `blocked_reason` contains `ORCH-PRE-04`.
+
+**TC-ORCH-04: Blocked when write phase ordering unsafe**
+
+- Preconditions: Internal module available.
+- Steps:
+  1. Call `build_restore_orchestrator_plan` with `write_phase_ordering_safe: false` and all other prerequisites satisfied.
+- Expected result: Result status is `Blocked`. `blocked_reason` contains `ORCH-PRE-05`.
+
+**TC-ORCH-05: Blocked when failure modes unsafe**
+
+- Preconditions: Internal module available.
+- Steps:
+  1. Call `build_restore_orchestrator_plan` with `failure_modes_safe: false` and all other prerequisites satisfied.
+- Expected result: Result status is `Blocked`. `blocked_reason` contains `ORCH-PRE-06`.
+
+**TC-ORCH-06: Blocked when rollback limitation unsafe**
+
+- Preconditions: Internal module available.
+- Steps:
+  1. Call `build_restore_orchestrator_plan` with `rollback_limitation_safe: false` and all other prerequisites satisfied.
+- Expected result: Result status is `Blocked`. `blocked_reason` contains `ORCH-PRE-07`.
+
+**TC-ORCH-07: Blocked when live write readiness not safe**
+
+- Preconditions: Internal module available.
+- Steps:
+  1. Call `build_restore_orchestrator_plan` with `live_write_readiness_safe: false` and all other prerequisites satisfied.
+- Expected result: Result status is `Blocked`. `blocked_reason` contains `ORCH-PRE-08`.
+
+**TC-ORCH-08: Blocked when schema executor not safe**
+
+- Preconditions: Internal module available.
+- Steps:
+  1. Call `build_restore_orchestrator_plan` with `schema_executor_safe: false` and all other prerequisites satisfied.
+- Expected result: Result status is `Blocked`. `blocked_reason` contains `ORCH-PRE-09`.
+
+**TC-ORCH-09: Blocked when record executor not safe**
+
+- Preconditions: Internal module available.
+- Steps:
+  1. Call `build_restore_orchestrator_plan` with `record_executor_safe: false` and all other prerequisites satisfied.
+- Expected result: Result status is `Blocked`. `blocked_reason` contains `ORCH-PRE-10`.
+
+**TC-ORCH-10: Blocked when linked executor not safe**
+
+- Preconditions: Internal module available.
+- Steps:
+  1. Call `build_restore_orchestrator_plan` with `linked_executor_safe: false` and all other prerequisites satisfied.
+- Expected result: Result status is `Blocked`. `blocked_reason` contains `ORCH-PRE-11`.
+
+**TC-ORCH-11: Blocked when final validation reader not safe**
+
+- Preconditions: Internal module available.
+- Steps:
+  1. Call `build_restore_orchestrator_plan` with `final_validation_reader_safe: false` and all other prerequisites satisfied.
+- Expected result: Result status is `Blocked`. `blocked_reason` contains `ORCH-PRE-12`.
+
+**TC-ORCH-12: NotExecuted when all prerequisites satisfied**
+
+- Preconditions: Internal module available.
+- Steps:
+  1. Call `build_restore_orchestrator_plan` with all prerequisites satisfied.
+- Expected result: Result status is `NotExecuted`. `blocked_reason` is `None`. `writesEnabled` is `false`. `readsEnabled` is `false`. `noChangesMade` is `true`. `networkReadsAttempted` is `false`. `networkWritesAttempted` is `false`. `safety_snapshot.write_gate_disabled` is `true`. `total_phase_count` is 8.
+
+**TC-ORCH-13: Deterministic phase ordering**
+
+- Preconditions: Internal module available; all prerequisites satisfied.
+- Steps:
+  1. Call `build_restore_orchestrator_plan` twice with identical inputs.
+- Expected result: Both results have identical phase ID ordering. First phase is `ORCH-PH-01` (schema executor). Last phase is `ORCH-PH-08` (final guard). Checkpoint boundaries follow their respective executors.
+
+**TC-ORCH-14: Safety invariants in all result states**
+
+- Preconditions: Any state.
+- Steps:
+  1. Run `cargo test -- restore_orchestrator::tests`.
+- Expected result: All Rust tests pass. `writesEnabled` is always `false`. `readsEnabled` is always `false`. `noChangesMade` is always `true`. `networkReadsAttempted` is always `false`. `networkWritesAttempted` is always `false`. No token, absolute path, record payload, attachment URL, old/new record ID, `"succeeded"`, `"completed"`, or `"restoreSuccess"` appears in any serialized result. Phase ordering is deterministic. No production mode exists.

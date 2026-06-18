@@ -1741,3 +1741,48 @@ Record any failures here with a brief description and steps to reproduce.
 - [ ] `safety_snapshot.write_gate_disabled` is always `true`.
 - [ ] `evaluate_write_gate()` returns `Disabled` before and after any reader call.
 - [ ] Run `cargo test -- final_validation_reader::tests` — all tests pass.
+
+---
+
+## Restore Orchestrator Foundation Checklist (internal module)
+
+### Before testing
+
+- [ ] Confirm `build_restore_orchestrator_plan` is internal only — no Tauri command is registered for it.
+- [ ] Confirm `RestoreOrchestratorRequest` has no `token` field, no `output_path` field, no record payload field, no old/new record ID field, no attachment URL field.
+- [ ] Confirm `RestoreOrchestratorResult` has no `token`, no full path, no old/new record IDs, no record payload, no raw HTTP body, no attachment URL, no `"succeeded"` status, no `writesEnabled: true`, no `readsEnabled: true`.
+- [ ] Confirm no UI execute button or panel calls `build_restore_orchestrator_plan`.
+- [ ] Confirm `RestoreOrchestratorMode` has only `disabled` and `sandboxOnly` — no `production` mode.
+
+### During testing (Rust unit tests only)
+
+- [ ] Mode `disabled` returns `blocked` with ORCH-PRE-02 reason.
+- [ ] Sandbox not verified returns `blocked` with ORCH-PRE-03 reason.
+- [ ] Target not empty returns `blocked` with ORCH-PRE-04 reason.
+- [ ] Write phase ordering unsafe returns `blocked` with ORCH-PRE-05 reason.
+- [ ] Failure modes unsafe returns `blocked` with ORCH-PRE-06 reason.
+- [ ] Rollback limitation unsafe returns `blocked` with ORCH-PRE-07 reason.
+- [ ] Live write readiness not safe returns `blocked` with ORCH-PRE-08 reason.
+- [ ] Schema executor not safe returns `blocked` with ORCH-PRE-09 reason.
+- [ ] Record executor not safe returns `blocked` with ORCH-PRE-10 reason.
+- [ ] Linked executor not safe returns `blocked` with ORCH-PRE-11 reason.
+- [ ] Final validation reader not safe returns `blocked` with ORCH-PRE-12 reason.
+- [ ] All prerequisites satisfied → `notExecuted` result (write gate still disabled).
+- [ ] `writesEnabled` is `false` in every result.
+- [ ] `readsEnabled` is `false` in every result.
+- [ ] `networkReadsAttempted` is `false` in every result.
+- [ ] `networkWritesAttempted` is `false` in every result.
+- [ ] `noChangesMade` is `true` in every result.
+- [ ] No token (`pat_`) in the serialized result.
+- [ ] No absolute path in the serialized result.
+- [ ] No old or new record ID in the serialized result.
+- [ ] No raw record payload or field values in the serialized result.
+- [ ] No attachment URL in the serialized result.
+- [ ] No `"succeeded"`, `"restoreComplete"`, or `"restoreSuccess"` in any result.
+- [ ] Phases are ordered: ORCH-PH-01 (schema executor) first, ORCH-PH-08 (final guard) last.
+- [ ] Checkpoint boundaries follow their respective executors (ORCH-PH-02 after ORCH-PH-01, etc.).
+- [ ] `total_phase_count` equals `phases.len()` (8).
+- [ ] `pending_phase_count` equals the number of phases with status `pending`.
+- [ ] `safety_snapshot.write_gate_disabled` is always `true`.
+- [ ] `evaluate_write_gate()` returns `Disabled` before and after any orchestrator call.
+- [ ] Run `cargo test -- restore_orchestrator::tests` — all tests pass.
