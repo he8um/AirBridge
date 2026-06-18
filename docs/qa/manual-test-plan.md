@@ -2927,3 +2927,70 @@ These test cases cover the command contract layer: confirmation enforcement, out
 - Steps:
   1. Run `cargo test -- sandbox_gate_contract::tests`.
 - Expected result: All Rust tests pass. `writesEnabled` is always `false`. `readsEnabled` is always `false`. `noChangesMade` is always `true`. `networkReadsAttempted` is always `false`. `networkWritesAttempted` is always `false`. No token, absolute path, record payload, attachment URL, old/new record ID, `"armed"`, `"enabled"`, `"succeeded"`, or `"restoreSuccess"` appears in any serialized result. Prerequisite ordering is deterministic (SGC-PRE-01 first, SGC-PRE-12 last). No production mode exists. `evaluate_write_gate()` is never modified.
+
+---
+
+## Sandbox Restore Harness Foundation Tests
+
+**TC-SRH-01: Disabled mode returns NotExecuted immediately**
+
+- Preconditions: Internal module available.
+- Steps:
+  1. Call `build_sandbox_restore_harness_plan` with `mode: disabled` and all other fields `false`.
+- Expected result: Result status is `notExecuted`. `gate_armed` is `false`. `writesEnabled` is `false`. `readsEnabled` is `false`. `noChangesMade` is `true`. `networkReadsAttempted` is `false`. `networkWritesAttempted` is `false`. `blocked_reason` is absent.
+
+**TC-SRH-02: Blocked when sandbox not safe**
+
+- Preconditions: Internal module available.
+- Steps:
+  1. Call `build_sandbox_restore_harness_plan` with `mode: sandboxOnlyDryHarness`, `sandbox_verification_safe: false`, all other prerequisite fields `true`.
+- Expected result: Result status is `blocked`. `gate_armed` is `false`.
+
+**TC-SRH-03: Blocked when target not empty**
+
+- Preconditions: Internal module available.
+- Steps:
+  1. Call `build_sandbox_restore_harness_plan` with `mode: sandboxOnlyDryHarness`, `target_empty_safe: false`, all other prerequisite fields `true`.
+- Expected result: Result status is `blocked`.
+
+**TC-SRH-04: Blocked when write phase ordering unsafe**
+
+- Preconditions: Internal module available.
+- Steps:
+  1. Call `build_sandbox_restore_harness_plan` with `mode: sandboxOnlyDryHarness`, `write_phase_ordering_safe: false`, all other prerequisite fields `true`.
+- Expected result: Result status is `blocked`. `blocked_reason` contains "Orchestrator".
+
+**TC-SRH-05: Blocked when failure modes unsafe**
+
+- Preconditions: Internal module available.
+- Steps:
+  1. Call `build_sandbox_restore_harness_plan` with `mode: sandboxOnlyDryHarness`, `failure_modes_safe: false`, all other prerequisite fields `true`.
+- Expected result: Result status is `blocked`.
+
+**TC-SRH-06: Blocked when rollback limitation unsafe**
+
+- Preconditions: Internal module available.
+- Steps:
+  1. Call `build_sandbox_restore_harness_plan` with `mode: sandboxOnlyDryHarness`, `rollback_limitation_safe: false`, all other prerequisite fields `true`.
+- Expected result: Result status is `blocked`.
+
+**TC-SRH-07: ReadyNotExecuted when all prerequisites satisfied**
+
+- Preconditions: Internal module available.
+- Steps:
+  1. Call `build_sandbox_restore_harness_plan` with `mode: sandboxOnlyDryHarness` and all prerequisite fields `true`.
+- Expected result: Result status is `readyNotExecuted`. `gate_armed` is `false`. `writesEnabled` is `false`. `readsEnabled` is `false`. `noChangesMade` is `true`. `networkReadsAttempted` is `false`. `networkWritesAttempted` is `false`. `safety_snapshot.write_gate_disabled` is `true`. `safety_snapshot.gate_armed` is `false`. `total_phase_count` is 8. Message contains "NOT armed", "NOT enabled", and "remains pending".
+
+**TC-SRH-08: Deterministic phase ordering**
+
+- Preconditions: Internal module available; all prerequisites satisfied.
+- Steps:
+  1. Call `build_sandbox_restore_harness_plan` twice with identical inputs.
+- Expected result: Both results have identical phase ID ordering. First phase is `SRH-PH-01` (gate contract evaluation). Last phase is `SRH-PH-08` (final guard). All phase IDs use the `SRH-PH-` prefix.
+
+**TC-SRH-09: Safety invariants in all result states**
+
+- Preconditions: Any state.
+- Steps:
+  1. Run `cargo test -- sandbox_restore_harness::tests`.
+- Expected result: All Rust tests pass. `gate_armed` is always `false`. `writesEnabled` is always `false`. `readsEnabled` is always `false`. `noChangesMade` is always `true`. `networkReadsAttempted` is always `false`. `networkWritesAttempted` is always `false`. No token, absolute path, record payload, attachment URL, old/new record ID, `"armed"`, `"enabled"`, `"succeeded"`, or `"restoreSuccess"` appears in any serialized result. Phase ordering is deterministic. No production mode exists. `evaluate_write_gate()` is never modified. Live sandbox E2E restore execution remains pending.

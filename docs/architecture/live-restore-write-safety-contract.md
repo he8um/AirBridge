@@ -286,6 +286,24 @@ The sandbox gate contract (`evaluate_sandbox_gate_contract` in `restore/sandbox_
 
 ---
 
+## 18. Sandbox Restore Harness Foundation
+
+The sandbox restore harness (`build_sandbox_restore_harness_plan` in `restore/sandbox_restore_harness.rs`) assembles the gate contract and orchestrator into a dry harness plan. It enforces the following invariants:
+
+- The harness never arms the gate and never enables execution. `ReadyNotExecuted` is a diagnostic status only — it does not unlock any execution path.
+- `evaluate_write_gate()` is called indirectly (via the gate contract and orchestrator) and always returns `Disabled/DisabledByProductPolicy`. The function is never modified by this module.
+- No Airtable API calls are made under any status.
+- No restore execution, network read, or network write becomes reachable through this module.
+- `gate_armed` is always `false`. `writesEnabled` is always `false`. `readsEnabled` is always `false`. `noChangesMade` is always `true`. `networkReadsAttempted` is always `false`. `networkWritesAttempted` is always `false`.
+- No `Armed`, `Enabled`, `Succeeded`, `Complete`, or `Done` status variant exists.
+- No `production` mode variant exists — only `disabled` and `sandboxOnlyDryHarness`.
+- The result contains no token, no full path, no old/new record IDs, no raw record payload, no raw HTTP body, and no attachment URL.
+- Mode `disabled` (default) returns `NotExecuted` immediately — no evaluation is performed.
+- `ReadyNotExecuted` requires: gate contract `eligibleButNotArmed`, orchestrator `notExecuted`, and all executor and checkpoint phases represented. Even then, the gate is NOT armed.
+- Live sandbox E2E restore execution remains pending as separate future work.
+
+---
+
 ## Summary Checklist
 
 Before `evaluate_write_gate()` may return an enabled decision:

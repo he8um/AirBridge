@@ -1,7 +1,7 @@
 # Feature Status Matrix
 
 **Version:** 0.1.0-alpha  
-**Updated:** 2026-06-18
+**Updated:** 2026-06-18 (2)
 
 This matrix describes the current status of each feature area. Status values:
 
@@ -201,6 +201,14 @@ The contract checks twelve prerequisites (SGC-PRE-01 through SGC-PRE-12): sandbo
 The contract has three possible statuses: `disabled` (default — mode is `disabled`, no prerequisites evaluated), `blocked` (one or more prerequisites missing or unsafe), and `eligibleButNotArmed` (all prerequisites satisfied — this does NOT arm the gate or enable execution). The mode variants are `disabled` and `sandboxOnlyCandidate` — no `production` mode exists.
 
 `evaluate_write_gate()` is called internally and its result reported as SGC-PRE-12. `evaluate_write_gate()` always returns `Disabled/DisabledByProductPolicy` and is never modified by this module. `writesEnabled` is always `false`, `readsEnabled` is always `false`, `noChangesMade` is always `true`, `networkReadsAttempted` is always `false`, `networkWritesAttempted` is always `false`. `eligibleButNotArmed` is not equivalent to `enabled` — it is a forward-looking diagnostic status only. No arming, armed flag, success state, or enabled state exists in this module.
+
+### Sandbox Restore Harness Foundation (internal)
+
+The sandbox restore harness foundation (`build_sandbox_restore_harness_plan` in `restore/sandbox_restore_harness.rs`) is an internal Rust module — it is not exposed as a Tauri command and has no UI surface. It assembles the sandbox gate contract and restore orchestrator foundations into a single eight-phase dry harness plan for future sandbox end-to-end restore testing. No Airtable API calls are made. The gate is not armed. No restore execution is started. Live sandbox E2E restore execution remains pending.
+
+The harness evaluates the gate contract (expecting `eligibleButNotArmed`), then the restore orchestrator (expecting `notExecuted` due to the disabled write gate), then verifies that schema executor, record executor, linked second-pass executor, final validation reader, and checkpoint boundary phases are each represented in the orchestrator plan. If any prerequisite is missing or unsafe, the result is `blocked`. If all prerequisites are satisfied, the result is `readyNotExecuted` — this does NOT arm the gate or enable execution.
+
+The harness has three statuses: `notExecuted` (default — mode is `disabled`), `blocked` (prerequisite missing or unsafe), and `readyNotExecuted` (all prerequisites satisfied — not armed, not enabled). Mode variants are `disabled` and `sandboxOnlyDryHarness` — no `production` mode exists. `gate_armed` is always `false`. `writesEnabled` is always `false`. `readsEnabled` is always `false`. `noChangesMade` is always `true`. `networkReadsAttempted` is always `false`. `networkWritesAttempted` is always `false`. No armed, enabled, success, or completed state exists in this module.
 
 ---
 

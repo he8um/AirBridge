@@ -1835,3 +1835,53 @@ Record any failures here with a brief description and steps to reproduce.
 - [ ] No `"production"` in mode serialization.
 - [ ] `evaluate_write_gate()` returns `Disabled` before and after any gate contract call.
 - [ ] Run `cargo test -- sandbox_gate_contract::tests` — all tests pass.
+
+---
+
+## Sandbox Restore Harness Foundation Checklist (internal module)
+
+### Before testing
+
+- [ ] Confirm `build_sandbox_restore_harness_plan` is internal only — no Tauri command is registered for it.
+- [ ] Confirm `SandboxRestoreHarnessRequest` has no `token` field, no `output_path` field, no record payload field, no old/new record ID field, no attachment URL field.
+- [ ] Confirm `SandboxRestoreHarnessResult` has no `token`, no full path, no old/new record IDs, no record payload, no raw HTTP body, no attachment URL, no `"armed"` or `"enabled"` or `"succeeded"` status, no `gate_armed: true`, no `writesEnabled: true`, no `readsEnabled: true`.
+- [ ] Confirm no UI execute button or panel calls `build_sandbox_restore_harness_plan`.
+- [ ] Confirm `SandboxRestoreHarnessMode` has only `disabled` and `sandboxOnlyDryHarness` — no `production` mode.
+- [ ] Confirm `SandboxRestoreHarnessStatus` has only `blocked`, `readyNotExecuted`, and `notExecuted` — no `armed`, `enabled`, `succeeded`, `complete`, or `done`.
+- [ ] Confirm `evaluate_write_gate()` is never modified by this module.
+- [ ] Confirm the harness does not arm the gate — `gate_armed` is always `false`.
+
+### During testing (Rust unit tests only)
+
+- [ ] Mode `disabled` returns `notExecuted` status with no evaluation performed.
+- [ ] Sandbox not safe returns `blocked`.
+- [ ] Target not empty returns `blocked`.
+- [ ] Confirmation gate not declared returns `blocked`.
+- [ ] Destructive operation policy unsafe returns `blocked`.
+- [ ] Attachment phase unsafe returns `blocked`.
+- [ ] Write phase ordering unsafe returns `blocked`.
+- [ ] Failure modes unsafe returns `blocked`.
+- [ ] Rollback limitation unsafe returns `blocked`.
+- [ ] All prerequisites satisfied → `readyNotExecuted` (gate NOT armed, gate NOT enabled).
+- [ ] `readyNotExecuted` result message explicitly says "NOT armed" and "NOT enabled".
+- [ ] `readyNotExecuted` result message says live execution "remains pending".
+- [ ] `gate_armed` is `false` in every result.
+- [ ] `writesEnabled` is `false` in every result.
+- [ ] `readsEnabled` is `false` in every result.
+- [ ] `networkReadsAttempted` is `false` in every result.
+- [ ] `networkWritesAttempted` is `false` in every result.
+- [ ] `noChangesMade` is `true` in every result.
+- [ ] `safety_snapshot.write_gate_disabled` is always `true`.
+- [ ] `safety_snapshot.gate_armed` is always `false`.
+- [ ] `total_phase_count` equals `phases.len()` (8 when ready).
+- [ ] Phase ordering is deterministic (SRH-PH-01 first, SRH-PH-08 last).
+- [ ] All phase IDs use the `SRH-PH-` prefix.
+- [ ] No token (`pat_`) in the serialized result.
+- [ ] No absolute path in the serialized result.
+- [ ] No old or new record ID in the serialized result.
+- [ ] No raw record payload or field values in the serialized result.
+- [ ] No attachment URL in the serialized result.
+- [ ] No `"armed"`, `"enabled"`, `"succeeded"`, `"restoreComplete"`, or `"restoreSuccess"` in any serialized result.
+- [ ] No `"production"` in mode serialization.
+- [ ] `evaluate_write_gate()` returns `Disabled` before and after any harness call.
+- [ ] Run `cargo test -- sandbox_restore_harness::tests` — all tests pass.
