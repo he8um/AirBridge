@@ -1885,3 +1885,56 @@ Record any failures here with a brief description and steps to reproduce.
 - [ ] No `"production"` in mode serialization.
 - [ ] `evaluate_write_gate()` returns `Disabled` before and after any harness call.
 - [ ] Run `cargo test -- sandbox_restore_harness::tests` — all tests pass.
+
+## Sandbox Enablement Readiness Report Checklist (internal module)
+
+### Before testing
+
+- [ ] Confirm `build_sandbox_enablement_readiness_report` is internal only — no Tauri command is registered for it.
+- [ ] Confirm `SandboxEnablementReadinessRequest` has no `token` field, no `output_path` field, no record payload field, no old/new record ID field, no attachment URL field.
+- [ ] Confirm `SandboxEnablementReadinessResult` has no `token`, no full path, no old/new record IDs, no record payload, no raw HTTP body, no attachment URL, no `"armed"` or `"enabled"` or `"succeeded"` status, no `gate_armed: true`, no `writesEnabled: true`, no `readsEnabled: true`.
+- [ ] Confirm no UI execute button or panel calls `build_sandbox_enablement_readiness_report`.
+- [ ] Confirm `SandboxEnablementReadinessStatus` has only `notReady`, `readyButDisabled`, and `blocked` — no `armed`, `enabled`, `succeeded`, `complete`, or `done`.
+- [ ] Confirm `evaluate_write_gate()` is the first call and always returns `Disabled`.
+- [ ] Confirm the report does not arm the gate — `gate_armed` is always `false`.
+- [ ] Confirm the report has exactly 13 items (SERN-01 through SERN-13).
+
+### During testing (Rust unit tests only)
+
+- [ ] All prerequisites satisfied → `readyButDisabled` (gate NOT armed, gate NOT enabled).
+- [ ] `readyButDisabled` result message explicitly says "NOT armed" and "NOT enabled".
+- [ ] `readyButDisabled` result message says future enablement "remains separate pending work".
+- [ ] `sandbox_verification_safe: false` → `notReady`.
+- [ ] `target_empty_safe: false` → `notReady`.
+- [ ] `confirmation_gate_declared: false` → `notReady`.
+- [ ] `write_phase_ordering_safe: false` → `notReady`.
+- [ ] `failure_modes_safe: false` → `notReady`.
+- [ ] `rollback_limitation_safe: false` → `notReady`.
+- [ ] `gate_armed` is `false` in every result.
+- [ ] `writesEnabled` is `false` in every result.
+- [ ] `readsEnabled` is `false` in every result.
+- [ ] `networkReadsAttempted` is `false` in every result.
+- [ ] `networkWritesAttempted` is `false` in every result.
+- [ ] `noChangesMade` is `true` in every result.
+- [ ] `safety_snapshot.write_gate_disabled` is always `true`.
+- [ ] `safety_snapshot.gate_armed` is always `false`.
+- [ ] SERN-01 (write gate default) is `ready` when all prereqs satisfied.
+- [ ] SERN-02 (gate contract eligible) is `ready` when all prereqs satisfied.
+- [ ] SERN-03 (harness readyNotExecuted) is `ready` when all prereqs satisfied.
+- [ ] SERN-04 (orchestrator notExecuted) is `ready` when all prereqs satisfied.
+- [ ] SERN-05 (orchestrator 8 phases) is `ready` when all prereqs satisfied.
+- [ ] SERN-06 through SERN-09 (executor foundations) are `ready` when all prereqs satisfied.
+- [ ] SERN-10 (checkpoint store sanitized) is `ready` when all prereqs satisfied.
+- [ ] SERN-11, SERN-12, SERN-13 (safety invariants) are always `ready`.
+- [ ] `total_item_count` is 13 when all prereqs satisfied.
+- [ ] `ready_item_count` equals 13 when all prereqs satisfied.
+- [ ] Item ordering is deterministic (SERN-01 first, SERN-13 last).
+- [ ] All item IDs use the `SERN-` prefix.
+- [ ] No token (`pat_`) in the serialized result.
+- [ ] No absolute path in the serialized result.
+- [ ] No old or new record ID in the serialized result.
+- [ ] No raw record payload or field values in the serialized result.
+- [ ] No attachment URL in the serialized result.
+- [ ] No `"armed"`, `"enabled"`, `"succeeded"`, `"restoreComplete"`, or `"restoreSuccess"` in any serialized result.
+- [ ] `evaluate_write_gate()` returns `Disabled` before and after any report call.
+- [ ] Run `cargo test -- sandbox_enablement_readiness::tests` — all tests pass.

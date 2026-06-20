@@ -2994,3 +2994,68 @@ These test cases cover the command contract layer: confirmation enforcement, out
 - Steps:
   1. Run `cargo test -- sandbox_restore_harness::tests`.
 - Expected result: All Rust tests pass. `gate_armed` is always `false`. `writesEnabled` is always `false`. `readsEnabled` is always `false`. `noChangesMade` is always `true`. `networkReadsAttempted` is always `false`. `networkWritesAttempted` is always `false`. No token, absolute path, record payload, attachment URL, old/new record ID, `"armed"`, `"enabled"`, `"succeeded"`, or `"restoreSuccess"` appears in any serialized result. Phase ordering is deterministic. No production mode exists. `evaluate_write_gate()` is never modified. Live sandbox E2E restore execution remains pending.
+
+## Sandbox Enablement Readiness Report Tests
+
+**TC-SERN-01: ReadyButDisabled when all prerequisites satisfied**
+
+- Preconditions: Internal module available.
+- Steps:
+  1. Call `build_sandbox_enablement_readiness_report` with all boolean fields `true`.
+- Expected result: Status is `readyButDisabled`. `gate_armed` is `false`. `writesEnabled` is `false`. `readsEnabled` is `false`. `noChangesMade` is `true`. `networkReadsAttempted` is `false`. `networkWritesAttempted` is `false`. `blocked_reason` is absent. `total_item_count` is 13. `ready_item_count` is 13. Message contains "NOT armed", "NOT enabled", and "remains separate pending work".
+
+**TC-SERN-02: NotReady when sandbox verification not safe**
+
+- Preconditions: Internal module available.
+- Steps:
+  1. Call `build_sandbox_enablement_readiness_report` with all fields `true` except `sandbox_verification_safe: false`.
+- Expected result: Status is `notReady`. `blocked_reason` is set. `gate_armed` is `false`.
+
+**TC-SERN-03: NotReady when target not empty**
+
+- Preconditions: Internal module available.
+- Steps:
+  1. Call `build_sandbox_enablement_readiness_report` with all fields `true` except `target_empty_safe: false`.
+- Expected result: Status is `notReady`.
+
+**TC-SERN-04: NotReady when confirmation gate not declared**
+
+- Preconditions: Internal module available.
+- Steps:
+  1. Call `build_sandbox_enablement_readiness_report` with all fields `true` except `confirmation_gate_declared: false`.
+- Expected result: Status is `notReady`.
+
+**TC-SERN-05: NotReady when write phase ordering unsafe**
+
+- Preconditions: Internal module available.
+- Steps:
+  1. Call `build_sandbox_enablement_readiness_report` with all fields `true` except `write_phase_ordering_safe: false`.
+- Expected result: Status is `notReady`.
+
+**TC-SERN-06: NotReady when failure modes unsafe**
+
+- Preconditions: Internal module available.
+- Steps:
+  1. Call `build_sandbox_enablement_readiness_report` with all fields `true` except `failure_modes_safe: false`.
+- Expected result: Status is `notReady`.
+
+**TC-SERN-07: NotReady when rollback limitation unsafe**
+
+- Preconditions: Internal module available.
+- Steps:
+  1. Call `build_sandbox_enablement_readiness_report` with all fields `true` except `rollback_limitation_safe: false`.
+- Expected result: Status is `notReady`.
+
+**TC-SERN-08: Deterministic item ordering**
+
+- Preconditions: Internal module available; all prerequisites satisfied.
+- Steps:
+  1. Call `build_sandbox_enablement_readiness_report` twice with identical inputs.
+- Expected result: Both results have identical item ID ordering. First item is `SERN-01` (write gate default). Last item is `SERN-13` (no sensitive data exposure). All item IDs use the `SERN-` prefix.
+
+**TC-SERN-09: Safety invariants in all result states**
+
+- Preconditions: Any state.
+- Steps:
+  1. Run `cargo test -- sandbox_enablement_readiness::tests`.
+- Expected result: All Rust tests pass. `gate_armed` is always `false`. `writesEnabled` is always `false`. `readsEnabled` is always `false`. `noChangesMade` is always `true`. `networkReadsAttempted` is always `false`. `networkWritesAttempted` is always `false`. No token, absolute path, record payload, attachment URL, old/new record ID, `"armed"`, `"enabled"`, `"succeeded"`, or `"restoreSuccess"` appears in any serialized result. Item ordering is deterministic. `evaluate_write_gate()` is never modified. Future sandbox-only gate enablement remains separate pending work.

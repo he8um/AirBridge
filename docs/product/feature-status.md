@@ -210,6 +210,14 @@ The harness evaluates the gate contract (expecting `eligibleButNotArmed`), then 
 
 The harness has three statuses: `notExecuted` (default — mode is `disabled`), `blocked` (prerequisite missing or unsafe), and `readyNotExecuted` (all prerequisites satisfied — not armed, not enabled). Mode variants are `disabled` and `sandboxOnlyDryHarness` — no `production` mode exists. `gate_armed` is always `false`. `writesEnabled` is always `false`. `readsEnabled` is always `false`. `noChangesMade` is always `true`. `networkReadsAttempted` is always `false`. `networkWritesAttempted` is always `false`. No armed, enabled, success, or completed state exists in this module.
 
+### Sandbox Enablement Readiness Report (internal)
+
+The sandbox enablement readiness report (`build_sandbox_enablement_readiness_report` in `restore/sandbox_enablement_readiness.rs`) is an internal Rust module — it is not exposed as a Tauri command and has no UI surface. It composes all existing restore foundation modules (sandbox gate contract, sandbox restore harness, restore orchestrator, schema write executor, record write executor, linked second-pass executor, final validation reader, checkpoint metadata store) to produce a single deterministic read-only diagnostic report. No Airtable API calls are made. No gate is armed. No restore execution is started.
+
+The report evaluates 13 readiness items (SERN-01 through SERN-13) across nine categories: `safetyInvariant`, `gateContract`, `restoreHarness`, `orchestrator`, `schemaExecutor`, `recordExecutor`, `linkedExecutor`, `finalValidationReader`, and `checkpointStore`. Foundation modules are probed with minimal disabled-mode requests. Safety invariant items are declared by the report itself without code calls.
+
+The report has three statuses: `blocked` (write gate not disabled — critical safety violation), `notReady` (one or more items missing or unsafe), and `readyButDisabled` (all 13 items ready — gate NOT armed, NOT enabled). `gate_armed` is always `false`. `writesEnabled` is always `false`. `readsEnabled` is always `false`. `noChangesMade` is always `true`. `networkReadsAttempted` is always `false`. `networkWritesAttempted` is always `false`. No armed, enabled, success, or completed state exists. `readyButDisabled` does NOT arm the gate or enable execution — it is a forward-looking diagnostic status only. Future sandbox-only gate enablement remains separate pending work.
+
 ---
 
 ## Related Documents

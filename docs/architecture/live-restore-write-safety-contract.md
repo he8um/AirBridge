@@ -304,6 +304,24 @@ The sandbox restore harness (`build_sandbox_restore_harness_plan` in `restore/sa
 
 ---
 
+## 19. Sandbox Enablement Readiness Report
+
+The sandbox enablement readiness report (`build_sandbox_enablement_readiness_report` in `restore/sandbox_enablement_readiness.rs`) composes all existing restore foundation modules to produce a deterministic read-only diagnostic. It enforces the following invariants:
+
+- The report never arms the gate and never enables execution. `ReadyButDisabled` is a diagnostic status only — it does not unlock any execution path.
+- `evaluate_write_gate()` is called as the first action and must return `Disabled/DisabledByProductPolicy`. If it does not, the report returns `Blocked` immediately.
+- No Airtable API calls are made under any status.
+- No restore execution, network read, or network write becomes reachable through this module.
+- `gate_armed` is always `false`. `writesEnabled` is always `false`. `readsEnabled` is always `false`. `noChangesMade` is always `true`. `networkReadsAttempted` is always `false`. `networkWritesAttempted` is always `false`.
+- No `Armed`, `Enabled`, `Succeeded`, `Complete`, or `Done` status variant exists.
+- The result contains no token, no full path, no old/new record IDs, no raw record payload, no raw HTTP body, and no attachment URL.
+- 13 readiness items (SERN-01 through SERN-13) are evaluated: each foundation module is probed with a minimal disabled-mode request and the result is recorded in the item list and safety snapshot.
+- Safety invariant items (SERN-01, SERN-10 through SERN-13) are declared by the report itself; foundation probe items (SERN-02 through SERN-09) require the caller to declare all prerequisite booleans true.
+- `ReadyButDisabled` requires all 13 items to be `Ready` or `Warning`. Future sandbox-only gate enablement remains separate pending work.
+- The report is not exposed as a Tauri command and has no UI surface.
+
+---
+
 ## Summary Checklist
 
 Before `evaluate_write_gate()` may return an enabled decision:
