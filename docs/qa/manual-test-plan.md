@@ -3314,6 +3314,68 @@ These test cases cover the command contract layer: confirmation enforcement, out
 
 ---
 
+**TC-SFVA-01: Default disabled mode returns notExecuted**
+
+- Preconditions: Internal module available.
+- Steps:
+  1. Call `build_sandbox_final_validation_adapter` with `mode: disabled`, all prereqs false, all counts zero, `manifest_present: false`.
+- Expected result: Status `notExecuted`. Mode `disabled`. `runtimeExecutionEnabled: false`. `appRuntimeWritesEnabled: false`. `appRuntimeReadsEnabled: false`. `networkReadsAttempted: false`. `networkWritesAttempted: false`. `noChangesMade: true`. No operations. Blocked reason absent.
+
+**TC-SFVA-02: Missing explicit flag returns blocked**
+
+- Preconditions: Internal module available.
+- Steps:
+  1. Call with `mode: sandboxOnlyInternal`, `explicit_internal_validation_sandbox_call_requested: false`, all other prereqs true.
+- Expected result: Status `blocked`. Blocked reason contains `SFVA-CHK-02`. All safety invariants hold.
+
+**TC-SFVA-03: Prerequisite chain propagates correctly**
+
+- Preconditions: Internal module available.
+- Steps:
+  1. Call with arming prereqs failing (e.g. `sandbox_verified: false`). Observe blocked at `SFVA-CHK-04`.
+  2. Call with schema adapter plan blocked. Observe blocked at `SFVA-CHK-07`.
+  3. Call with record adapter plan blocked. Observe blocked at `SFVA-CHK-08`.
+  4. Call with linked adapter plan blocked (e.g. `mapping_coverage_sufficient: false`). Observe blocked at `SFVA-CHK-09`.
+- Expected result: Each failure is blocked at the earliest failed check. Blocked reason identifies the check. All safety invariants hold in all cases.
+
+**TC-SFVA-04: readyForSandboxCall returned when all prerequisites satisfied**
+
+- Preconditions: Internal module available. Simple record plan (1 table, 10 records) and simple schema plan (1 table, 1 field).
+- Steps:
+  1. Call with all prereqs true, explicit flag true, `table_count: 3`, `field_count: 12`, `record_count: 50`, `manifest_present: true`.
+- Expected result: Status `readyForSandboxCall`. Operations contain all 7 descriptor kinds including `manifestChecksumReadDescriptor`. First operation is `schemaCountReadDescriptor`. Last operation is `finalGuardDescriptor`. `runtimeExecutionEnabled: false`. `appRuntimeWritesEnabled: false`. `appRuntimeReadsEnabled: false`. `networkReadsAttempted: false`. `networkWritesAttempted: false`. `noChangesMade: true`. `safety_snapshot.write_gate_disabled: true`.
+
+**TC-SFVA-05: Manifest descriptor absent when manifest_present is false**
+
+- Preconditions: Internal module available.
+- Steps:
+  1. Call with all prereqs true, `manifest_present: false`.
+- Expected result: Status `readyForSandboxCall`. Operations list does NOT contain any `manifestChecksumReadDescriptor`. `finalGuardDescriptor` is still present as the last operation. All other 5 descriptor kinds are present.
+
+**TC-SFVA-06: Operation ordering is deterministic and kinds are valid**
+
+- Preconditions: Internal module available.
+- Steps:
+  1. Call twice with identical inputs.
+  2. Compare operation ID sequences and kinds.
+- Expected result: Sequences are identical. All operation kinds are in the valid set. `SFVA-OP-NNN` prefix used consistently. `schemaCountReadDescriptor` is first; `finalGuardDescriptor` is last.
+
+**TC-SFVA-07: No token/path/payload/raw HTTP/record ID in serialized result**
+
+- Preconditions: Internal module available.
+- Steps:
+  1. Call with all prereqs true and serialize the result to JSON.
+- Expected result: JSON contains no `"token"`, `"apiKey"`, `"pat_"`, `/Users/`, `/home/`, `"fields":{`, `"records":[`, `"body":{`, `"headers":{`, `"oldRecordId"`, `"newRecordId"`, `cdn.airtable.com`, or `"attachmentUrl"`. No `"succeeded"`, `"restoreComplete"`, or `"restoreSuccess"` in JSON. No write operation kinds present. Attachment descriptor note mentions metadata only, no download.
+
+**TC-SFVA-08: Safety invariants in all result states**
+
+- Preconditions: Any state.
+- Steps:
+  1. Run `cargo test -- sandbox_final_validation_adapter::tests`.
+- Expected result: All 47 Rust tests pass. `runtimeExecutionEnabled` is always `false`. `appRuntimeWritesEnabled` is always `false`. `appRuntimeReadsEnabled` is always `false`. `networkReadsAttempted` is always `false`. `networkWritesAttempted` is always `false`. `noChangesMade` is always `true`. `safety_snapshot.write_gate_disabled` is always `true`. Operation ordering is deterministic. No token, absolute path, record payload, raw HTTP, old/new record ID, attachment URL, `"succeeded"`, `"enabled"`, `"executionReady"`, or `"restoreSuccess"` appears in any serialized result. No Tauri command added. No TypeScript/UI surface added. No production adapter wired. `evaluate_write_gate()` is never modified. The result is not persisted globally. Live end-to-end restore execution remains pending separate work.
+
+---
+
 **TC-SSWA-01: Default disabled mode returns notExecuted**
 
 - Preconditions: Internal module available.

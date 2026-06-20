@@ -381,6 +381,20 @@ Before `evaluate_write_gate()` may return an enabled decision:
 
 ---
 
+## Section 25 — Sandbox Final Validation Adapter Boundary
+
+The sandbox final validation adapter boundary (`build_sandbox_final_validation_adapter` in `restore/sandbox_final_validation_adapter.rs`) is an internal Rust module — it is not exposed as a Tauri command and has no UI surface. It builds adapter-boundary read descriptors for final validation operations (`schemaCountReadDescriptor`, `fieldCountReadDescriptor`, `recordCountReadDescriptor`, `linkedFieldCoverageReadDescriptor`, `attachmentMetadataReadDescriptor`, `manifestChecksumReadDescriptor` when a manifest is present, and `finalGuardDescriptor`) without calling the real Airtable client, enabling runtime writes, reads, or execution, or persisting any state globally. No Airtable network calls are made. No schema, first-pass record create, linked update, attachment endpoint, or checkpoint operations appear in the adapter output.
+
+The adapter requires: mode is `sandboxOnlyInternal`, `explicit_internal_validation_sandbox_call_requested` is `true`, the write gate returns `Disabled/DisabledByProductPolicy`, the sandbox gate arming decision returns `armedNotExecutable`, the sandbox restore simulator returns `simulatedNotExecuted`, the final validation reader plan returns `notExecuted`, the schema write adapter returns `readyForSandboxCall`, the record write adapter returns `readyForSandboxCall`, the linked second-pass adapter returns `readyForSandboxCall`, `final_validation_enforcement_safe` is true, and `sandbox_verified` is true. First failure in this ordered chain blocks immediately.
+
+`readyForSandboxCall` does NOT execute any Airtable network call. `runtimeExecutionEnabled` is always `false`. `appRuntimeWritesEnabled` is always `false`. `appRuntimeReadsEnabled` is always `false`. `networkReadsAttempted` is always `false`. `networkWritesAttempted` is always `false`. `noChangesMade` is always `true`. `evaluate_write_gate()` continues to return `Disabled/DisabledByProductPolicy` — the adapter boundary does not change this. No token, full path, record payload, raw HTTP body, old/new record IDs, or attachment URL appears in any result field. No `succeeded`, `complete`, `executionReady`, `enabled`, or `done` status exists. Attachment operations are metadata-only descriptors (filename, MIME type, size) — no binary retrieval and no attachment URL is returned.
+
+The adapter provides a `FinalValidationReadAdapter` trait with two test-only implementations: `NoOpFinalValidationReadAdapter` (always zero) and `MockFinalValidationReadAdapter` (configurable count). No production adapter path is implemented. No real Airtable client is wired into any runtime or app flow.
+
+The adapter has three statuses: `notExecuted` (mode is `disabled` — default), `blocked` (any prerequisite missing or flag not set), and `readyForSandboxCall` (all prerequisites pass, internal flag is true). Live end-to-end restore execution remains pending separate work.
+
+---
+
 ## Section 24 — Sandbox Linked Second-Pass Adapter Boundary
 
 The sandbox linked second-pass adapter boundary (`build_sandbox_linked_second_pass_adapter` in `restore/sandbox_linked_second_pass_adapter.rs`) is an internal Rust module — it is not exposed as a Tauri command and has no UI surface. It builds adapter-boundary operation descriptors for linked second-pass update batches (`linkedUpdateBatchDescriptor`) only, without calling the real Airtable client, enabling runtime writes or reads, or persisting any state globally. No Airtable network calls are made. No schema, first-pass record create, checkpoint, attachment, or skipped-field operations are accepted.

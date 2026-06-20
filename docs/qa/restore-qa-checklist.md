@@ -2145,6 +2145,58 @@ Record any failures here with a brief description and steps to reproduce.
 
 ---
 
+## Sandbox Final Validation Adapter Checklist (internal module, no network call)
+
+> Scope: `restore/sandbox_final_validation_adapter.rs` — internal Rust module only. No Tauri command, no TypeScript, no UI surface.
+
+- [ ] Default disabled-mode request returns `notExecuted`.
+- [ ] Missing explicit internal validation sandbox flag returns `blocked` with `SFVA-CHK-02`.
+- [ ] Disabled mode returns `notExecuted` with mode `disabled`.
+- [ ] Arming prerequisite failure causes `blocked` with `SFVA-CHK-04`.
+- [ ] Simulator prerequisite failure causes `blocked`.
+- [ ] Final validation reader plan blocked causes `blocked` with `SFVA-CHK-06`.
+- [ ] Schema adapter not ready causes `blocked` with `SFVA-CHK-07`.
+- [ ] Record adapter not ready causes `blocked` with `SFVA-CHK-08`.
+- [ ] Linked adapter not ready causes `blocked` with `SFVA-CHK-09`.
+- [ ] Final validation enforcement not safe causes `blocked`.
+- [ ] Sandbox not verified causes `blocked`.
+- [ ] `evaluate_write_gate()` returns `Disabled/DisabledByProductPolicy` before and after any adapter call.
+- [ ] `readyForSandboxCall` returned only when all prerequisites are satisfied and explicit flag is true.
+- [ ] `readyForSandboxCall` has `runtimeExecutionEnabled: false`.
+- [ ] `readyForSandboxCall` has `appRuntimeWritesEnabled: false`.
+- [ ] `readyForSandboxCall` has `appRuntimeReadsEnabled: false`.
+- [ ] `networkReadsAttempted` is `false` in every result.
+- [ ] `networkWritesAttempted` is `false` in every result.
+- [ ] `noChangesMade` is `true` in every result.
+- [ ] Only valid read descriptor operation kinds appear: `schemaCountReadDescriptor`, `fieldCountReadDescriptor`, `recordCountReadDescriptor`, `linkedFieldCoverageReadDescriptor`, `attachmentMetadataReadDescriptor`, `manifestChecksumReadDescriptor`, `finalGuardDescriptor`.
+- [ ] No write operation kind (`createTable`, `createField`, `createRecordBatch`, `linkedUpdateBatchDescriptor`) appears in any result.
+- [ ] `manifestChecksumReadDescriptor` present only when `manifest_present: true`.
+- [ ] `finalGuardDescriptor` is always the last operation.
+- [ ] `schemaCountReadDescriptor` is always the first operation.
+- [ ] Operation ordering is deterministic — two calls with the same input produce the same operation ID sequence.
+- [ ] Attachment descriptor note mentions metadata only — no download, no CDN URL.
+- [ ] No token (`pat_`) in the serialized result.
+- [ ] No absolute path in the serialized result.
+- [ ] No record payload or field values in the serialized result.
+- [ ] No raw HTTP body in the serialized result.
+- [ ] No old or new record ID in the serialized result.
+- [ ] No attachment URL in the serialized result.
+- [ ] No `"succeeded"`, `"enabled"`, `"executionReady"`, `"restoreComplete"`, or `"restoreSuccess"` in any serialized result.
+- [ ] No Tauri command added — module is Rust-internal only.
+- [ ] No TypeScript/UI surface added.
+- [ ] No production adapter path implemented.
+- [ ] `NoOpFinalValidationReadAdapter.planned_operation_count()` returns 0.
+- [ ] `MockFinalValidationReadAdapter` returns configured count without network call.
+- [ ] `safety_snapshot.write_gate_disabled` is always `true`.
+- [ ] `safety_snapshot.runtimeExecutionEnabled` is always `false`.
+- [ ] `safety_snapshot.appRuntimeWritesEnabled` is always `false`.
+- [ ] `safety_snapshot.appRuntimeReadsEnabled` is always `false`.
+- [ ] `safety_snapshot.networkReadsAttempted` is always `false`.
+- [ ] `safety_snapshot.networkWritesAttempted` is always `false`.
+- [ ] Run `cargo test -- sandbox_final_validation_adapter::tests` — all tests pass.
+
+---
+
 ## Sandbox Schema Write Adapter Checklist (internal module, no network call)
 
 > Scope: `restore/sandbox_schema_write_adapter.rs` — internal Rust module only. No Tauri command, no TypeScript, no UI surface.
