@@ -1,7 +1,7 @@
 # Feature Status Matrix
 
 **Version:** 0.1.0-alpha  
-**Updated:** 2026-06-20 (4)
+**Updated:** 2026-06-20 (5)
 
 This matrix describes the current status of each feature area. Status values:
 
@@ -47,6 +47,7 @@ This matrix describes the current status of each feature area. Status values:
 | Schema write execution preview | Dry-run/Blocked only | Available — Restore page | No Airtable writes; no token; no base/table/field created; shows ordered dry-run steps (validate → create tables → direct fields → deferred fields → manual actions → post-check); all prerequisites must be satisfied for `DryRunReady`; `DryRunReady` does NOT enable live writes; `writesEnabled` always false; `noChangesMade` always true; `networkWritesAttempted` always false; live schema writes remain disabled | Enable live schema write execution only after full write-path review and all gates satisfied |
 | Record write execution preview | Dry-run/Blocked only | Available — Restore page | No Airtable writes; no token; no record created/updated/deleted; no raw field values; no raw HTTP; no attachment URL; shows ordered dry-run batches (first-pass create → second-pass linked-update); 13 prerequisites must be satisfied for `DryRunReady`; batch size enforced ≤ 10; `DryRunReady` does NOT enable live record writes; `writesEnabled` always false; `noChangesMade` always true; `networkWritesAttempted` always false; live record writes remain disabled | Enable live record write execution only after full write-path review and all gates satisfied |
 | Live schema write test contract | Disabled | Internal only — no UI surface, no Tauri command, no token, no network call; contract-only readiness layer; `eligibleButNotExecuted` does NOT perform any live call; `contractOnly` always true; live schema write integration test remains separate pending work |
+| Sandbox schema write harness (integration test) | Test-only, ignored by default | Internal only — no UI surface, no Tauri command; `#[ignore]` by default; requires `AIRBRIDGE_ENABLE_LIVE_SCHEMA_WRITE_TEST=true`, `AIRBRIDGE_SANDBOX_AIRTABLE_TOKEN`, `AIRBRIDGE_SANDBOX_TARGET_BASE_ID`; schema-only (`createTable` + primary field); no records, linked updates, attachment, or final validation; `evaluate_write_gate()` remains Disabled before and after; test may leave a sandbox-only table — must only run against disposable sandbox base; no cleanup path | Record writes, linked record updates, final validation reads, attachment handling, and live E2E restore remain pending |
 | Sandbox adapter chain runner | Disabled | Internal only — no UI surface, no Tauri command | No Airtable calls; no token; no network reads or writes; no checkpoint files written; mock/no-op adapters only; write gate always disabled; `noChangesMade` always true; `airtableClientCalled` always false; `mockRunNotExecuted` does NOT enable any live execution path | Live end-to-end sandbox restore execution remains separate pending work |
 | Schema write engine foundation | Disabled | Request plan builder available — internal only | No Airtable writes; no token required; request builders exist; write gate always disabled; `noChangesMade` always true; `networkWritesAttempted` always false | Enable live schema writes when write engine is ready |
 | Record write engine foundation | Disabled | Request plan builder available — internal only | No Airtable writes; no token required; request builders exist; write gate always disabled; `noChangesMade` always true; `networkWritesAttempted` always false; no raw record payloads; old-to-new ID mapping deferred to execution | Enable live record writes when write engine is ready |
@@ -193,6 +194,58 @@ The restore orchestrator foundation (`build_restore_orchestrator_plan` in `resto
 The orchestrator checks twelve prerequisites (ORCH-PRE-01 through ORCH-PRE-12): write gate disabled, mode must be `sandboxOnly`, sandbox environment verified, target empty verified, write phase ordering policy safe, failure modes policy safe, rollback limitation policy safe, live write readiness safe, schema write executor foundation safe, record write executor foundation safe, linked second-pass executor foundation safe, and final validation reader foundation safe. If any prerequisite is missing, the result is `Blocked`. If all prerequisites are satisfied, the result is `NotExecuted` — because `evaluate_write_gate()` currently always returns `Disabled`.
 
 The orchestrator never makes network calls, never returns a token, full path, record payload, raw HTTP body, old/new record IDs, or attachment URL. `writesEnabled` is always `false`, `readsEnabled` is always `false`, `noChangesMade` is always `true`, `networkReadsAttempted` is always `false`, `networkWritesAttempted` is always `false`. No production-target mode exists. No UI execute button is provided. Future sandbox-only gate enablement, live restore execution, and end-to-end restore remain separate pending work.
+
+### Sandbox Schema Write Integration Harness (test-only, ignored by default)
+
+The sandbox schema write integration harness (`tests/live_schema_write_sandbox.rs`) is a Rust integration test file. It is `#[ignore]` by default — normal `cargo test` will not run it.
+
+**What it does (when all env vars are set and `--ignored` is passed):**
+
+1. Verifies `evaluate_write_gate()` returns `Disabled` before the live call.
+2. Verifies the live schema write test contract returns `eligibleButNotExecuted`.
+3. Verifies the sandbox schema write adapter returns `readyForSandboxCall`.
+4. Calls `createTable` via the Airtable Metadata API against the declared sandbox base — creating one table with one `singleLineText` field.
+5. Verifies `evaluate_write_gate()` still returns `Disabled` after the live call.
+6. Asserts the table name matches and the outcome contains no token.
+
+**What it does NOT do:**
+
+- Does not create records.
+- Does not perform linked record updates.
+- Does not call attachment or record endpoints.
+- Does not perform final validation reads.
+- Does not enable app runtime execution, writes, or reads.
+- Does not modify `evaluate_write_gate()` behavior.
+- Does not introduce any UI, Tauri command, or TypeScript path.
+- Does not persist the token.
+- Does not print or assert on the token or base ID value.
+
+**Cleanup:** The test may leave a sandbox-only test table (`airbridge_sandbox_test_schema_write` by default) in the target base. Remove it manually after the run. No automatic cleanup path exists.
+
+**Required environment variables (opt-in only):**
+
+| Variable | Description |
+|----------|-------------|
+| `AIRBRIDGE_ENABLE_LIVE_SCHEMA_WRITE_TEST` | Must be exactly `true` to opt in |
+| `AIRBRIDGE_SANDBOX_AIRTABLE_TOKEN` | Personal access token for the sandbox base |
+| `AIRBRIDGE_SANDBOX_TARGET_BASE_ID` | Airtable base ID of a disposable sandbox base |
+
+**Optional:**
+
+| Variable | Description |
+|----------|-------------|
+| `AIRBRIDGE_SANDBOX_TEST_PREFIX` | Prefix for the test table name (default: `airbridge_sandbox_test`) |
+
+**To run manually:**
+
+```
+AIRBRIDGE_ENABLE_LIVE_SCHEMA_WRITE_TEST=true \
+AIRBRIDGE_SANDBOX_AIRTABLE_TOKEN=your_pat \
+AIRBRIDGE_SANDBOX_TARGET_BASE_ID=appYourSandboxBase \
+cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml \
+  --test live_schema_write_sandbox \
+  -- sandbox_schema_write_creates_table_and_verifies_contract --ignored
+```
 
 ### Live Schema Write Test Contract (internal, contract-only)
 

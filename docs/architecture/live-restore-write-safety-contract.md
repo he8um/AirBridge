@@ -465,6 +465,48 @@ The contract has two statuses: `blocked` (default — any prerequisite missing, 
 
 ---
 
+## Section 28 — Sandbox Schema Write Integration Harness (test-only, ignored by default)
+
+The sandbox schema write integration harness (`tests/live_schema_write_sandbox.rs`) is a Rust integration test file in the `apps/desktop/src-tauri/tests/` directory. It is `#[ignore]` by default — normal `cargo test` will not run it. It requires explicit opt-in via environment variables and the `--ignored` flag.
+
+**Opt-in environment variables:**
+
+| Variable | Requirement |
+|----------|-------------|
+| `AIRBRIDGE_ENABLE_LIVE_SCHEMA_WRITE_TEST` | Must be exactly `"true"` |
+| `AIRBRIDGE_SANDBOX_AIRTABLE_TOKEN` | Must be non-empty; used for Authorization header only; never printed |
+| `AIRBRIDGE_SANDBOX_TARGET_BASE_ID` | Must be non-empty; must be a disposable sandbox base |
+| `AIRBRIDGE_SANDBOX_TEST_PREFIX` | Optional; defaults to `"airbridge_sandbox_test"` |
+
+**Safety invariants enforced by the harness:**
+
+- If any required env var is absent, the test exits immediately without a network call.
+- `evaluate_write_gate()` is verified to return `Disabled/DisabledByProductPolicy` before and after the live call.
+- The live schema write test contract must return `eligibleButNotExecuted` before the live call.
+- The sandbox schema write adapter must return `readyForSandboxCall` before the live call.
+- Only a single `createTable` Metadata API call is made — schema-only.
+- No record endpoints, linked update endpoints, attachment endpoints, or final validation read endpoints are called.
+- No records are created, updated, or deleted.
+- The token is consumed by the HTTP transport and never returned, printed, or asserted on.
+- The base ID is consumed by the API call and never printed or asserted on by value.
+- App runtime execution, reads, and writes remain disabled throughout the test.
+- No Tauri command is introduced. No TypeScript/UI surface is introduced.
+- No raw HTTP body, record ID, raw field values, or attachment URL appears in any assertion.
+
+**Cleanup note:** The harness may leave a test table (`{prefix}_schema_write`) in the sandbox base. Remove it manually after the run. No automatic cleanup path exists. The harness must only be run against a disposable sandbox base.
+
+**What remains pending after this harness:**
+
+- Record writes remain disabled.
+- Linked record updates remain disabled.
+- Final validation reads remain disabled.
+- Attachment handling remains disabled.
+- App runtime restore execution remains disabled.
+- Live end-to-end restore execution remains pending separate work.
+- `evaluate_write_gate()` behavior is unchanged — still returns `Disabled/DisabledByProductPolicy`.
+
+---
+
 ## Related Documents
 
 - [Restore Write Engine Skeleton](./restore-write-engine-skeleton.md)

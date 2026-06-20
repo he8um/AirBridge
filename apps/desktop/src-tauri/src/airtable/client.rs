@@ -4,7 +4,8 @@ use super::errors::{map_http_error, AirtableClientError};
 use super::http::{HttpRequest, HttpTransport};
 use super::models::{
     AccessibleBase, AccessibleBaseSummary, AirtableListRecordsResponse, AirtableRecordFields,
-    AirtableRecordUpdate, AirtableTable, ConnectionCheckOutcome, ListBasesResponse,
+    AirtableRecordUpdate, AirtableTable, ConnectionCheckOutcome, CreateTableOutcome,
+    CreateTableRequest, ListBasesResponse,
 };
 use super::pagination::ListRecordsOptions;
 
@@ -177,6 +178,38 @@ impl<T: HttpTransport> AirtableClient<T> {
 
         Ok(ConnectionCheckOutcome { accessible_bases })
     }
+
+    /// Creates a table in a base via the Airtable Metadata API.
+    ///
+    /// Safety invariants:
+    /// - Never called from app runtime or Tauri commands.
+    /// - Used only in the sandbox schema write integration test.
+    /// - Returns only table id and name — no raw HTTP body, no record payload,
+    ///   no attachment URLs, no old/new record IDs.
+    /// - Token is used for the Authorization header and is not returned.
+    pub fn create_table(
+        &self,
+        base_id: &str,
+        request: &CreateTableRequest,
+    ) -> ClientResult<CreateTableOutcome> {
+        let url = endpoints::create_table_path(base_id);
+        let body_str = serde_json::to_string(request)
+            .map_err(|e| AirtableClientError::MalformedResponse(e.to_string()))?;
+        let body = self.send_post(url, body_str)?;
+
+        #[derive(serde::Deserialize)]
+        struct CreateTableResponse {
+            id: String,
+            name: String,
+        }
+
+        serde_json::from_str::<CreateTableResponse>(&body)
+            .map(|r| CreateTableOutcome {
+                table_id: r.id,
+                table_name: r.name,
+            })
+            .map_err(|e| AirtableClientError::MalformedResponse(e.to_string()))
+    }
 }
 
 #[cfg(test)]
@@ -184,6 +217,7 @@ mod tests {
     use super::*;
     use crate::airtable::auth::AirtableToken;
     use crate::airtable::http::MockHttpTransport;
+    use crate::airtable::models::{CreateTableFieldSpec, CreateTableRequest};
     use crate::airtable::pagination::ListRecordsOptions;
 
     const SENTINEL: &str = "pat_example_client_sentinel_0123456789";
@@ -447,5 +481,65 @@ mod tests {
         // are not performed at this stage.
         let serialized = serde_json::to_string(&outcome).expect("serialize");
         assert!(!serialized.contains("write"));
+    }
+
+    // ── create_table tests ────────────────────────────────────────────────────
+
+    #[test]
+    fn create_table_parses_response() {
+        let body = r#"{"id":"tblNewTable001","name":"Test Table","fields":[]}"#;
+        let transport = MockHttpTransport::ok(body);
+        let client = AirtableClient::new(AirtableToken::new("pat_sentinel"), transport);
+        let req = CreateTableRequest {
+            name: "Test Table".to_string(),
+            description: None,
+            fields: vec![CreateTableFieldSpec {
+                name: "Name".to_string(),
+                field_type: "singleLineText".to_string(),
+            }],
+        };
+        let outcome = client
+            .create_table("appTestBase001", &req)
+            .expect("should succeed");
+        assert_eq!(outcome.table_id, "tblNewTable001");
+        assert_eq!(outcome.table_name, "Test Table");
+    }
+
+    #[test]
+    fn create_table_outcome_does_not_contain_token() {
+        let body = r#"{"id":"tblNewTable001","name":"Test Table","fields":[]}"#;
+        let transport = MockHttpTransport::ok(body);
+        let sentinel = "pat_create_table_sentinel_0123456789";
+        let client = AirtableClient::new(AirtableToken::new(sentinel), transport);
+        let req = CreateTableRequest {
+            name: "Test Table".to_string(),
+            description: None,
+            fields: vec![CreateTableFieldSpec {
+                name: "Name".to_string(),
+                field_type: "singleLineText".to_string(),
+            }],
+        };
+        let outcome = client
+            .create_table("appTestBase001", &req)
+            .expect("should succeed");
+        let serialized = serde_json::to_string(&outcome).expect("serialize");
+        assert!(!serialized.contains(sentinel));
+    }
+
+    #[test]
+    fn create_table_422_maps_to_error() {
+        let transport = MockHttpTransport::with_status(422, r#"{"error":"INVALID_REQUEST_BODY"}"#);
+        let client = AirtableClient::new(AirtableToken::new("pat_sentinel"), transport);
+        let req = CreateTableRequest {
+            name: "Bad".to_string(),
+            description: None,
+            fields: vec![],
+        };
+        let err = client.create_table("appTestBase001", &req).unwrap_err();
+        // 422 is not a 2xx so map_http_error returns TransientServerError(422)
+        assert!(matches!(
+            err,
+            AirtableClientError::TransientServerError(422)
+        ));
     }
 }

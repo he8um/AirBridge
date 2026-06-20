@@ -3601,3 +3601,78 @@ These test cases cover the command contract layer: confirmation enforcement, out
 - Steps:
   1. Run `cargo test -- live_schema_write_test_contract::tests`.
 - Expected result: All Rust tests pass. `contractOnly` is always `true`. `appRuntimeExecutionEnabled` is always `false`. `appRuntimeWritesEnabled` is always `false`. `appRuntimeReadsEnabled` is always `false`. `networkReadsAttempted` is always `false`. `networkWritesAttempted` is always `false`. `noChangesMade` is always `true`. `airtableClientCalled` is always `false`. `safety_snapshot.write_gate_disabled` is always `true`. No token, absolute path, record payload, raw HTTP, old/new record ID, attachment URL, `"succeeded"`, `"enabled"`, `"executionReady"`, or `"restoreSuccess"` appears in any serialized result. No Tauri command added. No TypeScript/UI surface added. No token field in request struct. `evaluate_write_gate()` is never modified. The result is not persisted globally. Message says live schema write integration test remains pending. Record writes, linked record updates, final validation reads, and live end-to-end restore execution remain pending separate work.
+
+## Sandbox Schema Write Integration Harness (test-only, `#[ignore]` by default)
+
+### TC-SSWH-01: Default test suite passes without network calls
+
+- Preconditions: No sandbox env vars set.
+- Steps:
+  1. Run `npm --prefix apps/desktop run rust:test`.
+- Expected result: All 10 non-ignored tests in `live_schema_write_sandbox` pass. `sandbox_schema_write_creates_table_and_verifies_contract` appears as `ignored` in test output. No network calls made. Total Rust test count includes the new tests.
+
+### TC-SSWH-02: Opt-in gate blocks without `AIRBRIDGE_ENABLE_LIVE_SCHEMA_WRITE_TEST=true`
+
+- Preconditions: `AIRBRIDGE_SANDBOX_AIRTABLE_TOKEN` and `AIRBRIDGE_SANDBOX_TARGET_BASE_ID` set; `AIRBRIDGE_ENABLE_LIVE_SCHEMA_WRITE_TEST` absent or not `"true"`.
+- Steps:
+  1. Run `cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml --test live_schema_write_sandbox -- sandbox_schema_write_creates_table_and_verifies_contract --ignored`.
+- Expected result: Test exits immediately without network call.
+
+### TC-SSWH-03: Opt-in gate blocks without token
+
+- Preconditions: `AIRBRIDGE_ENABLE_LIVE_SCHEMA_WRITE_TEST=true` and `AIRBRIDGE_SANDBOX_TARGET_BASE_ID` set; `AIRBRIDGE_SANDBOX_AIRTABLE_TOKEN` absent.
+- Steps:
+  1. Run the ignored test as above.
+- Expected result: Test exits immediately without network call.
+
+### TC-SSWH-04: Opt-in gate blocks without base ID
+
+- Preconditions: `AIRBRIDGE_ENABLE_LIVE_SCHEMA_WRITE_TEST=true` and `AIRBRIDGE_SANDBOX_AIRTABLE_TOKEN` set; `AIRBRIDGE_SANDBOX_TARGET_BASE_ID` absent.
+- Steps:
+  1. Run the ignored test as above.
+- Expected result: Test exits immediately without network call.
+
+### TC-SSWH-05: Contract and adapter verified before live call (internal)
+
+- Preconditions: Any state, no live call needed.
+- Steps:
+  1. Run `cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml --test live_schema_write_sandbox -- contract_eligible_but_not_executed_with_all_prereqs_satisfied`.
+- Expected result: Test passes. Contract returns `eligibleButNotExecuted`. `contractOnly=true`. `airtableClientCalled=false`. `networkWritesAttempted=false`. No network call made.
+
+### TC-SSWH-06: Live createTable call (opt-in, sandbox only)
+
+- Preconditions: All three required env vars set. Target base is a disposable sandbox base.
+- Steps:
+  1. Run: `AIRBRIDGE_ENABLE_LIVE_SCHEMA_WRITE_TEST=true AIRBRIDGE_SANDBOX_AIRTABLE_TOKEN=... AIRBRIDGE_SANDBOX_TARGET_BASE_ID=... cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml --test live_schema_write_sandbox -- sandbox_schema_write_creates_table_and_verifies_contract --ignored`
+- Expected result: Test passes. Table `airbridge_sandbox_test_schema_write` created in sandbox base. `evaluate_write_gate()` returns `Disabled` before and after. Outcome `table_name` matches. Token absent from serialized output. No record, linked update, attachment, or final validation call made.
+
+### TC-SSWH-07: Write gate unchanged after live call
+
+- Preconditions: Same as TC-SSWH-06.
+- Steps:
+  1. Run TC-SSWH-06 to completion.
+  2. Inspect test output — no `evaluate_write_gate` assertion failure.
+- Expected result: `evaluate_write_gate()` returns `Disabled/DisabledByProductPolicy` after the live call. App runtime execution/reads/writes remain disabled.
+
+### TC-SSWH-08: No Tauri command or UI surface added
+
+- Preconditions: Review `lib.rs`, `commands/restore.rs`, and `src/services/` TypeScript files.
+- Steps:
+  1. Search for any new Tauri command handler referencing `live_schema_write_sandbox` or `sandbox_schema_write`.
+- Expected result: No Tauri command added. No TypeScript surface added.
+
+### TC-SSWH-09: Prohibited terms absent from integration test file
+
+- Preconditions: None.
+- Steps:
+  1. Run: `grep -niE 'claude|anthropic|chatgpt|openai|ai-generated|agent|llm|co-authored' apps/desktop/src-tauri/tests/live_schema_write_sandbox.rs`
+- Expected result: No matches.
+
+### TC-SSWH-10: Pending features remain disabled
+
+- Preconditions: None.
+- Steps:
+  1. Verify `evaluate_write_gate()` is unchanged and still returns `Disabled/DisabledByProductPolicy`.
+  2. Verify no record write, linked record update, attachment endpoint, or final validation read path exists in the integration test.
+  3. Verify no restore success state is introduced.
+- Expected result: All pending features (record writes, linked record updates, final validation reads, attachment handling, live E2E restore) remain disabled. `evaluate_write_gate()` unchanged.

@@ -2336,3 +2336,61 @@ Record any failures here with a brief description and steps to reproduce.
 - [ ] `safety_snapshot.airtableClientCalled` is always `false`.
 - [ ] Message mentions "remains separate pending work" — live schema write integration test is clearly labeled pending.
 - [ ] Run `cargo test -- live_schema_write_test_contract::tests` — all tests pass.
+
+## Sandbox Schema Write Integration Harness Checklist (test-only, `#[ignore]` by default)
+
+### Opt-in gate
+- [ ] `AIRBRIDGE_ENABLE_LIVE_SCHEMA_WRITE_TEST` not set → test skips without network call.
+- [ ] `AIRBRIDGE_SANDBOX_AIRTABLE_TOKEN` not set → test skips without network call.
+- [ ] `AIRBRIDGE_SANDBOX_TARGET_BASE_ID` not set → test skips without network call.
+- [ ] Normal `cargo test` does NOT run `sandbox_schema_write_creates_table_and_verifies_contract`.
+- [ ] `sandbox_schema_write_creates_table_and_verifies_contract` appears as `ignored` in default test output.
+
+### Default suite (no env vars required)
+- [ ] `missing_enable_flag_does_not_perform_network_call` passes.
+- [ ] `missing_token_does_not_perform_network_call` passes.
+- [ ] `missing_base_id_does_not_perform_network_call` passes.
+- [ ] `evaluate_write_gate_remains_disabled_without_env_vars` passes.
+- [ ] `contract_eligible_but_not_executed_with_all_prereqs_satisfied` passes.
+- [ ] `schema_adapter_ready_for_sandbox_call_without_live_call` passes.
+- [ ] `adapter_chain_returns_mock_run_not_executed_without_live_call` passes.
+- [ ] `live_schema_write_test_does_not_introduce_tauri_command` passes.
+- [ ] `no_record_endpoint_called_in_default_test_suite` passes.
+- [ ] `no_attachment_endpoint_called_in_default_test_suite` passes.
+
+### Contract verification (pre-live)
+- [ ] Contract returns `eligibleButNotExecuted` before live call.
+- [ ] `contract_only` is `true` in contract result.
+- [ ] `airtableClientCalled` is `false` in contract result.
+- [ ] `networkWritesAttempted` is `false` in contract result.
+- [ ] `appRuntimeExecutionEnabled` is `false` in contract result.
+- [ ] `appRuntimeWritesEnabled` is `false` in contract result.
+- [ ] `appRuntimeReadsEnabled` is `false` in contract result.
+- [ ] Schema adapter returns `readyForSandboxCall` before live call.
+- [ ] `evaluate_write_gate()` returns `Disabled/DisabledByProductPolicy` before live call.
+
+### Live call safety (when harness runs with all env vars)
+- [ ] Only `createTable` (Metadata API) is called — no record endpoints.
+- [ ] No linked update endpoint is called.
+- [ ] No attachment endpoint is called.
+- [ ] No final validation read endpoint is called.
+- [ ] Outcome `table_name` matches requested name.
+- [ ] Outcome `table_id` is non-empty.
+- [ ] Serialized outcome does NOT contain token (`pat_` prefix absent).
+- [ ] `evaluate_write_gate()` returns `Disabled/DisabledByProductPolicy` after live call.
+
+### Safety invariants
+- [ ] No Tauri command added for this harness.
+- [ ] No TypeScript/UI surface added.
+- [ ] No execute/enable/arm/run/validate button added.
+- [ ] No restore success state introduced.
+- [ ] App runtime execution/reads/writes remain disabled.
+- [ ] Record writes remain disabled.
+- [ ] Linked record updates remain disabled.
+- [ ] Final validation reads remain disabled.
+- [ ] Attachment handling remains disabled.
+- [ ] No new dependency added to `Cargo.toml`.
+
+### Ops
+- [ ] Run `npm --prefix apps/desktop run rust:test` — all non-ignored tests pass; `sandbox_schema_write_creates_table_and_verifies_contract` appears as `ignored`.
+- [ ] Run prohibited-terms scan on `tests/live_schema_write_sandbox.rs` — no matches.

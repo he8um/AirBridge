@@ -29,6 +29,14 @@ pub fn update_records_path(base_id: &str, table_id: &str) -> String {
     format!("{API_ROOT}/{base_id}/{table_id}")
 }
 
+/// Returns the path for creating a table in a base (POST, Metadata API).
+///
+/// Used only in the sandbox schema write integration test.
+/// Never called from app runtime or Tauri commands.
+pub fn create_table_path(base_id: &str) -> String {
+    format!("{META_ROOT}/bases/{base_id}/tables")
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

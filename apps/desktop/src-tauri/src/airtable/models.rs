@@ -203,3 +203,45 @@ pub struct BaseSchemaSummary {
     pub tables: Vec<TableSchemaSummary>,
     pub compatibility: SchemaCompatibilitySummary,
 }
+
+// ── Sandbox schema write models ────────────────────────────────────────────
+
+/// Minimal request body for creating a table via the Airtable Metadata API.
+///
+/// Used only in the sandbox schema write integration test.
+/// Never contains a token, record payload, attachment URL, or raw HTTP body.
+/// Never called from app runtime or Tauri commands.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CreateTableRequest {
+    pub name: String,
+    pub description: Option<String>,
+    pub fields: Vec<CreateTableFieldSpec>,
+}
+
+/// Minimal field spec within a `CreateTableRequest`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CreateTableFieldSpec {
+    pub name: String,
+    #[serde(rename = "type")]
+    pub field_type: String,
+}
+
+/// Outcome of a `create_table` call.
+///
+/// Safety properties:
+/// - No token field.
+/// - No raw HTTP response body.
+/// - No record IDs.
+/// - No attachment URLs.
+/// - Does not expose the new table's full field list (only name and id).
+/// - Never returned to UI or Tauri commands.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CreateTableOutcome {
+    /// The new table's Airtable-assigned ID.
+    pub table_id: String,
+    /// The name provided in the request.
+    pub table_name: String,
+}
