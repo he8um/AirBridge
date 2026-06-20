@@ -340,6 +340,25 @@ The sandbox gate arming model (`build_sandbox_gate_arming_decision` in `restore/
 
 ---
 
+## 21. Sandbox Restore Simulator
+
+The sandbox restore simulator (`run_sandbox_restore_simulator` in `restore/sandbox_restore_simulator.rs`) exercises the 8-phase restore sequence in memory only. It enforces the following invariants:
+
+- The simulator never calls the real Airtable client (reads or writes).
+- The simulator never writes checkpoint files to disk.
+- The simulator never arms the gate globally — `gate_armed` (runtime/global) is always `false`.
+- The simulator never enables execution, writes, or reads.
+- The simulator never changes `evaluate_write_gate()` behavior.
+- The result is not stored globally, not persisted, and not reachable from UI, TypeScript, or any Tauri command.
+- `executionEnabled` is always `false`. `writesEnabled` is always `false`. `readsEnabled` is always `false`. `noChangesMade` is always `true`. `networkReadsAttempted` is always `false`. `networkWritesAttempted` is always `false`. `airtableClientCalled` is always `false`. `checkpointFileWritten` is always `false`.
+- All 8 phases are represented as in-memory descriptors: schema executor (SRS-PH-01), schema checkpoint (SRS-PH-02, skipped), record executor (SRS-PH-03), record checkpoint (SRS-PH-04, skipped), linked second-pass executor (SRS-PH-05), linked checkpoint (SRS-PH-06, skipped), final validation reader (SRS-PH-07), final guard (SRS-PH-08).
+- Phases use `simulated` or `skipped` status — no `succeeded`, `completed`, or `done` status variant exists.
+- Prerequisites: `explicit_internal_simulation_requested: true`, mode `sandboxOnlyInternalSimulation`, arming decision `armedNotExecutable`, harness `readyNotExecuted`, orchestrator `notExecuted`.
+- The result contains no token, no full path, no old/new record IDs, no raw record payload, no raw HTTP body, and no attachment URL.
+- Live sandbox E2E restore execution remains separate pending work.
+
+---
+
 ## Summary Checklist
 
 Before `evaluate_write_gate()` may return an enabled decision:

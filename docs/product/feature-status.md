@@ -226,6 +226,14 @@ The arming decision returns `armedNotExecutable` only when all prerequisites are
 
 The model has two statuses: `blocked` (default — any prerequisite missing, flag not set, or mode disabled) and `armedNotExecutable` (all prerequisites pass, internal flag is true). `executionEnabled` is always `false`. `writesEnabled` is always `false`. `readsEnabled` is always `false`. `noChangesMade` is always `true`. `networkReadsAttempted` is always `false`. `networkWritesAttempted` is always `false`. No `enabled`, `succeeded`, `complete`, `executionReady`, or `done` status exists. Live sandbox E2E restore execution remains separate pending work.
 
+### Sandbox Restore Simulator (internal, in-memory only)
+
+The sandbox restore simulator (`run_sandbox_restore_simulator` in `restore/sandbox_restore_simulator.rs`) is an internal Rust module — it is not exposed as a Tauri command and has no UI surface. It exercises the 8-phase restore sequence entirely in memory using mock/descriptor phases, without calling the real Airtable client, writing checkpoint files to disk, or enabling any live execution path. No Airtable API calls are made. No files are written. The result is not stored globally.
+
+The simulator requires the sandbox gate arming decision to return `armedNotExecutable`, the harness to return `readyNotExecuted`, and the orchestrator to return `notExecuted`. When all prerequisites pass, it returns `simulatedNotExecuted` with all 8 phases marked `simulated` or `skipped` (checkpoint boundaries). The ephemeral arming decision seen during the run is noted in `ephemeral_armed_decision_seen` — this does NOT reflect a global armed state.
+
+The simulator has two statuses: `blocked` (any prerequisite missing, flag not set, or mode disabled) and `simulatedNotExecuted` (all prerequisites pass). `gate_armed` (runtime/global) is always `false`. `executionEnabled` is always `false`. `writesEnabled` is always `false`. `readsEnabled` is always `false`. `noChangesMade` is always `true`. `networkReadsAttempted` is always `false`. `networkWritesAttempted` is always `false`. `airtableClientCalled` is always `false`. `checkpointFileWritten` is always `false`. No `succeeded`, `complete`, `executionReady`, `enabled`, or `done` status exists. Live sandbox E2E restore execution remains separate pending work.
+
 ---
 
 ## Related Documents

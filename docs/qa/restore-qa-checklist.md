@@ -1992,3 +1992,59 @@ Record any failures here with a brief description and steps to reproduce.
 - [ ] No attachment URL in the serialized result.
 - [ ] No `"enabled"`, `"succeeded"`, `"executionReady"`, `"restoreComplete"`, or `"restoreSuccess"` in any serialized result.
 - [ ] Run `cargo test -- sandbox_gate_arming::tests` — all tests pass.
+
+## Sandbox Restore Simulator Checklist (internal module, in-memory only)
+
+### Before testing
+
+- [ ] Confirm `run_sandbox_restore_simulator` is internal only — no Tauri command is registered for it.
+- [ ] Confirm `SandboxRestoreSimulatorRequest` has no `token` field, no `output_path` field, no record payload field, no old/new record ID field, no attachment URL field.
+- [ ] Confirm `SandboxRestoreSimulatorResult` has no `token`, no full path, no old/new record IDs, no record payload, no raw HTTP body, no attachment URL, no `"succeeded"` or `"executionReady"` or `"enabled"` status, no `executionEnabled: true`, no `writesEnabled: true`, no `readsEnabled: true`, no `gateArmed: true` (runtime/global).
+- [ ] Confirm no UI execute button or panel calls `run_sandbox_restore_simulator`.
+- [ ] Confirm `SandboxRestoreSimulatorMode` has only `disabled` and `sandboxOnlyInternalSimulation` — no `production` mode.
+- [ ] Confirm `SandboxRestoreSimulatorStatus` has only `blocked` and `simulatedNotExecuted` — no `succeeded`, `complete`, `executionReady`, `enabled`, or `done`.
+- [ ] Confirm `SandboxRestoreSimulatorPhaseStatus` has no `succeeded`, `complete`, or `done`.
+- [ ] Confirm `evaluate_write_gate()` is never modified by this module.
+- [ ] Confirm the result is not stored globally — each call produces an independent result.
+- [ ] Confirm `airtableClientCalled` is always `false`.
+- [ ] Confirm `checkpointFileWritten` is always `false`.
+
+### During testing (Rust unit tests only)
+
+- [ ] Mode `disabled` returns `blocked` with SRS-CHK-01.
+- [ ] `explicit_internal_simulation_requested: false` returns `blocked` with SRS-CHK-02.
+- [ ] Arming decision `blocked` returns simulator `blocked` with SRS-CHK-04.
+- [ ] Harness `blocked` returns simulator `blocked` with SRS-CHK-05.
+- [ ] Orchestrator `blocked` returns simulator `blocked` with SRS-CHK-06.
+- [ ] All prerequisites satisfied → `simulatedNotExecuted`.
+- [ ] `simulatedNotExecuted` message says "NOT armed", "NOT enabled", "No Airtable calls were made", "remains separate pending work".
+- [ ] `total_phase_count` is 8 when `simulatedNotExecuted`.
+- [ ] All 8 phases have `SRS-PH-` prefix.
+- [ ] First phase is `SRS-PH-01` (schema write executor).
+- [ ] Last phase is `SRS-PH-08` (final guard).
+- [ ] Checkpoint phases (SRS-PH-02, SRS-PH-04, SRS-PH-06) are `skipped`.
+- [ ] Executor/guard phases (SRS-PH-01, SRS-PH-03, SRS-PH-05, SRS-PH-07, SRS-PH-08) are `simulated`.
+- [ ] Phase ordering is deterministic.
+- [ ] `total_phase_count` equals `phases.len()`.
+- [ ] `gate_armed` (runtime/global) is `false` in every result.
+- [ ] `ephemeral_armed_decision_seen` is `true` only when all prerequisites pass.
+- [ ] `executionEnabled` is `false` in every result.
+- [ ] `writesEnabled` is `false` in every result.
+- [ ] `readsEnabled` is `false` in every result.
+- [ ] `networkReadsAttempted` is `false` in every result.
+- [ ] `networkWritesAttempted` is `false` in every result.
+- [ ] `noChangesMade` is `true` in every result.
+- [ ] `airtableClientCalled` is `false` in every result.
+- [ ] `checkpointFileWritten` is `false` in every result.
+- [ ] `safety_snapshot.write_gate_disabled` is always `true`.
+- [ ] `safety_snapshot.gate_armed` is always `false`.
+- [ ] `safety_snapshot.execution_enabled` is always `false`.
+- [ ] `evaluate_write_gate()` returns `Disabled` before and after any simulator call.
+- [ ] Two independent calls produce independent results — no global state is shared.
+- [ ] No token (`pat_`) in the serialized result.
+- [ ] No absolute path in the serialized result.
+- [ ] No old or new record ID in the serialized result.
+- [ ] No raw record payload or field values in the serialized result.
+- [ ] No attachment URL in the serialized result.
+- [ ] No `"succeeded"`, `"enabled"`, `"executionReady"`, `"restoreComplete"`, or `"restoreSuccess"` in any serialized result.
+- [ ] Run `cargo test -- sandbox_restore_simulator::tests` — all tests pass.

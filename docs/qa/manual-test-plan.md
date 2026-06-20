@@ -3119,3 +3119,63 @@ These test cases cover the command contract layer: confirmation enforcement, out
 - Steps:
   1. Run `cargo test -- sandbox_gate_arming::tests`.
 - Expected result: All Rust tests pass. `executionEnabled` is always `false`. `writesEnabled` is always `false`. `readsEnabled` is always `false`. `noChangesMade` is always `true`. `networkReadsAttempted` is always `false`. `networkWritesAttempted` is always `false`. `safety_snapshot.execution_enabled` is always `false`. No token, absolute path, record payload, attachment URL, old/new record ID, `"enabled"`, `"succeeded"`, `"executionReady"`, or `"restoreSuccess"` appears in any serialized result. No production mode exists. `evaluate_write_gate()` is never modified. The decision is not persisted globally. Live sandbox E2E restore execution remains separate pending work.
+
+## Sandbox Restore Simulator Tests
+
+**TC-SRS-01: Blocked when mode is disabled**
+
+- Preconditions: Internal module available.
+- Steps:
+  1. Call `run_sandbox_restore_simulator` with `mode: disabled` and all other fields true.
+- Expected result: Status is `blocked`. `gateArmed` is `false`. `executionEnabled` is `false`. `writesEnabled` is `false`. `readsEnabled` is `false`. `noChangesMade` is `true`. `airtableClientCalled` is `false`. `checkpointFileWritten` is `false`. `blocked_reason` contains `SRS-CHK-01`.
+
+**TC-SRS-02: Blocked when explicit simulation flag missing**
+
+- Preconditions: Internal module available.
+- Steps:
+  1. Call `run_sandbox_restore_simulator` with `mode: sandboxOnlyInternalSimulation`, `explicit_internal_simulation_requested: false`, all other fields true.
+- Expected result: Status is `blocked`. `blocked_reason` contains `SRS-CHK-02`. `gateArmed` is `false`.
+
+**TC-SRS-03: Blocked when arming decision is blocked**
+
+- Preconditions: Internal module available.
+- Steps:
+  1. Call `run_sandbox_restore_simulator` with all fields true except `sandbox_verification_safe: false`.
+- Expected result: Status is `blocked`. `blocked_reason` contains `SRS-CHK-04`.
+
+**TC-SRS-04: SimulatedNotExecuted when all prerequisites satisfied**
+
+- Preconditions: Internal module available.
+- Steps:
+  1. Call `run_sandbox_restore_simulator` with `mode: sandboxOnlyInternalSimulation`, `explicit_internal_simulation_requested: true`, all other prerequisite fields true.
+- Expected result: Status is `simulatedNotExecuted`. `gateArmed` is `false`. `ephemeral_armed_decision_seen` is `true`. `executionEnabled` is `false`. `writesEnabled` is `false`. `readsEnabled` is `false`. `airtableClientCalled` is `false`. `checkpointFileWritten` is `false`. `noChangesMade` is `true`. `total_phase_count` is 8. Message contains "NOT armed", "NOT enabled", "No Airtable calls were made", "remains separate pending work".
+
+**TC-SRS-05: All 8 phases represented with correct statuses**
+
+- Preconditions: Internal module available; all prerequisites satisfied.
+- Steps:
+  1. Call `run_sandbox_restore_simulator` with all prerequisites true; inspect `phases`.
+- Expected result: `phases` has exactly 8 entries. SRS-PH-01 is `simulated`. SRS-PH-02 is `skipped`. SRS-PH-03 is `simulated`. SRS-PH-04 is `skipped`. SRS-PH-05 is `simulated`. SRS-PH-06 is `skipped`. SRS-PH-07 is `simulated`. SRS-PH-08 is `simulated`. No phase has `succeeded`, `complete`, or `done` status.
+
+**TC-SRS-06: evaluate_write_gate unchanged after simulation**
+
+- Preconditions: Internal module available.
+- Steps:
+  1. Call `run_sandbox_restore_simulator` with all prerequisites true — get `simulatedNotExecuted`.
+  2. Call `evaluate_write_gate()`.
+- Expected result: `evaluate_write_gate()` returns `Disabled/DisabledByProductPolicy`. The simulation did not modify runtime gate behavior.
+
+**TC-SRS-07: Simulator result is not persisted globally**
+
+- Preconditions: Internal module available.
+- Steps:
+  1. Call `run_sandbox_restore_simulator` with all prerequisites true — get `simulatedNotExecuted`.
+  2. Call `run_sandbox_restore_simulator` with `mode: disabled`.
+- Expected result: Second call returns `blocked`. No state from the first call persists. Both calls are independent.
+
+**TC-SRS-08: Safety invariants in all result states**
+
+- Preconditions: Any state.
+- Steps:
+  1. Run `cargo test -- sandbox_restore_simulator::tests`.
+- Expected result: All Rust tests pass. `gateArmed` (runtime/global) is always `false`. `executionEnabled` is always `false`. `writesEnabled` is always `false`. `readsEnabled` is always `false`. `noChangesMade` is always `true`. `networkReadsAttempted` is always `false`. `networkWritesAttempted` is always `false`. `airtableClientCalled` is always `false`. `checkpointFileWritten` is always `false`. Phase ordering is deterministic. No token, absolute path, record payload, attachment URL, old/new record ID, `"succeeded"`, `"enabled"`, `"executionReady"`, or `"restoreSuccess"` appears in any serialized result. No production mode exists. `evaluate_write_gate()` is never modified. The result is not persisted globally. Live sandbox E2E restore execution remains separate pending work.
