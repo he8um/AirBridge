@@ -2051,6 +2051,52 @@ Record any failures here with a brief description and steps to reproduce.
 
 ---
 
+## Sandbox Record Write Adapter Checklist (internal module, no network call)
+
+> Scope: `restore/sandbox_record_write_adapter.rs` — internal Rust module only. No Tauri command, no TypeScript, no UI surface.
+
+- [ ] Default disabled-mode request returns `notExecuted`.
+- [ ] Missing explicit internal record sandbox flag returns `blocked`.
+- [ ] Disabled mode returns `notExecuted` with mode `disabled`.
+- [ ] Arming prerequisite failure causes `blocked` with `SRWA-CHK-04`.
+- [ ] Simulator prerequisite failure causes `blocked`.
+- [ ] Record executor blocked plan causes `blocked` with `SRWA-CHK-06`.
+- [ ] Schema adapter not ready causes `blocked` with `SRWA-CHK-07`.
+- [ ] Target base not empty causes `blocked`.
+- [ ] Sandbox not verified causes `blocked`.
+- [ ] `evaluate_write_gate()` returns `Disabled/DisabledByProductPolicy` before and after any adapter call.
+- [ ] `readyForSandboxCall` returned only when all prerequisites are satisfied and explicit flag is true.
+- [ ] `readyForSandboxCall` has `runtimeExecutionEnabled: false`.
+- [ ] `readyForSandboxCall` has `appRuntimeWritesEnabled: false`.
+- [ ] `readyForSandboxCall` has `appRuntimeReadsEnabled: false`.
+- [ ] `networkWritesAttempted` is `false` in every result.
+- [ ] `noChangesMade` is `true` in every result.
+- [ ] Only `createRecordBatchDescriptor` operation kind appears in output.
+- [ ] No schema operation (`createTable`, `createField`) appears in any result.
+- [ ] No linked update operation appears in any result.
+- [ ] No attachment operation appears in any result.
+- [ ] Operation ordering is deterministic — two calls with the same input produce the same operation ID sequence.
+- [ ] No token (`pat_`) in the serialized result.
+- [ ] No absolute path in the serialized result.
+- [ ] No record payload or field values in the serialized result.
+- [ ] No raw HTTP body in the serialized result.
+- [ ] No old or new record ID in the serialized result.
+- [ ] No attachment URL in the serialized result.
+- [ ] No `"succeeded"`, `"enabled"`, `"executionReady"`, `"restoreComplete"`, or `"restoreSuccess"` in any serialized result.
+- [ ] No Tauri command added — module is Rust-internal only.
+- [ ] No TypeScript/UI surface added.
+- [ ] No production adapter path implemented.
+- [ ] `NoOpRecordWriteAdapter.planned_operation_count()` returns 0.
+- [ ] `MockRecordWriteAdapter` returns configured count without network call.
+- [ ] `safety_snapshot.write_gate_disabled` is always `true`.
+- [ ] `safety_snapshot.runtimeExecutionEnabled` is always `false`.
+- [ ] `safety_snapshot.appRuntimeWritesEnabled` is always `false`.
+- [ ] `safety_snapshot.appRuntimeReadsEnabled` is always `false`.
+- [ ] `safety_snapshot.networkWritesAttempted` is always `false`.
+- [ ] Run `cargo test -- sandbox_record_write_adapter::tests` — all tests pass.
+
+---
+
 ## Sandbox Schema Write Adapter Checklist (internal module, no network call)
 
 > Scope: `restore/sandbox_schema_write_adapter.rs` — internal Rust module only. No Tauri command, no TypeScript, no UI surface.
