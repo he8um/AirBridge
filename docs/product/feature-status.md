@@ -234,6 +234,16 @@ The simulator requires the sandbox gate arming decision to return `armedNotExecu
 
 The simulator has two statuses: `blocked` (any prerequisite missing, flag not set, or mode disabled) and `simulatedNotExecuted` (all prerequisites pass). `gate_armed` (runtime/global) is always `false`. `executionEnabled` is always `false`. `writesEnabled` is always `false`. `readsEnabled` is always `false`. `noChangesMade` is always `true`. `networkReadsAttempted` is always `false`. `networkWritesAttempted` is always `false`. `airtableClientCalled` is always `false`. `checkpointFileWritten` is always `false`. No `succeeded`, `complete`, `executionReady`, `enabled`, or `done` status exists. Live sandbox E2E restore execution remains separate pending work.
 
+### Sandbox Schema Write Adapter Boundary (internal, no network call)
+
+The sandbox schema write adapter boundary (`build_sandbox_schema_write_adapter` in `restore/sandbox_schema_write_adapter.rs`) is an internal Rust module — it is not exposed as a Tauri command and has no UI surface. It describes schema write operations (create table descriptor, create field descriptor) as adapter-boundary operation objects, without calling the real Airtable client, enabling runtime writes or reads, or persisting any state globally.
+
+The adapter requires the sandbox gate arming decision to return `armedNotExecutable`, the sandbox restore simulator to return `simulatedNotExecuted`, and the schema write executor plan to return `notExecuted`. When all prerequisites pass and the explicit internal flag is set, it returns `readyForSandboxCall` with operation descriptors scoped to schema operations (createTable and createField) only. Record, linked update, deferred-field, manual-action, and attachment operations are excluded from the adapter boundary.
+
+`readyForSandboxCall` does NOT execute any Airtable network call. `runtimeExecutionEnabled` is always `false`. `appRuntimeWritesEnabled` is always `false`. `appRuntimeReadsEnabled` is always `false`. `networkWritesAttempted` is always `false`. `noChangesMade` is always `true`. `evaluate_write_gate()` continues to return `Disabled/DisabledByProductPolicy`. No token, full path, record payload, raw HTTP body, old/new record IDs, or attachment URL appears in any result field. No production adapter is implemented. The adapter provides a `SchemaWriteAdapter` trait with `NoOpSchemaWriteAdapter` and `MockSchemaWriteAdapter` for test-only use.
+
+The adapter has three statuses: `notExecuted` (default, mode disabled), `blocked` (prerequisite missing or flag not set), and `readyForSandboxCall` (all prerequisites pass). Record writes, linked record updates, final validation reads, attachment handling, and live end-to-end restore execution remain pending separate work.
+
 ---
 
 ## Related Documents

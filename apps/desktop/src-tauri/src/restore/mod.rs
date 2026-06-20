@@ -40,6 +40,7 @@ pub mod sandbox_gate_arming;
 pub mod sandbox_gate_contract;
 pub mod sandbox_restore_harness;
 pub mod sandbox_restore_simulator;
+pub mod sandbox_schema_write_adapter;
 pub mod sandbox_verification;
 pub mod sandbox_write_testing_policy;
 pub mod schema_dependencies;

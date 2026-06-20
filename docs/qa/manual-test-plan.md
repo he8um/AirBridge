@@ -3179,3 +3179,67 @@ These test cases cover the command contract layer: confirmation enforcement, out
 - Steps:
   1. Run `cargo test -- sandbox_restore_simulator::tests`.
 - Expected result: All Rust tests pass. `gateArmed` (runtime/global) is always `false`. `executionEnabled` is always `false`. `writesEnabled` is always `false`. `readsEnabled` is always `false`. `noChangesMade` is always `true`. `networkReadsAttempted` is always `false`. `networkWritesAttempted` is always `false`. `airtableClientCalled` is always `false`. `checkpointFileWritten` is always `false`. Phase ordering is deterministic. No token, absolute path, record payload, attachment URL, old/new record ID, `"succeeded"`, `"enabled"`, `"executionReady"`, or `"restoreSuccess"` appears in any serialized result. No production mode exists. `evaluate_write_gate()` is never modified. The result is not persisted globally. Live sandbox E2E restore execution remains separate pending work.
+
+---
+
+## Sandbox Schema Write Adapter Test Cases (TC-SSWA-01 through TC-SSWA-08)
+
+> Scope: `restore/sandbox_schema_write_adapter.rs` — internal Rust module only. No Tauri command, no TypeScript, no UI surface.
+
+**TC-SSWA-01: Default disabled mode returns notExecuted**
+
+- Preconditions: Internal module available.
+- Steps:
+  1. Call `build_sandbox_schema_write_adapter` with `mode: disabled`, all prereqs false.
+- Expected result: Status `notExecuted`. Mode `disabled`. `runtimeExecutionEnabled: false`. `appRuntimeWritesEnabled: false`. `appRuntimeReadsEnabled: false`. `networkWritesAttempted: false`. `noChangesMade: true`. No operations. Blocked reason is absent.
+
+**TC-SSWA-02: Missing explicit flag returns blocked**
+
+- Preconditions: Internal module available.
+- Steps:
+  1. Call with `mode: sandboxOnlyInternal`, `explicit_internal_schema_sandbox_call_requested: false`, all other prereqs true.
+- Expected result: Status `blocked`. Blocked reason contains `SSWA-CHK-02`. All safety invariants hold.
+
+**TC-SSWA-03: Prerequisite chain propagates correctly**
+
+- Preconditions: Internal module available.
+- Steps:
+  1. Call with arming prereqs failing (e.g. `sandbox_verified: false`). Observe blocked at SSWA-CHK-04.
+  2. Call with executor plan blocked. Observe blocked at SSWA-CHK-06.
+- Expected result: Each failure is blocked at the earliest failed check. Blocked reason identifies the check. All safety invariants hold in all cases.
+
+**TC-SSWA-04: readyForSandboxCall returned when all prerequisites satisfied**
+
+- Preconditions: Internal module available. Simple schema plan with table + field.
+- Steps:
+  1. Call with all prereqs true, explicit flag true, sandbox plan with 1 table and 1 direct field.
+- Expected result: Status `readyForSandboxCall`. Operations contain `createTableDescriptor` and `createFieldDescriptor`. No other operation kinds present. `runtimeExecutionEnabled: false`. `appRuntimeWritesEnabled: false`. `appRuntimeReadsEnabled: false`. `networkWritesAttempted: false`. `noChangesMade: true`. `safety_snapshot.write_gate_disabled: true`.
+
+**TC-SSWA-05: Only schema operations appear — record, linked, attachment excluded**
+
+- Preconditions: Internal module available. Schema plan containing deferred-linked and manual-action operations.
+- Steps:
+  1. Call with a plan that includes deferred linked fields and manual-action fields.
+- Expected result: `operations` list contains only `createTableDescriptor` and `createFieldDescriptor`. No `deferLinkedField`, `manualAction`, `createRecord`, `updateRecord`, `linkedUpdate`, or attachment operation kinds appear. Serialized JSON contains no `"attachment"`, `"linkedUpdate"`, `"createRecord"`, or `"records"` keys.
+
+**TC-SSWA-06: Operation ordering is deterministic**
+
+- Preconditions: Internal module available.
+- Steps:
+  1. Call twice with identical inputs.
+  2. Compare operation ID sequences.
+- Expected result: Sequences are identical. Table descriptors precede field descriptors in both calls. `SSWA-OP-NNN` prefix used consistently.
+
+**TC-SSWA-07: No token/path/payload/raw HTTP/record ID in serialized result**
+
+- Preconditions: Internal module available.
+- Steps:
+  1. Call with all prereqs true and serialize the result to JSON.
+- Expected result: JSON contains no `"token"`, `"apiKey"`, `"pat_"`, `/Users/`, `/home/`, `"fields":{`, `"records":[`, `"body":{`, `"headers":{`, `"oldRecordId"`, `"newRecordId"`, `"rec`, `cdn.airtable.com`, or `"attachmentUrl"`. No `"succeeded"`, `"restoreComplete"`, or `"restoreSuccess"` in JSON.
+
+**TC-SSWA-08: Safety invariants in all result states**
+
+- Preconditions: Any state.
+- Steps:
+  1. Run `cargo test -- sandbox_schema_write_adapter::tests`.
+- Expected result: All Rust tests pass. `runtimeExecutionEnabled` is always `false`. `appRuntimeWritesEnabled` is always `false`. `appRuntimeReadsEnabled` is always `false`. `networkWritesAttempted` is always `false`. `noChangesMade` is always `true`. `safety_snapshot.write_gate_disabled` is always `true`. Operation ordering is deterministic. No token, absolute path, record payload, raw HTTP, old/new record ID, attachment URL, `"succeeded"`, `"enabled"`, `"executionReady"`, or `"restoreSuccess"` appears in any serialized result. No Tauri command added. No TypeScript/UI surface added. No production adapter wired. `evaluate_write_gate()` is never modified. The result is not persisted globally. Record writes, linked record updates, final validation reads, attachment handling, and live end-to-end restore execution remain pending separate work.

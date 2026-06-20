@@ -381,6 +381,20 @@ Before `evaluate_write_gate()` may return an enabled decision:
 
 ---
 
+## Section 22 — Sandbox Schema Write Adapter Boundary
+
+The sandbox schema write adapter boundary (`build_sandbox_schema_write_adapter` in `restore/sandbox_schema_write_adapter.rs`) is an internal Rust module — it is not exposed as a Tauri command and has no UI surface. It builds adapter-boundary operation descriptors for schema write operations (create table, create field) only, without calling the real Airtable client, enabling runtime writes or reads, or persisting any state globally. No Airtable network calls are made. No record, linked update, or attachment operations are accepted.
+
+The adapter requires the sandbox gate arming decision to return `armedNotExecutable`, the sandbox restore simulator to return `simulatedNotExecuted`, and the schema write executor plan to return `notExecuted`. When all prerequisites pass and the explicit internal flag is set, it returns `readyForSandboxCall` with operation descriptors scoped to schema operations only.
+
+`readyForSandboxCall` does NOT execute any Airtable network call. `runtimeExecutionEnabled` is always `false`. `appRuntimeWritesEnabled` is always `false`. `appRuntimeReadsEnabled` is always `false`. `networkWritesAttempted` is always `false`. `noChangesMade` is always `true`. `evaluate_write_gate()` continues to return `Disabled/DisabledByProductPolicy` — the adapter boundary does not change this. No token, full path, record payload, raw HTTP body, old/new record IDs, or attachment URL appears in any result field. No `succeeded`, `complete`, `executionReady`, `enabled`, or `done` status exists.
+
+The adapter provides a `SchemaWriteAdapter` trait with two test-only implementations: `NoOpSchemaWriteAdapter` (always zero) and `MockSchemaWriteAdapter` (configurable count). No production adapter path is implemented. No real Airtable client is wired into any runtime or app flow.
+
+The adapter has three statuses: `notExecuted` (mode is `disabled` — default), `blocked` (any prerequisite missing or flag not set), and `readyForSandboxCall` (all prerequisites pass, internal flag is true). Record writes, linked record updates, final validation reads, attachment handling, and live end-to-end restore execution remain pending separate work.
+
+---
+
 ## Related Documents
 
 - [Restore Write Engine Skeleton](./restore-write-engine-skeleton.md)
