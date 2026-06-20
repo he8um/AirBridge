@@ -2289,3 +2289,50 @@ Record any failures here with a brief description and steps to reproduce.
 - [ ] Two independent calls produce independent results — no shared state.
 - [ ] Message mentions "remains separate pending work" — live execution is clearly labeled pending.
 - [ ] Run `cargo test -- sandbox_adapter_chain_runner::tests` — all tests pass.
+
+---
+
+## Live Schema Write Test Contract Checklist (internal module, contract-only)
+
+> Scope: `restore/live_schema_write_test_contract.rs` — internal Rust module only. No Tauri command, no TypeScript, no UI surface. No live Airtable network call. No token accepted or persisted.
+
+- [ ] Default disabled-mode request returns `blocked`.
+- [ ] Missing explicit internal contract flag returns `blocked` with `LSWTC-PRE-02`.
+- [ ] Schema adapter not ready causes `blocked` with `LSWTC-PRE-04`.
+- [ ] Adapter chain runner not ready causes `blocked` with `LSWTC-PRE-05`.
+- [ ] Any shared prerequisite failure (e.g. `failure_modes_safe=false`) causes `blocked`.
+- [ ] `evaluate_write_gate()` returns `Disabled/DisabledByProductPolicy` before and after any contract call.
+- [ ] `eligibleButNotExecuted` returned only when all eight prerequisites are satisfied and explicit flag is true.
+- [ ] `eligibleButNotExecuted` has `contractOnly: true`.
+- [ ] `eligibleButNotExecuted` has `appRuntimeExecutionEnabled: false`.
+- [ ] `eligibleButNotExecuted` has `appRuntimeWritesEnabled: false`.
+- [ ] `eligibleButNotExecuted` has `appRuntimeReadsEnabled: false`.
+- [ ] `networkReadsAttempted` is `false` in every result.
+- [ ] `networkWritesAttempted` is `false` in every result.
+- [ ] `noChangesMade` is `true` in every result.
+- [ ] `airtableClientCalled` is `false` in every result.
+- [ ] `contract_only` is `true` in every result, including `blocked`.
+- [ ] `totalPrerequisiteCount` is 8 when `eligibleButNotExecuted`.
+- [ ] All 8 prerequisites have status `ready` when `eligibleButNotExecuted`.
+- [ ] Required future-live conditions list is non-empty in every result.
+- [ ] Required future-live conditions list mentions: sandbox-only base, record writes disabled, linked updates disabled, final validation reads disabled.
+- [ ] No token (`pat_`) in the serialized result.
+- [ ] No absolute path in the serialized result.
+- [ ] No record payload or field values in the serialized result.
+- [ ] No raw HTTP body in the serialized result.
+- [ ] No old or new record ID in the serialized result.
+- [ ] No attachment URL in the serialized result.
+- [ ] No `"succeeded"`, `"enabled"`, `"executionReady"`, `"restoreComplete"`, or `"restoreSuccess"` in any serialized result.
+- [ ] No Tauri command added — module is Rust-internal only.
+- [ ] No TypeScript/UI surface added.
+- [ ] No token field in the request struct.
+- [ ] `safety_snapshot.write_gate_disabled` is always `true`.
+- [ ] `safety_snapshot.contractOnly` is always `true`.
+- [ ] `safety_snapshot.appRuntimeExecutionEnabled` is always `false`.
+- [ ] `safety_snapshot.appRuntimeWritesEnabled` is always `false`.
+- [ ] `safety_snapshot.appRuntimeReadsEnabled` is always `false`.
+- [ ] `safety_snapshot.networkReadsAttempted` is always `false`.
+- [ ] `safety_snapshot.networkWritesAttempted` is always `false`.
+- [ ] `safety_snapshot.airtableClientCalled` is always `false`.
+- [ ] Message mentions "remains separate pending work" — live schema write integration test is clearly labeled pending.
+- [ ] Run `cargo test -- live_schema_write_test_contract::tests` — all tests pass.

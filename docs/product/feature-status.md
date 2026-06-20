@@ -1,7 +1,7 @@
 # Feature Status Matrix
 
 **Version:** 0.1.0-alpha  
-**Updated:** 2026-06-20 (3)
+**Updated:** 2026-06-20 (4)
 
 This matrix describes the current status of each feature area. Status values:
 
@@ -46,6 +46,7 @@ This matrix describes the current status of each feature area. Status values:
 | Restore write engine | Disabled (skeleton) | Skeleton preview available — Restore page | No Airtable writes; no token required; all phases disabled; `noChangesMade` always true | Satisfy all gates in live restore write safety contract before enabling |
 | Schema write execution preview | Dry-run/Blocked only | Available — Restore page | No Airtable writes; no token; no base/table/field created; shows ordered dry-run steps (validate → create tables → direct fields → deferred fields → manual actions → post-check); all prerequisites must be satisfied for `DryRunReady`; `DryRunReady` does NOT enable live writes; `writesEnabled` always false; `noChangesMade` always true; `networkWritesAttempted` always false; live schema writes remain disabled | Enable live schema write execution only after full write-path review and all gates satisfied |
 | Record write execution preview | Dry-run/Blocked only | Available — Restore page | No Airtable writes; no token; no record created/updated/deleted; no raw field values; no raw HTTP; no attachment URL; shows ordered dry-run batches (first-pass create → second-pass linked-update); 13 prerequisites must be satisfied for `DryRunReady`; batch size enforced ≤ 10; `DryRunReady` does NOT enable live record writes; `writesEnabled` always false; `noChangesMade` always true; `networkWritesAttempted` always false; live record writes remain disabled | Enable live record write execution only after full write-path review and all gates satisfied |
+| Live schema write test contract | Disabled | Internal only — no UI surface, no Tauri command, no token, no network call; contract-only readiness layer; `eligibleButNotExecuted` does NOT perform any live call; `contractOnly` always true; live schema write integration test remains separate pending work |
 | Sandbox adapter chain runner | Disabled | Internal only — no UI surface, no Tauri command | No Airtable calls; no token; no network reads or writes; no checkpoint files written; mock/no-op adapters only; write gate always disabled; `noChangesMade` always true; `airtableClientCalled` always false; `mockRunNotExecuted` does NOT enable any live execution path | Live end-to-end sandbox restore execution remains separate pending work |
 | Schema write engine foundation | Disabled | Request plan builder available — internal only | No Airtable writes; no token required; request builders exist; write gate always disabled; `noChangesMade` always true; `networkWritesAttempted` always false | Enable live schema writes when write engine is ready |
 | Record write engine foundation | Disabled | Request plan builder available — internal only | No Airtable writes; no token required; request builders exist; write gate always disabled; `noChangesMade` always true; `networkWritesAttempted` always false; no raw record payloads; old-to-new ID mapping deferred to execution | Enable live record writes when write engine is ready |
@@ -192,6 +193,14 @@ The restore orchestrator foundation (`build_restore_orchestrator_plan` in `resto
 The orchestrator checks twelve prerequisites (ORCH-PRE-01 through ORCH-PRE-12): write gate disabled, mode must be `sandboxOnly`, sandbox environment verified, target empty verified, write phase ordering policy safe, failure modes policy safe, rollback limitation policy safe, live write readiness safe, schema write executor foundation safe, record write executor foundation safe, linked second-pass executor foundation safe, and final validation reader foundation safe. If any prerequisite is missing, the result is `Blocked`. If all prerequisites are satisfied, the result is `NotExecuted` — because `evaluate_write_gate()` currently always returns `Disabled`.
 
 The orchestrator never makes network calls, never returns a token, full path, record payload, raw HTTP body, old/new record IDs, or attachment URL. `writesEnabled` is always `false`, `readsEnabled` is always `false`, `noChangesMade` is always `true`, `networkReadsAttempted` is always `false`, `networkWritesAttempted` is always `false`. No production-target mode exists. No UI execute button is provided. Future sandbox-only gate enablement, live restore execution, and end-to-end restore remain separate pending work.
+
+### Live Schema Write Test Contract (internal, contract-only)
+
+The live schema write test contract (`evaluate_live_schema_write_test_contract` in `restore/live_schema_write_test_contract.rs`) is an internal Rust module — it is not exposed as a Tauri command and has no UI surface. It evaluates whether a future live schema write integration test could be attempted, without performing any Airtable network call, without accepting or persisting any token, and without enabling any runtime execution, writes, or reads. No Airtable API calls are made. No checkpoint files are written. The result is not stored globally.
+
+The contract composes all existing sandbox prerequisite modules (schema write adapter, adapter chain runner, gate arming, simulator, enablement readiness) into an ordered 8-prerequisite chain (LSWTC-PRE-01 through LSWTC-PRE-08). It returns `eligibleButNotExecuted` only when all prerequisites pass and the explicit internal flag is set. It also reports required future-live conditions without executing them.
+
+`contract_only` is always `true`. `appRuntimeExecutionEnabled` is always `false`. `appRuntimeWritesEnabled` is always `false`. `appRuntimeReadsEnabled` is always `false`. `noChangesMade` is always `true`. `networkReadsAttempted` is always `false`. `networkWritesAttempted` is always `false`. `airtableClientCalled` is always `false`. The result status is never `succeeded`, `enabled`, or `executionReady`. Mode variants are `disabled` (default) and `sandboxIntegrationCandidate` — no `production` mode exists. The live schema write integration test, record writes, linked record updates, final validation reads, and live end-to-end restore execution all remain pending separate work.
 
 ### Sandbox Adapter Chain Runner (internal, mock/no-op only)
 

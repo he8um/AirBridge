@@ -3524,3 +3524,80 @@ These test cases cover the command contract layer: confirmation enforcement, out
 - Steps:
   1. Run `cargo test -- sandbox_adapter_chain_runner::tests`.
 - Expected result: All Rust tests pass. `runtimeExecutionEnabled` is always `false`. `appRuntimeWritesEnabled` is always `false`. `appRuntimeReadsEnabled` is always `false`. `networkReadsAttempted` is always `false`. `networkWritesAttempted` is always `false`. `noChangesMade` is always `true`. `airtableClientCalled` is always `false`. `safety_snapshot.write_gate_disabled` is always `true`. Phase ordering is deterministic. No token, absolute path, record payload, raw HTTP, old/new record ID, attachment URL, `"succeeded"`, `"enabled"`, `"executionReady"`, or `"restoreSuccess"` appears in any serialized result. No Tauri command added. No TypeScript/UI surface added. No production adapter wired. `evaluate_write_gate()` is never modified. The result is not persisted globally. Message says live execution remains pending. Two independent calls produce independent results with no shared state. Live end-to-end sandbox restore execution remains separate pending work.
+
+---
+
+## Live Schema Write Test Contract (internal, contract-only)
+
+> Scope: `restore/live_schema_write_test_contract.rs` — internal Rust module only. No Tauri command, no TypeScript, no UI surface. No live Airtable network call. No token accepted or persisted.
+
+**TC-LSWTC-01: Disabled mode returns blocked**
+
+- Preconditions: Internal module available.
+- Steps:
+  1. Call `evaluate_live_schema_write_test_contract` with `mode: disabled`, all prereqs false.
+- Expected result: Status `blocked`. Blocked reason contains `LSWTC-PRE-01`. `contractOnly: true`. `appRuntimeExecutionEnabled: false`. `appRuntimeWritesEnabled: false`. `appRuntimeReadsEnabled: false`. `networkReadsAttempted: false`. `networkWritesAttempted: false`. `noChangesMade: true`. `airtableClientCalled: false`. `evaluate_write_gate()` still returns `Disabled`.
+
+**TC-LSWTC-02: Missing explicit flag returns blocked**
+
+- Preconditions: Internal module available.
+- Steps:
+  1. Call with `mode: sandboxIntegrationCandidate`, `explicit_internal_live_schema_test_contract_requested: false`, all other prereqs true.
+- Expected result: Status `blocked`. Blocked reason contains `LSWTC-PRE-02`. All safety invariants hold.
+
+**TC-LSWTC-03: Schema adapter not ready causes blocked**
+
+- Preconditions: Internal module available. Blocked schema plan.
+- Steps:
+  1. Call with a schema plan that is blocked, all other prereqs true.
+- Expected result: Status `blocked`. Blocked reason contains `LSWTC-PRE-04`. All safety invariants hold.
+
+**TC-LSWTC-04: Adapter chain runner not ready causes blocked**
+
+- Preconditions: Internal module available.
+- Steps:
+  1. Call with `mapping_coverage_sufficient: false`, all other prereqs true.
+- Expected result: Status `blocked`. Blocked reason contains `LSWTC-PRE-05`. All safety invariants hold.
+
+**TC-LSWTC-05: Shared prerequisite failure causes blocked**
+
+- Preconditions: Internal module available.
+- Steps:
+  1. Call with `failure_modes_safe: false`, all other prereqs true.
+- Expected result: Status `blocked` (at `LSWTC-PRE-05` or earlier shared probe). All safety invariants hold.
+
+**TC-LSWTC-06: eligibleButNotExecuted when all prerequisites satisfied**
+
+- Preconditions: Internal module available. Simple schema plan + record plan. All prereqs true.
+- Steps:
+  1. Call with all prereqs true, explicit flag true, valid schema plan, valid record plan.
+- Expected result: Status `eligibleButNotExecuted`. Mode `sandboxIntegrationCandidate`. `totalPrerequisiteCount: 8`. All 8 prerequisites status `ready`. `contractOnly: true`. `appRuntimeExecutionEnabled: false`. `appRuntimeWritesEnabled: false`. `appRuntimeReadsEnabled: false`. `networkReadsAttempted: false`. `networkWritesAttempted: false`. `noChangesMade: true`. `airtableClientCalled: false`. `safety_snapshot.write_gate_disabled: true`. `evaluate_write_gate()` still returns `Disabled`.
+
+**TC-LSWTC-07: Required future-live conditions reported**
+
+- Preconditions: Internal module available.
+- Steps:
+  1. Call with all prereqs true. Inspect `required_future_live_conditions`.
+- Expected result: List is non-empty. Contains entries mentioning sandbox-only base, record writes disabled, linked record updates disabled, final validation reads disabled, no UI execution path. List also reported when status is `blocked`.
+
+**TC-LSWTC-08: contract_only always true**
+
+- Preconditions: Any state.
+- Steps:
+  1. Call with all-true prereqs. Check `contract_only` and `safety_snapshot.contract_only`.
+  2. Call with disabled request. Check the same fields.
+- Expected result: Both are `true` in both calls.
+
+**TC-LSWTC-09: No token/path/payload/raw HTTP/record ID in serialized result**
+
+- Preconditions: Internal module available.
+- Steps:
+  1. Call with all prereqs true and serialize the result to JSON.
+- Expected result: JSON contains no `"token"`, `"apiKey"`, `"pat_"`, `/Users/`, `/home/`, `"fields":{`, `"records":[{`, `"body":{`, `"headers":{`, `"oldRecordId"`, `"newRecordId"`, `cdn.airtable.com`, or `"attachmentUrl"`. No `"succeeded"`, `"restoreComplete"`, `"executionReady"`, or `"restoreSuccess"` in JSON.
+
+**TC-LSWTC-10: Safety invariants in all result states**
+
+- Preconditions: Any state.
+- Steps:
+  1. Run `cargo test -- live_schema_write_test_contract::tests`.
+- Expected result: All Rust tests pass. `contractOnly` is always `true`. `appRuntimeExecutionEnabled` is always `false`. `appRuntimeWritesEnabled` is always `false`. `appRuntimeReadsEnabled` is always `false`. `networkReadsAttempted` is always `false`. `networkWritesAttempted` is always `false`. `noChangesMade` is always `true`. `airtableClientCalled` is always `false`. `safety_snapshot.write_gate_disabled` is always `true`. No token, absolute path, record payload, raw HTTP, old/new record ID, attachment URL, `"succeeded"`, `"enabled"`, `"executionReady"`, or `"restoreSuccess"` appears in any serialized result. No Tauri command added. No TypeScript/UI surface added. No token field in request struct. `evaluate_write_gate()` is never modified. The result is not persisted globally. Message says live schema write integration test remains pending. Record writes, linked record updates, final validation reads, and live end-to-end restore execution remain pending separate work.

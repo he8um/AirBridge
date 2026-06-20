@@ -451,6 +451,20 @@ The chain runner has two statuses: `blocked` (default — any prerequisite missi
 
 ---
 
+## Section 27 — Live Schema Write Test Contract (internal, contract-only)
+
+The live schema write test contract (`evaluate_live_schema_write_test_contract` in `restore/live_schema_write_test_contract.rs`) is an internal Rust module — it is not exposed as a Tauri command and has no UI surface. It evaluates whether a future live schema write integration test could be attempted, without performing any Airtable network call, without accepting or persisting any token, and without enabling any runtime execution, writes, or reads. No Airtable API calls are made at any point. No checkpoint files are written. The result is not stored globally.
+
+The contract requires: mode is `sandboxIntegrationCandidate`, `explicit_internal_live_schema_test_contract_requested` is `true`, `evaluate_write_gate()` returns `Disabled/DisabledByProductPolicy`, the sandbox schema write adapter returns `readyForSandboxCall`, the sandbox adapter chain runner returns `mockRunNotExecuted`, the sandbox gate arming decision returns `armedNotExecutable`, the sandbox restore simulator returns `simulatedNotExecuted`, and the sandbox enablement readiness report returns `readyButDisabled`. The first failing prerequisite in this ordered chain (LSWTC-PRE-01 through LSWTC-PRE-08) blocks immediately.
+
+`eligibleButNotExecuted` does NOT perform any Airtable network call. `contract_only` is always `true`. `appRuntimeExecutionEnabled` is always `false`. `appRuntimeWritesEnabled` is always `false`. `appRuntimeReadsEnabled` is always `false`. `networkReadsAttempted` is always `false`. `networkWritesAttempted` is always `false`. `noChangesMade` is always `true`. `airtableClientCalled` is always `false`. `evaluate_write_gate()` continues to return `Disabled/DisabledByProductPolicy` — the contract does not change this. No token, full path, record payload, raw HTTP body, old/new record IDs, or attachment URL appears in any result field. No `succeeded`, `complete`, `executionReady`, `enabled`, or `done` status exists.
+
+The contract reports required future-live conditions without executing them: sandbox-only base required, target base must be empty, explicit test-only credentials required in future task, no UI execution path allowed, only schema operations allowed in the first live phase, record writes remain disabled, linked record updates remain disabled, and final validation reads remain disabled.
+
+The contract has two statuses: `blocked` (default — any prerequisite missing, flag not set, or mode `disabled`) and `eligibleButNotExecuted` (all prerequisites pass, internal flag is true). Mode variants are `disabled` (default) and `sandboxIntegrationCandidate` — no `production` mode exists. The live schema write integration test itself remains separate pending work. Record writes, linked record updates, final validation reads, and live end-to-end restore execution remain pending separate work.
+
+---
+
 ## Related Documents
 
 - [Restore Write Engine Skeleton](./restore-write-engine-skeleton.md)
