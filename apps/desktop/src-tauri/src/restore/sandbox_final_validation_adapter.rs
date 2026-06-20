@@ -195,6 +195,7 @@ pub struct SandboxFinalValidationAdapterRequest {
     pub schema_executor_safe: bool,
     pub checkpoint_store_safe: bool,
     pub record_executor_safe: bool,
+    pub linked_executor_safe: bool,
     pub linked_second_pass_preview_ready: bool,
     pub mapping_checkpoint_preview_ready: bool,
     pub target_base_empty: bool,
@@ -488,7 +489,7 @@ pub fn build_sandbox_final_validation_adapter(
         sandbox_verified: request.sandbox_verified,
         schema_executor_safe: request.schema_executor_safe,
         record_executor_safe: request.record_executor_safe,
-        linked_executor_safe: request.record_executor_safe,
+        linked_executor_safe: request.linked_executor_safe,
         final_validation_preview_ready: request.linked_second_pass_preview_ready,
         final_validation_enforcement_safe: request.final_validation_enforcement_safe,
         sensitive_data_safe: request.sensitive_data_safe,
@@ -1050,6 +1051,7 @@ mod tests {
             schema_executor_safe: true,
             checkpoint_store_safe: true,
             record_executor_safe: true,
+            linked_executor_safe: true,
             linked_second_pass_preview_ready: true,
             mapping_checkpoint_preview_ready: true,
             target_base_empty: true,
@@ -1084,6 +1086,7 @@ mod tests {
             schema_executor_safe: false,
             checkpoint_store_safe: false,
             record_executor_safe: false,
+            linked_executor_safe: false,
             linked_second_pass_preview_ready: false,
             mapping_checkpoint_preview_ready: false,
             target_base_empty: false,
@@ -1221,6 +1224,23 @@ mod tests {
         let result = build_sandbox_final_validation_adapter(&req, &sp, &rp);
         // The arming probe fires first when enforcement_safe is false, so we only
         // assert Blocked status without checking the specific check ID.
+        assert_eq!(result.status, SandboxFinalValidationAdapterStatus::Blocked);
+    }
+
+    // ── linked_executor_safe is distinct from record_executor_safe ───────────
+
+    #[test]
+    fn linked_executor_safe_independent_of_record_executor_safe() {
+        // Verifies that linked_executor_safe is forwarded to the reader probe
+        // independently — not aliased to record_executor_safe.
+        let rp = simple_record_plan();
+        let sp = simple_schema_plan();
+        let mut req = full_request();
+        req.linked_executor_safe = false;
+        req.record_executor_safe = true;
+        let result = build_sandbox_final_validation_adapter(&req, &sp, &rp);
+        // linked_executor_safe=false flows into the reader probe; the reader
+        // probe (via the arming chain) will block.
         assert_eq!(result.status, SandboxFinalValidationAdapterStatus::Blocked);
     }
 
