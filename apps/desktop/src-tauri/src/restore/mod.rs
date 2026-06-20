@@ -35,6 +35,7 @@ pub mod record_write_skeleton;
 pub mod restore_confirmation;
 pub mod restore_orchestrator;
 pub mod rollback_limitation_policy;
+pub mod sandbox_adapter_chain_runner;
 pub mod sandbox_enablement_readiness;
 pub mod sandbox_final_validation_adapter;
 pub mod sandbox_gate_arming;

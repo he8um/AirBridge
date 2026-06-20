@@ -437,6 +437,20 @@ The adapter has three statuses: `notExecuted` (mode is `disabled` — default), 
 
 ---
 
+## Section 26 — Sandbox Adapter Chain Runner (internal, mock/no-op only)
+
+The sandbox adapter chain runner (`run_sandbox_adapter_chain` in `restore/sandbox_adapter_chain_runner.rs`) is an internal Rust module — it is not exposed as a Tauri command and has no UI surface. It composes all four sandbox adapter boundaries in strict order (schema → record → linked → final validation) using mock/no-op adapters only, without calling the real Airtable client, enabling runtime writes, reads, or execution, or persisting any state globally. No Airtable network calls are made. No checkpoint files are written.
+
+The chain runner requires: mode is `mockInternalOnly`, `explicit_internal_mock_chain_requested` is `true`, the write gate returns `Disabled/DisabledByProductPolicy`, the sandbox restore simulator returns `simulatedNotExecuted`, the schema write adapter returns `readyForSandboxCall`, the record write adapter returns `readyForSandboxCall`, the linked second-pass adapter returns `readyForSandboxCall`, and the final validation adapter returns `readyForSandboxCall`. The first failing prerequisite blocks immediately with its check ID (SACR-CHK-01 through SACR-CHK-08).
+
+When all eight prerequisites pass, the runner returns `mockRunNotExecuted` with four phase entries (SACR-PH-01 through SACR-PH-04), each with status `mockObserved` and a safe operation count. The runner reports only safe operation counts per adapter — no raw operation payloads, no record IDs, no token, no path, no raw HTTP body, no attachment URL.
+
+`mockRunNotExecuted` does NOT execute any Airtable network call. `runtimeExecutionEnabled` is always `false`. `appRuntimeWritesEnabled` is always `false`. `appRuntimeReadsEnabled` is always `false`. `networkReadsAttempted` is always `false`. `networkWritesAttempted` is always `false`. `noChangesMade` is always `true`. `airtableClientCalled` is always `false`. `evaluate_write_gate()` continues to return `Disabled/DisabledByProductPolicy` — the chain runner does not change this. No `succeeded`, `complete`, `executionReady`, `enabled`, or `done` status exists. The result is not stored globally and is not reachable from UI, TypeScript, or any Tauri command.
+
+The chain runner has two statuses: `blocked` (default — any prerequisite missing, flag not set, or mode `disabled`) and `mockRunNotExecuted` (all prerequisites pass, internal flag is true). Mode variants are `disabled` (default) and `mockInternalOnly` — no `production` mode exists. Live end-to-end sandbox restore execution remains separate pending work.
+
+---
+
 ## Related Documents
 
 - [Restore Write Engine Skeleton](./restore-write-engine-skeleton.md)

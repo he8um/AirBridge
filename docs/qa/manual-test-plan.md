@@ -3433,3 +3433,94 @@ These test cases cover the command contract layer: confirmation enforcement, out
 - Steps:
   1. Run `cargo test -- sandbox_schema_write_adapter::tests`.
 - Expected result: All Rust tests pass. `runtimeExecutionEnabled` is always `false`. `appRuntimeWritesEnabled` is always `false`. `appRuntimeReadsEnabled` is always `false`. `networkWritesAttempted` is always `false`. `noChangesMade` is always `true`. `safety_snapshot.write_gate_disabled` is always `true`. Operation ordering is deterministic. No token, absolute path, record payload, raw HTTP, old/new record ID, attachment URL, `"succeeded"`, `"enabled"`, `"executionReady"`, or `"restoreSuccess"` appears in any serialized result. No Tauri command added. No TypeScript/UI surface added. No production adapter wired. `evaluate_write_gate()` is never modified. The result is not persisted globally. Record writes, linked record updates, final validation reads, attachment handling, and live end-to-end restore execution remain pending separate work.
+
+---
+
+## Sandbox Adapter Chain Runner (internal, mock/no-op only)
+
+> Scope: `restore/sandbox_adapter_chain_runner.rs` — internal Rust module only. No Tauri command, no TypeScript, no UI surface. No live Airtable network call.
+
+**TC-SACR-01: Disabled mode returns blocked**
+
+- Preconditions: Internal module available.
+- Steps:
+  1. Call `run_sandbox_adapter_chain` with `mode: disabled`, all prereqs false.
+- Expected result: Status `blocked`. Blocked reason contains `SACR-CHK-01`. `runtimeExecutionEnabled: false`. `appRuntimeWritesEnabled: false`. `appRuntimeReadsEnabled: false`. `networkReadsAttempted: false`. `networkWritesAttempted: false`. `noChangesMade: true`. `airtableClientCalled: false`. No phases in the result. `evaluate_write_gate()` still returns `Disabled`.
+
+**TC-SACR-02: Missing explicit flag returns blocked**
+
+- Preconditions: Internal module available.
+- Steps:
+  1. Call with `mode: mockInternalOnly`, `explicit_internal_mock_chain_requested: false`, all other prereqs true.
+- Expected result: Status `blocked`. Blocked reason contains `SACR-CHK-02`. All safety invariants hold.
+
+**TC-SACR-03: Simulator prerequisite failure causes blocked**
+
+- Preconditions: Internal module available.
+- Steps:
+  1. Call with `failure_modes_safe: false` (a prerequisite forwarded to the simulator), all others true.
+- Expected result: Status `blocked`. Blocked reason contains `SACR-CHK-04`. All safety invariants hold.
+
+**TC-SACR-04: Schema adapter not ready causes blocked**
+
+- Preconditions: Internal module available. Blocked schema plan.
+- Steps:
+  1. Call with a schema plan that is blocked (status `Blocked`).
+- Expected result: Status `blocked`. Blocked reason contains `SACR-CHK-05`. All safety invariants hold.
+
+**TC-SACR-05: Record adapter not ready causes blocked**
+
+- Preconditions: Internal module available. Blocked record plan.
+- Steps:
+  1. Call with a record plan that is blocked (status `Blocked`), all other prereqs true.
+- Expected result: Status `blocked`. Blocked reason contains `SACR-CHK-06`. All safety invariants hold.
+
+**TC-SACR-06: Linked adapter not ready causes blocked**
+
+- Preconditions: Internal module available.
+- Steps:
+  1. Call with `mapping_coverage_sufficient: false`, all other prereqs true.
+- Expected result: Status `blocked`. Blocked reason contains `SACR-CHK-07`. All safety invariants hold.
+
+**TC-SACR-07: Final validation adapter not ready causes blocked**
+
+- Preconditions: Internal module available.
+- Steps:
+  1. Call with `linked_executor_safe: false` (causes final validation adapter to block), all other prereqs true.
+- Expected result: Status `blocked`. Blocked reason contains `SACR-CHK-08`. All safety invariants hold.
+
+**TC-SACR-08: mockRunNotExecuted when all prerequisites satisfied**
+
+- Preconditions: Internal module available. Simple schema plan + record plan.
+- Steps:
+  1. Call with all prereqs true, explicit flag true, valid schema plan, valid record plan.
+- Expected result: Status `mockRunNotExecuted`. Mode `mockInternalOnly`. `totalPhaseCount: 4`. Phases in order: SACR-PH-01 (schema), SACR-PH-02 (record), SACR-PH-03 (linked), SACR-PH-04 (final validation). All four phases have status `mockObserved`. `runtimeExecutionEnabled: false`. `appRuntimeWritesEnabled: false`. `appRuntimeReadsEnabled: false`. `networkReadsAttempted: false`. `networkWritesAttempted: false`. `noChangesMade: true`. `airtableClientCalled: false`. `safety_snapshot.write_gate_disabled: true`.
+
+**TC-SACR-09: Phase ordering is deterministic**
+
+- Preconditions: Internal module available.
+- Steps:
+  1. Call twice with identical inputs.
+  2. Compare phase ID sequences.
+- Expected result: Sequences are identical in both calls. Order is always SACR-PH-01, SACR-PH-02, SACR-PH-03, SACR-PH-04.
+
+**TC-SACR-10: Safe operation counts reported without payloads**
+
+- Preconditions: Internal module available.
+- Steps:
+  1. Call with schema plan and record plan that produce non-zero operation counts.
+- Expected result: `schemaOperationCount`, `recordOperationCount`, `linkedOperationCount`, `finalValidationOperationCount` are all non-negative integers. Phase `operationCount` matches corresponding result-level count. No raw operation payloads, record IDs, field values, or HTTP bodies appear in the result.
+
+**TC-SACR-11: No token/path/payload/raw HTTP/record ID in serialized result**
+
+- Preconditions: Internal module available.
+- Steps:
+  1. Call with all prereqs true and serialize the result to JSON.
+- Expected result: JSON contains no `"token"`, `"apiKey"`, `"pat_"`, `/Users/`, `/home/`, `"fields":{`, `"records":[`, `"body":{`, `"headers":{`, `"oldRecordId"`, `"newRecordId"`, `cdn.airtable.com`, or `"attachmentUrl"`. No `"succeeded"`, `"restoreComplete"`, `"executionReady"`, or `"restoreSuccess"` in JSON.
+
+**TC-SACR-12: Safety invariants in all result states**
+
+- Preconditions: Any state.
+- Steps:
+  1. Run `cargo test -- sandbox_adapter_chain_runner::tests`.
+- Expected result: All Rust tests pass. `runtimeExecutionEnabled` is always `false`. `appRuntimeWritesEnabled` is always `false`. `appRuntimeReadsEnabled` is always `false`. `networkReadsAttempted` is always `false`. `networkWritesAttempted` is always `false`. `noChangesMade` is always `true`. `airtableClientCalled` is always `false`. `safety_snapshot.write_gate_disabled` is always `true`. Phase ordering is deterministic. No token, absolute path, record payload, raw HTTP, old/new record ID, attachment URL, `"succeeded"`, `"enabled"`, `"executionReady"`, or `"restoreSuccess"` appears in any serialized result. No Tauri command added. No TypeScript/UI surface added. No production adapter wired. `evaluate_write_gate()` is never modified. The result is not persisted globally. Message says live execution remains pending. Two independent calls produce independent results with no shared state. Live end-to-end sandbox restore execution remains separate pending work.

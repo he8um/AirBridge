@@ -2240,3 +2240,52 @@ Record any failures here with a brief description and steps to reproduce.
 - [ ] `safety_snapshot.appRuntimeReadsEnabled` is always `false`.
 - [ ] `safety_snapshot.networkWritesAttempted` is always `false`.
 - [ ] Run `cargo test -- sandbox_schema_write_adapter::tests` — all tests pass.
+
+---
+
+## Sandbox Adapter Chain Runner Checklist (internal module, mock/no-op only)
+
+> Scope: `restore/sandbox_adapter_chain_runner.rs` — internal Rust module only. No Tauri command, no TypeScript, no UI surface. No live Airtable network call.
+
+- [ ] Default disabled-mode request returns `blocked`.
+- [ ] Missing explicit internal mock chain flag returns `blocked` with `SACR-CHK-02`.
+- [ ] Simulator prerequisite failure causes `blocked` with `SACR-CHK-04`.
+- [ ] Schema adapter not ready causes `blocked` with `SACR-CHK-05`.
+- [ ] Record adapter not ready causes `blocked` with `SACR-CHK-06`.
+- [ ] Linked adapter not ready causes `blocked` with `SACR-CHK-07`.
+- [ ] Final validation adapter not ready causes `blocked` with `SACR-CHK-08`.
+- [ ] `evaluate_write_gate()` returns `Disabled/DisabledByProductPolicy` before and after any runner call.
+- [ ] `mockRunNotExecuted` returned only when all eight prerequisites are satisfied and explicit flag is true.
+- [ ] `mockRunNotExecuted` has `runtimeExecutionEnabled: false`.
+- [ ] `mockRunNotExecuted` has `appRuntimeWritesEnabled: false`.
+- [ ] `mockRunNotExecuted` has `appRuntimeReadsEnabled: false`.
+- [ ] `networkReadsAttempted` is `false` in every result.
+- [ ] `networkWritesAttempted` is `false` in every result.
+- [ ] `noChangesMade` is `true` in every result.
+- [ ] `airtableClientCalled` is `false` in every result.
+- [ ] `totalPhaseCount` is 4 when `mockRunNotExecuted`.
+- [ ] Phase ordering is deterministic — SACR-PH-01, SACR-PH-02, SACR-PH-03, SACR-PH-04.
+- [ ] Phase labels are schema, record, linked, final validation in that order.
+- [ ] All four phases have status `mockObserved` when `mockRunNotExecuted`.
+- [ ] Safe operation counts are reported per phase — no raw payloads.
+- [ ] Phase `operation_count` matches corresponding adapter count field.
+- [ ] No token (`pat_`) in the serialized result.
+- [ ] No absolute path in the serialized result.
+- [ ] No record payload or field values in the serialized result.
+- [ ] No raw HTTP body in the serialized result.
+- [ ] No old or new record ID in the serialized result.
+- [ ] No attachment URL in the serialized result.
+- [ ] No `"succeeded"`, `"enabled"`, `"executionReady"`, `"restoreComplete"`, or `"restoreSuccess"` in any serialized result.
+- [ ] No Tauri command added — module is Rust-internal only.
+- [ ] No TypeScript/UI surface added.
+- [ ] No production adapter path implemented.
+- [ ] `safety_snapshot.write_gate_disabled` is always `true`.
+- [ ] `safety_snapshot.runtimeExecutionEnabled` is always `false`.
+- [ ] `safety_snapshot.appRuntimeWritesEnabled` is always `false`.
+- [ ] `safety_snapshot.appRuntimeReadsEnabled` is always `false`.
+- [ ] `safety_snapshot.networkReadsAttempted` is always `false`.
+- [ ] `safety_snapshot.networkWritesAttempted` is always `false`.
+- [ ] `safety_snapshot.airtableClientCalled` is always `false`.
+- [ ] Two independent calls produce independent results — no shared state.
+- [ ] Message mentions "remains separate pending work" — live execution is clearly labeled pending.
+- [ ] Run `cargo test -- sandbox_adapter_chain_runner::tests` — all tests pass.
