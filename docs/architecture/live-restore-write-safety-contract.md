@@ -381,6 +381,20 @@ Before `evaluate_write_gate()` may return an enabled decision:
 
 ---
 
+## Section 24 — Sandbox Linked Second-Pass Adapter Boundary
+
+The sandbox linked second-pass adapter boundary (`build_sandbox_linked_second_pass_adapter` in `restore/sandbox_linked_second_pass_adapter.rs`) is an internal Rust module — it is not exposed as a Tauri command and has no UI surface. It builds adapter-boundary operation descriptors for linked second-pass update batches (`linkedUpdateBatchDescriptor`) only, without calling the real Airtable client, enabling runtime writes or reads, or persisting any state globally. No Airtable network calls are made. No schema, first-pass record create, checkpoint, attachment, or skipped-field operations are accepted.
+
+The adapter requires the sandbox gate arming decision to return `armedNotExecutable`, the sandbox restore simulator to return `simulatedNotExecuted`, the linked second-pass executor plan to return `notExecuted`, the schema write adapter to return `readyForSandboxCall`, and the record write adapter to return `readyForSandboxCall`. Mapping coverage must also be declared sufficient (without exposing record IDs). When all prerequisites pass and the explicit internal flag is set, it returns `readyForSandboxCall` with batch descriptors covering the declared field summaries only.
+
+`readyForSandboxCall` does NOT execute any Airtable network call. `runtimeExecutionEnabled` is always `false`. `appRuntimeWritesEnabled` is always `false`. `appRuntimeReadsEnabled` is always `false`. `networkWritesAttempted` is always `false`. `noChangesMade` is always `true`. `evaluate_write_gate()` continues to return `Disabled/DisabledByProductPolicy` — the adapter boundary does not change this. No token, full path, record payload, raw HTTP body, old/new record IDs, or attachment URL appears in any result field. No `succeeded`, `complete`, `executionReady`, `enabled`, or `done` status exists.
+
+The adapter provides a `LinkedSecondPassAdapter` trait with two test-only implementations: `NoOpLinkedSecondPassAdapter` (always zero) and `MockLinkedSecondPassAdapter` (configurable count). No production adapter path is implemented. No real Airtable client is wired into any runtime or app flow.
+
+The adapter has three statuses: `notExecuted` (mode is `disabled` — default), `blocked` (any prerequisite missing or flag not set), and `readyForSandboxCall` (all prerequisites pass, internal flag is true). Final validation reads, attachment handling, and live end-to-end restore execution remain pending separate work.
+
+---
+
 ## Section 23 — Sandbox Record Write Adapter Boundary
 
 The sandbox record write adapter boundary (`build_sandbox_record_write_adapter` in `restore/sandbox_record_write_adapter.rs`) is an internal Rust module — it is not exposed as a Tauri command and has no UI surface. It builds adapter-boundary operation descriptors for first-pass record create operations (createRecordBatchDescriptor) only, without calling the real Airtable client, enabling runtime writes or reads, or persisting any state globally. No Airtable network calls are made. No linked update, schema, checkpoint, attachment, or skipped-field operations are accepted.

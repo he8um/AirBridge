@@ -2051,6 +2051,54 @@ Record any failures here with a brief description and steps to reproduce.
 
 ---
 
+## Sandbox Linked Second-Pass Adapter Checklist (internal module, no network call)
+
+> Scope: `restore/sandbox_linked_second_pass_adapter.rs` — internal Rust module only. No Tauri command, no TypeScript, no UI surface.
+
+- [ ] Default disabled-mode request returns `notExecuted`.
+- [ ] Missing explicit internal linked sandbox flag returns `blocked`.
+- [ ] Disabled mode returns `notExecuted` with mode `disabled`.
+- [ ] Arming prerequisite failure causes `blocked` with `SLSPA-CHK-04`.
+- [ ] Simulator prerequisite failure causes `blocked`.
+- [ ] Linked executor blocked causes `blocked` with `SLSPA-CHK-06`.
+- [ ] Schema adapter not ready causes `blocked` with `SLSPA-CHK-07`.
+- [ ] Record adapter not ready causes `blocked` with `SLSPA-CHK-08`.
+- [ ] Insufficient mapping coverage causes `blocked` with `SLSPA-CHK-09`.
+- [ ] Target base not empty causes `blocked`.
+- [ ] Sandbox not verified causes `blocked`.
+- [ ] `evaluate_write_gate()` returns `Disabled/DisabledByProductPolicy` before and after any adapter call.
+- [ ] `readyForSandboxCall` returned only when all prerequisites are satisfied and explicit flag is true.
+- [ ] `readyForSandboxCall` has `runtimeExecutionEnabled: false`.
+- [ ] `readyForSandboxCall` has `appRuntimeWritesEnabled: false`.
+- [ ] `readyForSandboxCall` has `appRuntimeReadsEnabled: false`.
+- [ ] `networkWritesAttempted` is `false` in every result.
+- [ ] `noChangesMade` is `true` in every result.
+- [ ] Only `linkedUpdateBatchDescriptor` operation kind appears in output.
+- [ ] No schema operation (`createTable`, `createField`) appears in any result.
+- [ ] No first-pass record create operation appears in any result.
+- [ ] No attachment operation appears in any result.
+- [ ] Operation ordering is deterministic — two calls with the same input produce the same operation ID sequence.
+- [ ] No token (`pat_`) in the serialized result.
+- [ ] No absolute path in the serialized result.
+- [ ] No record payload or field values in the serialized result.
+- [ ] No raw HTTP body in the serialized result.
+- [ ] No old or new record ID in the serialized result.
+- [ ] No attachment URL in the serialized result.
+- [ ] No `"succeeded"`, `"enabled"`, `"executionReady"`, `"restoreComplete"`, or `"restoreSuccess"` in any serialized result.
+- [ ] No Tauri command added — module is Rust-internal only.
+- [ ] No TypeScript/UI surface added.
+- [ ] No production adapter path implemented.
+- [ ] `NoOpLinkedSecondPassAdapter.planned_operation_count()` returns 0.
+- [ ] `MockLinkedSecondPassAdapter` returns configured count without network call.
+- [ ] `safety_snapshot.write_gate_disabled` is always `true`.
+- [ ] `safety_snapshot.runtimeExecutionEnabled` is always `false`.
+- [ ] `safety_snapshot.appRuntimeWritesEnabled` is always `false`.
+- [ ] `safety_snapshot.appRuntimeReadsEnabled` is always `false`.
+- [ ] `safety_snapshot.networkWritesAttempted` is always `false`.
+- [ ] Run `cargo test -- sandbox_linked_second_pass_adapter::tests` — all tests pass.
+
+---
+
 ## Sandbox Record Write Adapter Checklist (internal module, no network call)
 
 > Scope: `restore/sandbox_record_write_adapter.rs` — internal Rust module only. No Tauri command, no TypeScript, no UI surface.

@@ -3182,6 +3182,73 @@ These test cases cover the command contract layer: confirmation enforcement, out
 
 ---
 
+## Sandbox Linked Second-Pass Adapter Test Cases (TC-SLSPA-01 through TC-SLSPA-08)
+
+> Scope: `restore/sandbox_linked_second_pass_adapter.rs` — internal Rust module only. No Tauri command, no TypeScript, no UI surface.
+
+**TC-SLSPA-01: Default disabled mode returns notExecuted**
+
+- Preconditions: Internal module available (Rust unit tests).
+- Steps:
+  1. Call `build_sandbox_linked_second_pass_adapter` with `mode: disabled`, all flags false.
+- Expected result: Status `notExecuted`. Mode `disabled`. `runtimeExecutionEnabled: false`. `appRuntimeWritesEnabled: false`. `appRuntimeReadsEnabled: false`. `networkWritesAttempted: false`. `noChangesMade: true`. `operations` is empty.
+
+**TC-SLSPA-02: Missing explicit internal linked sandbox flag returns blocked**
+
+- Preconditions: Internal module available.
+- Steps:
+  1. Call with `mode: sandboxOnlyInternal`, `explicit_internal_linked_sandbox_call_requested: false`, all other prereqs true.
+- Expected result: Status `blocked`. Blocked reason contains `SLSPA-CHK-02`. All safety invariants hold.
+
+**TC-SLSPA-03: Prerequisite chain propagates correctly**
+
+- Preconditions: Internal module available.
+- Steps:
+  1. Call with arming prereqs failing (e.g. `failure_modes_safe: false`). Observe blocked.
+  2. Call with linked executor blocked (e.g. `record_executor_safe: false`). Observe blocked at SLSPA-CHK-06.
+  3. Call with schema adapter blocked. Observe blocked at SLSPA-CHK-07.
+  4. Call with record adapter blocked. Observe blocked at SLSPA-CHK-08.
+  5. Call with `mapping_coverage_sufficient: false`. Observe blocked at SLSPA-CHK-09.
+- Expected result: Each failure is blocked at the earliest failed check. Blocked reason identifies the check. All safety invariants hold in all cases.
+
+**TC-SLSPA-04: readyForSandboxCall returned when all prerequisites satisfied**
+
+- Preconditions: Internal module available. Simple field summaries (1 field, 12 records).
+- Steps:
+  1. Call with all prereqs true, explicit flag true.
+- Expected result: Status `readyForSandboxCall`. Operations contain only `linkedUpdateBatchDescriptor`. No other operation kinds present. `runtimeExecutionEnabled: false`. `appRuntimeWritesEnabled: false`. `appRuntimeReadsEnabled: false`. `networkWritesAttempted: false`. `noChangesMade: true`. `safety_snapshot.write_gate_disabled: true`.
+
+**TC-SLSPA-05: Only linked update batch descriptors appear — schema, record create, attachment excluded**
+
+- Preconditions: Internal module available.
+- Steps:
+  1. Call with a field summary list that has at least one field with records.
+- Expected result: `operations` list contains only `linkedUpdateBatchDescriptor`. Serialized JSON contains no `"createTable"`, `"createField"`, `"createRecordBatch"`, `"attachment"`, `"preserveMetadata"`, or `"firstPassCreate"` keys. Old and new record IDs do not appear.
+
+**TC-SLSPA-06: Operation ordering is deterministic**
+
+- Preconditions: Internal module available.
+- Steps:
+  1. Call twice with identical inputs.
+  2. Compare operation ID sequences.
+- Expected result: Sequences are identical. `SLSPA-OP-NNN` prefix used consistently. Field ordering is preserved from `field_summaries`.
+
+**TC-SLSPA-07: No token/path/payload/raw HTTP/record ID in serialized result**
+
+- Preconditions: Internal module available.
+- Steps:
+  1. Call with all prereqs true and serialize the result to JSON.
+- Expected result: JSON contains no `"token"`, `"apiKey"`, `"pat_"`, `/Users/`, `/home/`, `"fields":{`, `"records":[`, `"body":{`, `"headers":{`, `"oldRecordId"`, `"newRecordId"`, `rec_old_`, `rec_new_`, `cdn.airtable.com`, or `"attachmentUrl"`. No `"succeeded"`, `"restoreComplete"`, or `"restoreSuccess"` in JSON.
+
+**TC-SLSPA-08: Safety invariants in all result states**
+
+- Preconditions: Any state.
+- Steps:
+  1. Run `cargo test -- sandbox_linked_second_pass_adapter::tests`.
+- Expected result: All Rust tests pass. `runtimeExecutionEnabled` is always `false`. `appRuntimeWritesEnabled` is always `false`. `appRuntimeReadsEnabled` is always `false`. `networkWritesAttempted` is always `false`. `noChangesMade` is always `true`. `safety_snapshot.write_gate_disabled` is always `true`. Operation ordering is deterministic. No token, absolute path, record payload, raw HTTP, old/new record ID, attachment URL, `"succeeded"`, `"enabled"`, `"executionReady"`, or `"restoreSuccess"` appears in any serialized result. No Tauri command added. No TypeScript/UI surface added. No production adapter wired. `evaluate_write_gate()` is never modified. The result is not persisted globally. Final validation reads, attachment handling, and live end-to-end restore execution remain pending separate work.
+
+---
+
 ## Sandbox Schema Write Adapter Test Cases (TC-SSWA-01 through TC-SSWA-08)
 
 > Scope: `restore/sandbox_schema_write_adapter.rs` — internal Rust module only. No Tauri command, no TypeScript, no UI surface.
