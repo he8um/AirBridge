@@ -218,6 +218,14 @@ The report evaluates 13 readiness items (SERN-01 through SERN-13) across nine ca
 
 The report has three statuses: `blocked` (write gate not disabled — critical safety violation), `notReady` (one or more items missing or unsafe), and `readyButDisabled` (all 13 items ready — gate NOT armed, NOT enabled). `gate_armed` is always `false`. `writesEnabled` is always `false`. `readsEnabled` is always `false`. `noChangesMade` is always `true`. `networkReadsAttempted` is always `false`. `networkWritesAttempted` is always `false`. No armed, enabled, success, or completed state exists. `readyButDisabled` does NOT arm the gate or enable execution — it is a forward-looking diagnostic status only. Future sandbox-only gate enablement remains separate pending work.
 
+### Sandbox Gate Arming Model (internal, not persisted)
+
+The sandbox gate arming model (`build_sandbox_gate_arming_decision` in `restore/sandbox_gate_arming.rs`) is an internal Rust module — it is not exposed as a Tauri command and has no UI surface. It builds an ephemeral arming decision by verifying that the sandbox enablement readiness report returns `readyButDisabled`, the gate contract returns `eligibleButNotArmed`, and the restore harness returns `readyNotExecuted`. No Airtable API calls are made. The decision is not stored globally and does not affect runtime behavior.
+
+The arming decision returns `armedNotExecutable` only when all prerequisites are satisfied and `explicit_internal_sandbox_arming_requested` is `true`. `armedNotExecutable` does NOT enable execution, writes, reads, or network calls. `gate_armed: true` describes the returned decision object only — it does not change `evaluate_write_gate()`, which continues to return `Disabled/DisabledByProductPolicy`. The decision is ephemeral: calling the function again produces a fresh independent result; no state is stored between calls.
+
+The model has two statuses: `blocked` (default — any prerequisite missing, flag not set, or mode disabled) and `armedNotExecutable` (all prerequisites pass, internal flag is true). `executionEnabled` is always `false`. `writesEnabled` is always `false`. `readsEnabled` is always `false`. `noChangesMade` is always `true`. `networkReadsAttempted` is always `false`. `networkWritesAttempted` is always `false`. No `enabled`, `succeeded`, `complete`, `executionReady`, or `done` status exists. Live sandbox E2E restore execution remains separate pending work.
+
 ---
 
 ## Related Documents

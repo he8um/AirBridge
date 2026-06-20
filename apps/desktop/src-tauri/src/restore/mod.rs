@@ -36,6 +36,7 @@ pub mod restore_confirmation;
 pub mod restore_orchestrator;
 pub mod rollback_limitation_policy;
 pub mod sandbox_enablement_readiness;
+pub mod sandbox_gate_arming;
 pub mod sandbox_gate_contract;
 pub mod sandbox_restore_harness;
 pub mod sandbox_verification;

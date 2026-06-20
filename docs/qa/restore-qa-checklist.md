@@ -1938,3 +1938,57 @@ Record any failures here with a brief description and steps to reproduce.
 - [ ] No `"armed"`, `"enabled"`, `"succeeded"`, `"restoreComplete"`, or `"restoreSuccess"` in any serialized result.
 - [ ] `evaluate_write_gate()` returns `Disabled` before and after any report call.
 - [ ] Run `cargo test -- sandbox_enablement_readiness::tests` — all tests pass.
+
+## Sandbox Gate Arming Model Checklist (internal module, not persisted)
+
+### Before testing
+
+- [ ] Confirm `build_sandbox_gate_arming_decision` is internal only — no Tauri command is registered for it.
+- [ ] Confirm `SandboxGateArmingRequest` has no `token` field, no `output_path` field, no record payload field, no old/new record ID field, no attachment URL field.
+- [ ] Confirm `SandboxGateArmingResult` has no `token`, no full path, no old/new record IDs, no record payload, no raw HTTP body, no attachment URL, no `"enabled"` or `"succeeded"` or `"executionReady"` status, no `executionEnabled: true`, no `writesEnabled: true`, no `readsEnabled: true`.
+- [ ] Confirm no UI execute button or panel calls `build_sandbox_gate_arming_decision`.
+- [ ] Confirm `SandboxGateArmingMode` has only `disabled` and `sandboxOnlyInternal` — no `production` mode.
+- [ ] Confirm `SandboxGateArmingStatus` has only `blocked` and `armedNotExecutable` — no `enabled`, `succeeded`, `complete`, `executionReady`, or `done`.
+- [ ] Confirm `evaluate_write_gate()` is never modified by this module.
+- [ ] Confirm the decision is not stored globally — each call produces an independent result.
+- [ ] Confirm `executionEnabled` is always `false`.
+- [ ] Confirm `writesEnabled` is always `false`.
+- [ ] Confirm `readsEnabled` is always `false`.
+
+### During testing (Rust unit tests only)
+
+- [ ] Mode `disabled` returns `blocked`.
+- [ ] `explicit_internal_sandbox_arming_requested: false` returns `blocked` with SGA-CHK-02 reason.
+- [ ] Sandbox verification not safe returns `blocked`.
+- [ ] Target not empty returns `blocked`.
+- [ ] Confirmation gate not declared returns `blocked`.
+- [ ] Write phase ordering unsafe returns `blocked`.
+- [ ] Failure modes unsafe returns `blocked`.
+- [ ] Rollback limitation unsafe returns `blocked`.
+- [ ] Readiness not `readyButDisabled` returns `blocked` with SGA-CHK-04 reason.
+- [ ] All prerequisites satisfied → `armedNotExecutable` (execution NOT enabled, writes NOT enabled, reads NOT enabled).
+- [ ] `armedNotExecutable` result message explicitly says "NOT enabled".
+- [ ] `armedNotExecutable` result message says "not stored globally".
+- [ ] `armedNotExecutable` result message says live execution "remains separate pending work".
+- [ ] `gate_armed` is `true` only when status is `armedNotExecutable`.
+- [ ] `gate_armed` is `false` in every `blocked` result.
+- [ ] `executionEnabled` is `false` in every result.
+- [ ] `writesEnabled` is `false` in every result.
+- [ ] `readsEnabled` is `false` in every result.
+- [ ] `networkReadsAttempted` is `false` in every result.
+- [ ] `networkWritesAttempted` is `false` in every result.
+- [ ] `noChangesMade` is `true` in every result.
+- [ ] `safety_snapshot.write_gate_disabled` is always `true`.
+- [ ] `safety_snapshot.execution_enabled` is always `false`.
+- [ ] `safety_snapshot.writes_enabled` is always `false`.
+- [ ] `safety_snapshot.reads_enabled` is always `false`.
+- [ ] `evaluate_write_gate()` returns `Disabled` before and after any arming call.
+- [ ] Two independent calls produce independent results — no global state is shared.
+- [ ] An `armedNotExecutable` call followed by a `blocked` call — the second call is still `blocked`.
+- [ ] No token (`pat_`) in the serialized result.
+- [ ] No absolute path in the serialized result.
+- [ ] No old or new record ID in the serialized result.
+- [ ] No raw record payload or field values in the serialized result.
+- [ ] No attachment URL in the serialized result.
+- [ ] No `"enabled"`, `"succeeded"`, `"executionReady"`, `"restoreComplete"`, or `"restoreSuccess"` in any serialized result.
+- [ ] Run `cargo test -- sandbox_gate_arming::tests` — all tests pass.

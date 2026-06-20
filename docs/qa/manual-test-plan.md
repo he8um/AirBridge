@@ -3059,3 +3059,63 @@ These test cases cover the command contract layer: confirmation enforcement, out
 - Steps:
   1. Run `cargo test -- sandbox_enablement_readiness::tests`.
 - Expected result: All Rust tests pass. `gate_armed` is always `false`. `writesEnabled` is always `false`. `readsEnabled` is always `false`. `noChangesMade` is always `true`. `networkReadsAttempted` is always `false`. `networkWritesAttempted` is always `false`. No token, absolute path, record payload, attachment URL, old/new record ID, `"armed"`, `"enabled"`, `"succeeded"`, or `"restoreSuccess"` appears in any serialized result. Item ordering is deterministic. `evaluate_write_gate()` is never modified. Future sandbox-only gate enablement remains separate pending work.
+
+## Sandbox Gate Arming Model Tests
+
+**TC-SGA-01: Blocked when mode is disabled**
+
+- Preconditions: Internal module available.
+- Steps:
+  1. Call `build_sandbox_gate_arming_decision` with `mode: disabled` and all other fields true.
+- Expected result: Status is `blocked`. `gate_armed` is `false`. `executionEnabled` is `false`. `writesEnabled` is `false`. `readsEnabled` is `false`. `noChangesMade` is `true`. `networkReadsAttempted` is `false`. `networkWritesAttempted` is `false`. `blocked_reason` is set.
+
+**TC-SGA-02: Blocked when explicit arming flag missing**
+
+- Preconditions: Internal module available.
+- Steps:
+  1. Call `build_sandbox_gate_arming_decision` with `mode: sandboxOnlyInternal`, `explicit_internal_sandbox_arming_requested: false`, all other fields true.
+- Expected result: Status is `blocked`. `blocked_reason` contains `SGA-CHK-02`. `gate_armed` is `false`.
+
+**TC-SGA-03: Blocked when sandbox verification missing**
+
+- Preconditions: Internal module available.
+- Steps:
+  1. Call `build_sandbox_gate_arming_decision` with all fields true except `sandbox_verification_safe: false`.
+- Expected result: Status is `blocked`.
+
+**TC-SGA-04: Blocked when readiness not readyButDisabled**
+
+- Preconditions: Internal module available.
+- Steps:
+  1. Call `build_sandbox_gate_arming_decision` with `sandbox_verification_safe: false`, `target_empty_safe: false`, `confirmation_gate_declared: false`, all other fields true.
+- Expected result: Status is `blocked`. `blocked_reason` contains `SGA-CHK-04`.
+
+**TC-SGA-05: ArmedNotExecutable when all prerequisites satisfied**
+
+- Preconditions: Internal module available.
+- Steps:
+  1. Call `build_sandbox_gate_arming_decision` with `mode: sandboxOnlyInternal`, `explicit_internal_sandbox_arming_requested: true`, all other prerequisite fields true.
+- Expected result: Status is `armedNotExecutable`. `gate_armed` is `true`. `executionEnabled` is `false`. `writesEnabled` is `false`. `readsEnabled` is `false`. `noChangesMade` is `true`. `networkReadsAttempted` is `false`. `networkWritesAttempted` is `false`. `safety_snapshot.write_gate_disabled` is `true`. `safety_snapshot.execution_enabled` is `false`. Message contains "NOT enabled", "not stored globally", "remains separate pending work".
+
+**TC-SGA-06: evaluate_write_gate unchanged after armedNotExecutable**
+
+- Preconditions: Internal module available.
+- Steps:
+  1. Call `build_sandbox_gate_arming_decision` with all prerequisites true — get `armedNotExecutable`.
+  2. Call `evaluate_write_gate()`.
+- Expected result: `evaluate_write_gate()` returns `Disabled/DisabledByProductPolicy`. The arming decision did not modify runtime gate behavior.
+
+**TC-SGA-07: Decision is not persisted globally**
+
+- Preconditions: Internal module available.
+- Steps:
+  1. Call `build_sandbox_gate_arming_decision` with all prerequisites true — get `armedNotExecutable`.
+  2. Call `build_sandbox_gate_arming_decision` with `mode: disabled`.
+- Expected result: Second call returns `blocked`. No state from the first call persists. Both calls are independent.
+
+**TC-SGA-08: Safety invariants in all result states**
+
+- Preconditions: Any state.
+- Steps:
+  1. Run `cargo test -- sandbox_gate_arming::tests`.
+- Expected result: All Rust tests pass. `executionEnabled` is always `false`. `writesEnabled` is always `false`. `readsEnabled` is always `false`. `noChangesMade` is always `true`. `networkReadsAttempted` is always `false`. `networkWritesAttempted` is always `false`. `safety_snapshot.execution_enabled` is always `false`. No token, absolute path, record payload, attachment URL, old/new record ID, `"enabled"`, `"succeeded"`, `"executionReady"`, or `"restoreSuccess"` appears in any serialized result. No production mode exists. `evaluate_write_gate()` is never modified. The decision is not persisted globally. Live sandbox E2E restore execution remains separate pending work.

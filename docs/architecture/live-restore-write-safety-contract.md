@@ -322,6 +322,24 @@ The sandbox enablement readiness report (`build_sandbox_enablement_readiness_rep
 
 ---
 
+## 20. Sandbox Gate Arming Model
+
+The sandbox gate arming model (`build_sandbox_gate_arming_decision` in `restore/sandbox_gate_arming.rs`) provides an internal Rust-unit-test-only path for building an ephemeral arming decision. It enforces the following invariants:
+
+- The arming decision is ephemeral — it is not stored globally, not persisted between calls, and does not affect runtime behavior.
+- The arming decision is not exposed as a Tauri command and has no UI surface. It is only reachable from Rust unit tests.
+- `evaluate_write_gate()` is called as a prerequisite check and must return `Disabled/DisabledByProductPolicy`. If it does not, the result is `Blocked` immediately.
+- `ArmedNotExecutable` does NOT change `evaluate_write_gate()` behavior — it continues to return `Disabled/DisabledByProductPolicy` after any arming call.
+- `ArmedNotExecutable` does NOT unlock any executor, network read path, or network write path.
+- `executionEnabled` is always `false`. `writesEnabled` is always `false`. `readsEnabled` is always `false`. `noChangesMade` is always `true`. `networkReadsAttempted` is always `false`. `networkWritesAttempted` is always `false`.
+- `gate_armed: true` is present in the returned result only — it describes the arming decision object, not a global armed state.
+- No `Enabled`, `Succeeded`, `Complete`, `ExecutionReady`, or `Done` status variant exists.
+- The result contains no token, no full path, no old/new record IDs, no raw record payload, no raw HTTP body, and no attachment URL.
+- Prerequisites: `explicit_internal_sandbox_arming_requested: true`, mode `sandboxOnlyInternal`, all readiness/contract/harness probes pass.
+- Live sandbox E2E restore execution remains separate pending work.
+
+---
+
 ## Summary Checklist
 
 Before `evaluate_write_gate()` may return an enabled decision:
