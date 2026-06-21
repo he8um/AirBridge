@@ -507,6 +507,62 @@ The sandbox schema write integration harness (`tests/live_schema_write_sandbox.r
 
 ---
 
+## Section 29: Internal Live Record Write Test Contract
+
+**Module:** `restore/live_record_write_test_contract.rs`
+**Function:** `evaluate_live_record_write_test_contract`
+**Status:** Contract-only — no Airtable network call, no token, no execution
+
+This module is a contract-only readiness layer that evaluates whether a future live record write integration test could be attempted. It does not perform any record write, schema write, network read, or network write.
+
+**10 prerequisites (LRWTC-PRE-01 through LRWTC-PRE-10):**
+
+| ID | Prerequisite |
+|----|-------------|
+| LRWTC-PRE-01 | Mode is `sandboxIntegrationCandidate` |
+| LRWTC-PRE-02 | `explicit_internal_live_record_test_contract_requested` is true |
+| LRWTC-PRE-03 | `evaluate_write_gate()` returns `Disabled/DisabledByProductPolicy` |
+| LRWTC-PRE-04 | Live schema write test contract returns `EligibleButNotExecuted` |
+| LRWTC-PRE-05 | Sandbox record write adapter returns `ReadyForSandboxCall` |
+| LRWTC-PRE-06 | Sandbox schema write adapter returns `ReadyForSandboxCall` |
+| LRWTC-PRE-07 | Sandbox adapter chain runner returns `MockRunNotExecuted` |
+| LRWTC-PRE-08 | Sandbox gate arming decision returns `ArmedNotExecutable` |
+| LRWTC-PRE-09 | Sandbox restore simulator returns `SimulatedNotExecuted` |
+| LRWTC-PRE-10 | Sandbox enablement readiness returns `ReadyButDisabled` |
+
+**Safety invariants (always enforced):**
+
+- Does not call the Airtable API (reads or writes).
+- Does not accept, store, or return a token.
+- Does not enable execution, writes, or reads.
+- Does not change `evaluate_write_gate()` behavior.
+- Does not write checkpoint files to disk.
+- Does not store any state globally.
+- Is not reachable from UI, TypeScript, or any Tauri command.
+- `contract_only` is always `true`.
+- `app_runtime_execution_enabled` is always `false`.
+- `app_runtime_writes_enabled` is always `false`.
+- `app_runtime_reads_enabled` is always `false`.
+- `network_reads_attempted` is always `false`.
+- `network_writes_attempted` is always `false`.
+- `airtable_client_called` is always `false`.
+- `no_changes_made` is always `true`.
+
+**Required future-live conditions (reported, not executed):**
+
+- Disposable sandbox-only base required — no production base may be used.
+- Schema phase must already be test-created or safely represented before record writes.
+- Explicit test-only credentials required in future task — no token accepted by this contract.
+- No UI execution path allowed — live call must be a separate Rust-internal task.
+- Only first-pass record create operations allowed — no linked updates.
+- Linked record updates remain disabled.
+- Final validation reads remain disabled.
+- Attachment handling remains disabled.
+
+The live record write integration test itself remains separate pending work.
+
+---
+
 ## Related Documents
 
 - [Restore Write Engine Skeleton](./restore-write-engine-skeleton.md)

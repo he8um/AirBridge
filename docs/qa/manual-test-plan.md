@@ -3676,3 +3676,88 @@ These test cases cover the command contract layer: confirmation enforcement, out
   2. Verify no record write, linked record update, attachment endpoint, or final validation read path exists in the integration test.
   3. Verify no restore success state is introduced.
 - Expected result: All pending features (record writes, linked record updates, final validation reads, attachment handling, live E2E restore) remain disabled. `evaluate_write_gate()` unchanged.
+
+---
+
+## Live Record Write Test Contract
+
+### TC-LRWTC-01: Default disabled mode returns Blocked
+
+- Preconditions: None.
+- Steps:
+  1. Call `evaluate_live_record_write_test_contract` with `mode = Disabled` and all booleans `false`.
+  2. Check `status`.
+- Expected result: `status == Blocked`. `blocked_reason` contains `LRWTC-PRE-01`.
+
+### TC-LRWTC-02: Missing explicit flag returns Blocked
+
+- Preconditions: None.
+- Steps:
+  1. Call with `mode = SandboxIntegrationCandidate`, `explicit_internal_live_record_test_contract_requested = false`, all other booleans `true`.
+  2. Check `status` and `blocked_reason`.
+- Expected result: `status == Blocked`. `blocked_reason` contains `LRWTC-PRE-02`.
+
+### TC-LRWTC-03: Schema contract not eligible returns Blocked
+
+- Preconditions: None.
+- Steps:
+  1. Call with full request but `mapping_coverage_sufficient = false` (blocks schema contract's chain runner).
+  2. Check `status` and `blocked_reason`.
+- Expected result: `status == Blocked`. `blocked_reason` contains `LRWTC-PRE-04`.
+
+### TC-LRWTC-04: Record adapter not ready returns Blocked
+
+- Preconditions: None.
+- Steps:
+  1. Call with full request and a blocked record write request plan.
+  2. Check `status`.
+- Expected result: `status == Blocked`.
+
+### TC-LRWTC-05: All prerequisites satisfied returns EligibleButNotExecuted
+
+- Preconditions: None.
+- Steps:
+  1. Call with all prerequisites satisfied (full request).
+  2. Check `status`, `contract_only`, `airtable_client_called`, `network_writes_attempted`.
+- Expected result: `status == EligibleButNotExecuted`. `contract_only == true`. All safety flags false.
+
+### TC-LRWTC-06: evaluate_write_gate remains Disabled
+
+- Preconditions: None.
+- Steps:
+  1. Call `evaluate_live_record_write_test_contract` with full request.
+  2. Call `evaluate_write_gate()`.
+- Expected result: `evaluate_write_gate()` returns `Disabled/DisabledByProductPolicy`.
+
+### TC-LRWTC-07: No Airtable API calls made
+
+- Preconditions: None.
+- Steps:
+  1. Call with full request (eligible path).
+  2. Verify `airtable_client_called == false`, `network_reads_attempted == false`, `network_writes_attempted == false`.
+- Expected result: All network flags false. No HTTP traffic generated.
+
+### TC-LRWTC-08: No token or sensitive data in serialization
+
+- Preconditions: None.
+- Steps:
+  1. Call with full request.
+  2. Serialize result to JSON.
+  3. Check for `pat_`, `"token"`, `"apiKey"`, `"secret"`, `/Users/`, `rec_old_`, `rec_new_`, `cdn.airtable.com`.
+- Expected result: None of the above strings appear in the JSON.
+
+### TC-LRWTC-09: Required future-live conditions are reported
+
+- Preconditions: None.
+- Steps:
+  1. Call with full request.
+  2. Check `required_future_live_conditions`.
+- Expected result: Contains entries stating: disposable sandbox base required, linked record updates disabled, final validation reads disabled, attachment handling disabled.
+
+### TC-LRWTC-10: No Tauri command or UI surface added
+
+- Preconditions: None.
+- Steps:
+  1. Search `apps/desktop/src-tauri/src/commands/restore.rs` for `live_record_write`.
+  2. Search TypeScript sources for `liveRecordWrite` or `live_record_write`.
+- Expected result: No matches. This feature is internal Rust only.

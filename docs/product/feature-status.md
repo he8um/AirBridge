@@ -1,7 +1,7 @@
 # Feature Status Matrix
 
 **Version:** 0.1.0-alpha  
-**Updated:** 2026-06-20 (5)
+**Updated:** 2026-06-21 (6)
 
 This matrix describes the current status of each feature area. Status values:
 
@@ -48,6 +48,7 @@ This matrix describes the current status of each feature area. Status values:
 | Record write execution preview | Dry-run/Blocked only | Available — Restore page | No Airtable writes; no token; no record created/updated/deleted; no raw field values; no raw HTTP; no attachment URL; shows ordered dry-run batches (first-pass create → second-pass linked-update); 13 prerequisites must be satisfied for `DryRunReady`; batch size enforced ≤ 10; `DryRunReady` does NOT enable live record writes; `writesEnabled` always false; `noChangesMade` always true; `networkWritesAttempted` always false; live record writes remain disabled | Enable live record write execution only after full write-path review and all gates satisfied |
 | Live schema write test contract | Disabled | Internal only — no UI surface, no Tauri command, no token, no network call; contract-only readiness layer; `eligibleButNotExecuted` does NOT perform any live call; `contractOnly` always true; live schema write integration test remains separate pending work |
 | Sandbox schema write harness (integration test) | Test-only, ignored by default | Internal only — no UI surface, no Tauri command; `#[ignore]` by default; requires `AIRBRIDGE_ENABLE_LIVE_SCHEMA_WRITE_TEST=true`, `AIRBRIDGE_SANDBOX_AIRTABLE_TOKEN`, `AIRBRIDGE_SANDBOX_TARGET_BASE_ID`; schema-only (`createTable` + primary field); no records, linked updates, attachment, or final validation; `evaluate_write_gate()` remains Disabled before and after; test may leave a sandbox-only table — must only run against disposable sandbox base; no cleanup path | Record writes, linked record updates, final validation reads, attachment handling, and live E2E restore remain pending |
+| Live record write test contract | Disabled | Internal only — no UI surface, no Tauri command, no token, no network call; contract-only readiness layer; `eligibleButNotExecuted` does NOT perform any live call; `contractOnly` always true; 10 prerequisites (LRWTC-PRE-01 through LRWTC-PRE-10); live record write integration test remains separate pending work |
 | Sandbox adapter chain runner | Disabled | Internal only — no UI surface, no Tauri command | No Airtable calls; no token; no network reads or writes; no checkpoint files written; mock/no-op adapters only; write gate always disabled; `noChangesMade` always true; `airtableClientCalled` always false; `mockRunNotExecuted` does NOT enable any live execution path | Live end-to-end sandbox restore execution remains separate pending work |
 | Schema write engine foundation | Disabled | Request plan builder available — internal only | No Airtable writes; no token required; request builders exist; write gate always disabled; `noChangesMade` always true; `networkWritesAttempted` always false | Enable live schema writes when write engine is ready |
 | Record write engine foundation | Disabled | Request plan builder available — internal only | No Airtable writes; no token required; request builders exist; write gate always disabled; `noChangesMade` always true; `networkWritesAttempted` always false; no raw record payloads; old-to-new ID mapping deferred to execution | Enable live record writes when write engine is ready |
@@ -344,6 +345,39 @@ The adapter requires the sandbox gate arming decision to return `armedNotExecuta
 `readyForSandboxCall` does NOT execute any Airtable network call. `runtimeExecutionEnabled` is always `false`. `appRuntimeWritesEnabled` is always `false`. `appRuntimeReadsEnabled` is always `false`. `networkWritesAttempted` is always `false`. `noChangesMade` is always `true`. `evaluate_write_gate()` continues to return `Disabled/DisabledByProductPolicy`. No token, full path, record payload, raw HTTP body, old/new record IDs, or attachment URL appears in any result field. No production adapter is implemented. The adapter provides a `SchemaWriteAdapter` trait with `NoOpSchemaWriteAdapter` and `MockSchemaWriteAdapter` for test-only use.
 
 The adapter has three statuses: `notExecuted` (default, mode disabled), `blocked` (prerequisite missing or flag not set), and `readyForSandboxCall` (all prerequisites pass). Record writes, linked record updates, final validation reads, attachment handling, and live end-to-end restore execution remain pending separate work.
+
+### Live Record Write Test Contract (internal, no network call)
+
+The live record write test contract (`evaluate_live_record_write_test_contract` in `restore/live_record_write_test_contract.rs`) is an internal Rust module — it is not exposed as a Tauri command and has no UI surface. It is a contract-only readiness layer that evaluates whether a future live record write integration test could be attempted, without performing any live call.
+
+The contract evaluates 10 prerequisites (LRWTC-PRE-01 through LRWTC-PRE-10):
+
+| ID | Prerequisite |
+|----|-------------|
+| LRWTC-PRE-01 | Mode is `sandboxIntegrationCandidate` |
+| LRWTC-PRE-02 | `explicit_internal_live_record_test_contract_requested` is true |
+| LRWTC-PRE-03 | `evaluate_write_gate()` returns `Disabled/DisabledByProductPolicy` |
+| LRWTC-PRE-04 | Live schema write test contract returns `EligibleButNotExecuted` |
+| LRWTC-PRE-05 | Sandbox record write adapter returns `ReadyForSandboxCall` |
+| LRWTC-PRE-06 | Sandbox schema write adapter returns `ReadyForSandboxCall` |
+| LRWTC-PRE-07 | Sandbox adapter chain runner returns `MockRunNotExecuted` |
+| LRWTC-PRE-08 | Sandbox gate arming decision returns `ArmedNotExecutable` |
+| LRWTC-PRE-09 | Sandbox restore simulator returns `SimulatedNotExecuted` |
+| LRWTC-PRE-10 | Sandbox enablement readiness returns `ReadyButDisabled` |
+
+`eligibleButNotExecuted` does NOT perform any Airtable network call. `contractOnly` is always `true`. `appRuntimeExecutionEnabled` is always `false`. `appRuntimeWritesEnabled` is always `false`. `appRuntimeReadsEnabled` is always `false`. `networkReadsAttempted` is always `false`. `networkWritesAttempted` is always `false`. `airtableClientCalled` is always `false`. `noChangesMade` is always `true`. No token is accepted or stored. `evaluate_write_gate()` remains `Disabled/DisabledByProductPolicy`. No UI surface, no Tauri command, no TypeScript path exists.
+
+The contract reports the following required future-live conditions (not executed):
+- Disposable sandbox-only base required.
+- Schema phase must already be test-created or safely represented before record writes.
+- Explicit test-only credentials required in future task.
+- No UI execution path allowed.
+- Only first-pass record create operations allowed.
+- Linked record updates remain disabled.
+- Final validation reads remain disabled.
+- Attachment handling remains disabled.
+
+The live record write integration test itself remains separate pending work.
 
 ---
 

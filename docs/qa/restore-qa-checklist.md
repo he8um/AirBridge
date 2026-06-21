@@ -2394,3 +2394,56 @@ Record any failures here with a brief description and steps to reproduce.
 ### Ops
 - [ ] Run `npm --prefix apps/desktop run rust:test` — all non-ignored tests pass; `sandbox_schema_write_creates_table_and_verifies_contract` appears as `ignored`.
 - [ ] Run prohibited-terms scan on `tests/live_schema_write_sandbox.rs` — no matches.
+
+---
+
+## Live Record Write Test Contract Checklist
+
+### Contract-only gate
+
+- [ ] `evaluate_live_record_write_test_contract` returns `Blocked` when `mode` is `Disabled`.
+- [ ] `evaluate_live_record_write_test_contract` returns `Blocked` when `explicit_internal_live_record_test_contract_requested` is `false`.
+- [ ] `evaluate_live_record_write_test_contract` returns `Blocked` when live schema write contract is not eligible.
+- [ ] `evaluate_live_record_write_test_contract` returns `Blocked` when sandbox record write adapter is not ready.
+- [ ] `evaluate_live_record_write_test_contract` returns `Blocked` when sandbox schema write adapter is not ready.
+- [ ] `evaluate_live_record_write_test_contract` returns `Blocked` when adapter chain runner is not `MockRunNotExecuted`.
+- [ ] `evaluate_live_record_write_test_contract` returns `Blocked` when gate arming is not `ArmedNotExecutable`.
+- [ ] `evaluate_live_record_write_test_contract` returns `Blocked` when simulator is not `SimulatedNotExecuted`.
+- [ ] `evaluate_live_record_write_test_contract` returns `Blocked` when enablement readiness is not `ReadyButDisabled`.
+- [ ] `evaluate_live_record_write_test_contract` returns `EligibleButNotExecuted` only when all 10 prerequisites are satisfied.
+
+### Safety invariants
+
+- [ ] `contract_only` is always `true`.
+- [ ] `app_runtime_execution_enabled` is always `false`.
+- [ ] `app_runtime_writes_enabled` is always `false`.
+- [ ] `app_runtime_reads_enabled` is always `false`.
+- [ ] `network_reads_attempted` is always `false`.
+- [ ] `network_writes_attempted` is always `false`.
+- [ ] `airtable_client_called` is always `false`.
+- [ ] `no_changes_made` is always `true`.
+- [ ] `evaluate_write_gate()` remains `Disabled/DisabledByProductPolicy` before and after.
+- [ ] No token is accepted, stored, or returned.
+- [ ] No Airtable API calls are made.
+- [ ] No Tauri command exists for this contract.
+- [ ] No TypeScript/UI surface exists for this contract.
+- [ ] No restore success state is introduced.
+
+### Serialization checks
+
+- [ ] No token (`pat_`, `"token"`, `"apiKey"`, `"secret"`) in serialized result.
+- [ ] No absolute path (`/Users/`, `/home/`, `/tmp/`) in serialized result.
+- [ ] No record payload (`"fields":{`, `"records":[{`) in serialized result.
+- [ ] No raw HTTP (`"body":{`, `"statusCode"`) in serialized result.
+- [ ] No old record ID (`"oldRecordId"`, `rec_old_`) in serialized result.
+- [ ] No new record ID (`"newRecordId"`, `rec_new_`) in serialized result.
+- [ ] No attachment URL (`cdn.airtable.com`, `attachmentUrl`) in serialized result.
+- [ ] No success state (`"succeeded"`, `restoreComplete`, `restoreSuccess`, `executionReady`) in serialized result.
+
+### Pending work (still disabled)
+
+- [ ] Live record write integration test remains separate pending work.
+- [ ] Linked record updates remain disabled.
+- [ ] Final validation reads remain disabled.
+- [ ] Attachment handling remains disabled.
+- [ ] Live end-to-end restore execution remains disabled.
