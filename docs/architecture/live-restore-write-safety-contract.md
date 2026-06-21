@@ -682,6 +682,66 @@ This module evaluates whether a future live linked record update integration tes
 
 ---
 
+## Section 32: Live Final Validation Test Contract
+
+**File:** `apps/desktop/src-tauri/src/restore/live_final_validation_test_contract.rs`
+**Status:** Contract-only — no live call, no network access, no Airtable API call
+
+This module evaluates whether a future live final validation read integration test could be attempted, without performing any live call. It is not connected to app runtime, UI, TypeScript, or any Tauri command.
+
+**Prerequisites (LFVTC-PRE-01 through LFVTC-PRE-12):**
+
+| ID | Probe |
+|----|-------|
+| LFVTC-PRE-01 | Mode is `SandboxIntegrationCandidate` |
+| LFVTC-PRE-02 | `explicit_internal_live_final_validation_test_contract_requested` is `true` |
+| LFVTC-PRE-03 | `evaluate_write_gate()` returns `Disabled/DisabledByProductPolicy` |
+| LFVTC-PRE-04 | `evaluate_live_linked_update_test_contract()` returns `EligibleButNotExecuted` |
+| LFVTC-PRE-05 | `build_sandbox_final_validation_adapter()` returns `ReadyForSandboxCall` |
+| LFVTC-PRE-06 | `build_sandbox_linked_second_pass_adapter()` returns `ReadyForSandboxCall` |
+| LFVTC-PRE-07 | `build_sandbox_record_write_adapter()` returns `ReadyForSandboxCall` |
+| LFVTC-PRE-08 | `build_sandbox_schema_write_adapter()` returns `ReadyForSandboxCall` |
+| LFVTC-PRE-09 | `run_sandbox_adapter_chain()` returns `MockRunNotExecuted` |
+| LFVTC-PRE-10 | `build_sandbox_gate_arming_decision()` returns `ArmedNotExecutable` |
+| LFVTC-PRE-11 | `run_sandbox_restore_simulator()` returns `SimulatedNotExecuted` |
+| LFVTC-PRE-12 | `build_sandbox_enablement_readiness_report()` returns `ReadyButDisabled` |
+
+**Safety invariants (always enforced):**
+
+- `contract_only` is always `true`.
+- `app_runtime_execution_enabled` is always `false`.
+- `app_runtime_writes_enabled` is always `false`.
+- `app_runtime_reads_enabled` is always `false`.
+- `network_reads_attempted` is always `false`.
+- `network_writes_attempted` is always `false`.
+- `airtable_client_called` is always `false`.
+- `no_changes_made` is always `true`.
+- `evaluate_write_gate()` is never modified — always returns `Disabled/DisabledByProductPolicy`.
+- No token field, no absolute path, no record payload, no raw HTTP body, no old/new record IDs, no attachment URL in the result.
+- No `succeeded`, `complete`, `enabled`, `done`, or `executionReady` status variant exists.
+- No UI path, no Tauri command, no TypeScript surface exists.
+- The live final validation read integration test itself remains separate pending work.
+
+**Required future-live conditions (reported, not executed):**
+
+- Disposable sandbox-only base required — no production base may be used.
+- Schema, record, and linked update test harnesses must have prepared sandbox-only state before final validation reads.
+- Explicit test-only credentials required in future task — no token accepted by this contract.
+- No UI execution path allowed — live call must be a separate Rust-internal task.
+- Only validation read operations allowed — no schema write, first-pass record create, linked update, or attachment binary operations.
+- Attachment binary handling remains disabled — must not be enabled in this task.
+- App runtime restore execution remains disabled — must not be enabled in this task.
+
+**What remains pending after this contract:**
+
+- Live final validation read integration test remains separate pending work.
+- Attachment binary handling remains disabled.
+- App runtime restore execution remains disabled.
+- Live end-to-end restore execution remains pending separate work.
+- `evaluate_write_gate()` behavior is unchanged — still returns `Disabled/DisabledByProductPolicy`.
+
+---
+
 ## Related Documents
 
 - [Restore Write Engine Skeleton](./restore-write-engine-skeleton.md)

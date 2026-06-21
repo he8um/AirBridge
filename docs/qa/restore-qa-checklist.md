@@ -2581,3 +2581,75 @@ Record any failures here with a brief description and steps to reproduce.
 - [ ] Final validation reads remain disabled.
 - [ ] Attachment handling remains disabled.
 - [ ] Live end-to-end restore execution remains disabled.
+
+---
+
+## Live Final Validation Test Contract Checklist (LFVTC)
+
+### Mode and explicit flag
+
+- [ ] Default disabled mode returns `Blocked`.
+- [ ] Missing `explicit_internal_live_final_validation_test_contract_requested` returns `Blocked` at `LFVTC-PRE-02`.
+- [ ] `sandboxIntegrationCandidate` mode with explicit flag proceeds to prerequisite evaluation.
+
+### Prerequisite chain
+
+- [ ] LFVTC-PRE-03: `evaluate_write_gate()` must return `Disabled/DisabledByProductPolicy`.
+- [ ] LFVTC-PRE-04: `evaluate_live_linked_update_test_contract()` must return `EligibleButNotExecuted`.
+- [ ] LFVTC-PRE-05: `build_sandbox_final_validation_adapter()` must return `ReadyForSandboxCall`.
+- [ ] LFVTC-PRE-06: `build_sandbox_linked_second_pass_adapter()` must return `ReadyForSandboxCall`.
+- [ ] LFVTC-PRE-07: `build_sandbox_record_write_adapter()` must return `ReadyForSandboxCall`.
+- [ ] LFVTC-PRE-08: `build_sandbox_schema_write_adapter()` must return `ReadyForSandboxCall`.
+- [ ] LFVTC-PRE-09: `run_sandbox_adapter_chain()` must return `MockRunNotExecuted`.
+- [ ] LFVTC-PRE-10: `build_sandbox_gate_arming_decision()` must return `ArmedNotExecutable`.
+- [ ] LFVTC-PRE-11: `run_sandbox_restore_simulator()` must return `SimulatedNotExecuted`.
+- [ ] LFVTC-PRE-12: `build_sandbox_enablement_readiness_report()` must return `ReadyButDisabled`.
+
+### EligibleButNotExecuted — all 12 prerequisites pass
+
+- [ ] All 12 prerequisites are `Ready` when eligible.
+- [ ] `contract_only` is `true`.
+- [ ] `no_changes_made` is `true`.
+- [ ] `airtable_client_called` is `false`.
+- [ ] `network_reads_attempted` is `false`.
+- [ ] `network_writes_attempted` is `false`.
+- [ ] `app_runtime_execution_enabled` is `false`.
+- [ ] `app_runtime_writes_enabled` is `false`.
+- [ ] `app_runtime_reads_enabled` is `false`.
+- [ ] Result message mentions live final validation test remains pending.
+
+### Safety invariants (both Blocked and EligibleButNotExecuted)
+
+- [ ] `evaluate_write_gate()` unchanged — still `Disabled/DisabledByProductPolicy`.
+- [ ] `safety_snapshot.write_gate_disabled` is `true`.
+- [ ] `safety_snapshot.airtable_client_called` is `false`.
+- [ ] `safety_snapshot.contract_only` is `true`.
+- [ ] All runtime/network flags in snapshot are `false`.
+- [ ] No Tauri command added.
+- [ ] No TypeScript/UI surface added.
+- [ ] No restore success state introduced.
+
+### Required future-live conditions
+
+- [ ] Disposable sandbox-only base required is present.
+- [ ] Attachment binary handling remains disabled is present.
+- [ ] App runtime restore execution remains disabled is present.
+- [ ] Conditions reported in both `EligibleButNotExecuted` and `Blocked` results.
+
+### Serialization checks
+
+- [ ] No token (`pat_`, `"token"`, `"apiKey"`, `"secret"`) in serialized result.
+- [ ] No absolute path (`/Users/`, `/home/`, `/tmp/`) in serialized result.
+- [ ] No record payload (`"fields":{`, `"records":[{`) in serialized result.
+- [ ] No raw HTTP body (`"body":{`, `"statusCode"`) in serialized result.
+- [ ] No old record ID (`"oldRecordId"`, `rec_old_`) in serialized result.
+- [ ] No new record ID (`"newRecordId"`, `rec_new_`) in serialized result.
+- [ ] No attachment URL (`cdn.airtable.com`, `attachmentUrl`) in serialized result.
+- [ ] No success state (`"succeeded"`, `restoreComplete`, `restoreSuccess`, `executionReady`) in serialized result.
+
+### Pending work (still disabled)
+
+- [ ] Live final validation read integration test remains separate pending work.
+- [ ] Attachment binary handling remains disabled.
+- [ ] App runtime restore execution remains disabled.
+- [ ] Live end-to-end restore execution remains disabled.

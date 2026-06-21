@@ -3918,3 +3918,81 @@ These test cases cover the command contract layer: confirmation enforcement, out
   1. Search `apps/desktop/src-tauri/src/commands/restore.rs` for `live_linked`.
   2. Search TypeScript sources for `liveLinkedUpdate` or `live_linked_update`.
 - Expected result: No matches. This feature is internal Rust only.
+
+---
+
+## Live Final Validation Test Contract (LFVTC)
+
+### TC-LFVTC-01: Disabled mode returns Blocked
+
+- Preconditions: None.
+- Steps:
+  1. Call `evaluate_live_final_validation_test_contract` with `mode=Disabled`.
+- Expected result: Status `Blocked`. `blocked_reason` contains `LFVTC-PRE-01`. All safety invariants hold.
+
+### TC-LFVTC-02: Missing explicit flag returns Blocked at LFVTC-PRE-02
+
+- Preconditions: None.
+- Steps:
+  1. Call with `mode=SandboxIntegrationCandidate`, `explicit_internal_live_final_validation_test_contract_requested=false`.
+- Expected result: Status `Blocked`. `blocked_reason` contains `LFVTC-PRE-02`.
+
+### TC-LFVTC-03: Linked update contract not eligible returns Blocked at LFVTC-PRE-04
+
+- Preconditions: None.
+- Steps:
+  1. Call with all flags set but `mapping_coverage_sufficient=false`.
+- Expected result: Status `Blocked`. `blocked_reason` contains `LFVTC-PRE-04`.
+
+### TC-LFVTC-04: Final validation adapter not ready returns Blocked at LFVTC-PRE-05
+
+- Preconditions: None.
+- Steps:
+  1. Call with `final_validation_enforcement_safe=false` (blocks the final validation adapter probe independently of the linked update contract).
+- Expected result: Status `Blocked`. No network call made.
+
+### TC-LFVTC-05: All 12 prerequisites satisfied returns EligibleButNotExecuted
+
+- Preconditions: None.
+- Steps:
+  1. Call with all safety booleans `true`, `mode=SandboxIntegrationCandidate`, explicit flag `true`, valid plans.
+- Expected result: Status `EligibleButNotExecuted`. All 12 prerequisites `Ready`. Message mentions "remains separate pending work".
+
+### TC-LFVTC-06: Safety snapshot invariants always hold
+
+- Preconditions: None.
+- Steps:
+  1. Call with all prerequisites satisfied.
+  2. Inspect `safety_snapshot`.
+- Expected result: `contract_only=true`, `write_gate_disabled=true`, all runtime/network booleans `false`.
+
+### TC-LFVTC-07: evaluate_write_gate() unchanged after evaluation
+
+- Preconditions: None.
+- Steps:
+  1. Call the contract.
+  2. Call `evaluate_write_gate()` independently.
+- Expected result: `Disabled/DisabledByProductPolicy` — unchanged before and after.
+
+### TC-LFVTC-08: Serialized result contains no token, path, record ID, or attachment URL
+
+- Preconditions: None.
+- Steps:
+  1. Serialize the result to JSON.
+  2. Check for `pat_`, `/Users/`, `"fields":{`, `"oldRecordId"`, `cdn.airtable.com`, `"succeeded"`.
+- Expected result: None of the above appear in the JSON.
+
+### TC-LFVTC-09: Required future-live conditions present in result
+
+- Preconditions: None.
+- Steps:
+  1. Inspect `required_future_live_conditions` in the result.
+- Expected result: Contains "disposable sandbox-only base required", "attachment binary handling remains disabled", "app runtime restore execution remains disabled".
+
+### TC-LFVTC-10: No Tauri command or UI surface added
+
+- Preconditions: None.
+- Steps:
+  1. Search `apps/desktop/src-tauri/src/commands/restore.rs` for `live_final`.
+  2. Search TypeScript sources for `liveFinalValidation` or `live_final_validation`.
+- Expected result: No matches. This feature is internal Rust only.

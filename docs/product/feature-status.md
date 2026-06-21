@@ -1,7 +1,7 @@
 # Feature Status Matrix
 
 **Version:** 0.1.0-alpha  
-**Updated:** 2026-06-21 (8)
+**Updated:** 2026-06-21 (9)
 
 This matrix describes the current status of each feature area. Status values:
 
@@ -435,6 +435,40 @@ The contract reports the following required future-live conditions (not executed
 - Final validation reads remain disabled.
 
 The live linked update integration test itself remains separate pending work.
+
+### Live Final Validation Test Contract (internal, contract-only)
+
+The live final validation test contract (`evaluate_live_final_validation_test_contract` in `restore/live_final_validation_test_contract.rs`) is an internal Rust module — it is not exposed as a Tauri command and has no UI surface. It is a contract-only readiness layer that evaluates whether a future live final validation read integration test could be attempted, without performing any live call.
+
+The contract evaluates 12 prerequisites (LFVTC-PRE-01 through LFVTC-PRE-12):
+
+| ID | Prerequisite |
+|----|-------------|
+| LFVTC-PRE-01 | Mode is `sandboxIntegrationCandidate` |
+| LFVTC-PRE-02 | `explicit_internal_live_final_validation_test_contract_requested` is true |
+| LFVTC-PRE-03 | `evaluate_write_gate()` returns `Disabled/DisabledByProductPolicy` |
+| LFVTC-PRE-04 | Live linked update test contract returns `EligibleButNotExecuted` |
+| LFVTC-PRE-05 | Sandbox final validation adapter returns `ReadyForSandboxCall` |
+| LFVTC-PRE-06 | Sandbox linked second-pass adapter returns `ReadyForSandboxCall` |
+| LFVTC-PRE-07 | Sandbox record write adapter returns `ReadyForSandboxCall` |
+| LFVTC-PRE-08 | Sandbox schema write adapter returns `ReadyForSandboxCall` |
+| LFVTC-PRE-09 | Sandbox adapter chain runner returns `MockRunNotExecuted` |
+| LFVTC-PRE-10 | Sandbox gate arming decision returns `ArmedNotExecutable` |
+| LFVTC-PRE-11 | Sandbox restore simulator returns `SimulatedNotExecuted` |
+| LFVTC-PRE-12 | Sandbox enablement readiness returns `ReadyButDisabled` |
+
+`eligibleButNotExecuted` does NOT perform any Airtable network call. `contractOnly` is always `true`. `appRuntimeExecutionEnabled` is always `false`. `appRuntimeWritesEnabled` is always `false`. `appRuntimeReadsEnabled` is always `false`. `networkReadsAttempted` is always `false`. `networkWritesAttempted` is always `false`. `airtableClientCalled` is always `false`. `noChangesMade` is always `true`. No token is accepted or stored. `evaluate_write_gate()` remains `Disabled/DisabledByProductPolicy`. No UI surface, no Tauri command, no TypeScript path exists.
+
+The contract reports the following required future-live conditions (not executed):
+- Disposable sandbox-only base required.
+- Schema, record, and linked update test harnesses must have prepared sandbox-only state before final validation reads.
+- Explicit test-only credentials required in future task.
+- No UI execution path allowed.
+- Only validation read operations allowed — no schema write, first-pass record create, linked update, or attachment binary operations.
+- Attachment binary handling remains disabled.
+- App runtime restore execution remains disabled.
+
+The live final validation read integration test itself remains separate pending work.
 
 ---
 
