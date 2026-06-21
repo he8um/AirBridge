@@ -1,7 +1,7 @@
 # Feature Status Matrix
 
 **Version:** 0.1.0-alpha  
-**Updated:** 2026-06-21 (6)
+**Updated:** 2026-06-21 (7)
 
 This matrix describes the current status of each feature area. Status values:
 
@@ -49,6 +49,7 @@ This matrix describes the current status of each feature area. Status values:
 | Live schema write test contract | Disabled | Internal only — no UI surface, no Tauri command, no token, no network call; contract-only readiness layer; `eligibleButNotExecuted` does NOT perform any live call; `contractOnly` always true; live schema write integration test remains separate pending work |
 | Sandbox schema write harness (integration test) | Test-only, ignored by default | Internal only — no UI surface, no Tauri command; `#[ignore]` by default; requires `AIRBRIDGE_ENABLE_LIVE_SCHEMA_WRITE_TEST=true`, `AIRBRIDGE_SANDBOX_AIRTABLE_TOKEN`, `AIRBRIDGE_SANDBOX_TARGET_BASE_ID`; schema-only (`createTable` + primary field); no records, linked updates, attachment, or final validation; `evaluate_write_gate()` remains Disabled before and after; test may leave a sandbox-only table — must only run against disposable sandbox base; no cleanup path | Record writes, linked record updates, final validation reads, attachment handling, and live E2E restore remain pending |
 | Live record write test contract | Disabled | Internal only — no UI surface, no Tauri command, no token, no network call; contract-only readiness layer; `eligibleButNotExecuted` does NOT perform any live call; `contractOnly` always true; 10 prerequisites (LRWTC-PRE-01 through LRWTC-PRE-10); live record write integration test remains separate pending work |
+| Sandbox record write harness (integration test) | Test-only, ignored by default | Internal only — no UI surface, no Tauri command; `#[ignore]` by default; requires `AIRBRIDGE_ENABLE_LIVE_RECORD_WRITE_TEST=true`, `AIRBRIDGE_SANDBOX_AIRTABLE_TOKEN`, `AIRBRIDGE_SANDBOX_TARGET_BASE_ID`, `AIRBRIDGE_SANDBOX_TARGET_TABLE_ID_OR_NAME`; single first-pass `createRecord` only; no linked updates, no attachment endpoints, no final validation reads; `evaluate_write_gate()` remains Disabled before and after; sanitized outcome (no record ID exposed); test may leave a sandbox-only record — must only run against disposable sandbox base/table; no cleanup path | Linked record updates, final validation reads, attachment handling, and live E2E restore remain pending |
 | Sandbox adapter chain runner | Disabled | Internal only — no UI surface, no Tauri command | No Airtable calls; no token; no network reads or writes; no checkpoint files written; mock/no-op adapters only; write gate always disabled; `noChangesMade` always true; `airtableClientCalled` always false; `mockRunNotExecuted` does NOT enable any live execution path | Live end-to-end sandbox restore execution remains separate pending work |
 | Schema write engine foundation | Disabled | Request plan builder available — internal only | No Airtable writes; no token required; request builders exist; write gate always disabled; `noChangesMade` always true; `networkWritesAttempted` always false | Enable live schema writes when write engine is ready |
 | Record write engine foundation | Disabled | Request plan builder available — internal only | No Airtable writes; no token required; request builders exist; write gate always disabled; `noChangesMade` always true; `networkWritesAttempted` always false; no raw record payloads; old-to-new ID mapping deferred to execution | Enable live record writes when write engine is ready |
@@ -378,6 +379,29 @@ The contract reports the following required future-live conditions (not executed
 - Attachment handling remains disabled.
 
 The live record write integration test itself remains separate pending work.
+
+### Sandbox Record Write Harness (integration test, ignored by default)
+
+The sandbox record write integration test (`tests/live_record_write_sandbox.rs`) is a `#[ignore]` integration test — it does not run in default `cargo test`. It requires all four environment variables:
+
+- `AIRBRIDGE_ENABLE_LIVE_RECORD_WRITE_TEST=true`
+- `AIRBRIDGE_SANDBOX_AIRTABLE_TOKEN=<personal access token>`
+- `AIRBRIDGE_SANDBOX_TARGET_BASE_ID=<sandbox base ID>`
+- `AIRBRIDGE_SANDBOX_TARGET_TABLE_ID_OR_NAME=<sandbox table ID or name>`
+
+Optional: `AIRBRIDGE_SANDBOX_TEST_PREFIX=<prefix for test field values>`
+
+Before making any live call, the test verifies:
+- Live record write test contract returns `EligibleButNotExecuted`.
+- Sandbox record write adapter returns `ReadyForSandboxCall`.
+- Sandbox adapter chain runner returns `MockRunNotExecuted`.
+- `evaluate_write_gate()` returns `Disabled` before the live call.
+
+The live call creates a single record with a minimal `Name` field (string value only). No linked fields, no attachment endpoints, no final validation reads, no update operations. The outcome is sanitized — no record ID is exposed. After the live call, `evaluate_write_gate()` is verified to still return `Disabled`.
+
+The test may leave a sandbox-only test record in the target table. It must only be run against a disposable sandbox base and table. No cleanup is performed automatically. No UI path, no Tauri command, no TypeScript surface exists. App runtime restore execution remains disabled.
+
+Linked record updates, final validation reads, attachment handling, and live end-to-end restore execution remain pending.
 
 ---
 

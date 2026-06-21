@@ -4,8 +4,8 @@ use super::errors::{map_http_error, AirtableClientError};
 use super::http::{HttpRequest, HttpTransport};
 use super::models::{
     AccessibleBase, AccessibleBaseSummary, AirtableListRecordsResponse, AirtableRecordFields,
-    AirtableRecordUpdate, AirtableTable, ConnectionCheckOutcome, CreateTableOutcome,
-    CreateTableRequest, ListBasesResponse,
+    AirtableRecordUpdate, AirtableTable, ConnectionCheckOutcome, CreateSandboxRecordOutcome,
+    CreateSandboxRecordRequest, CreateTableOutcome, CreateTableRequest, ListBasesResponse,
 };
 use super::pagination::ListRecordsOptions;
 
@@ -179,6 +179,48 @@ impl<T: HttpTransport> AirtableClient<T> {
         Ok(ConnectionCheckOutcome { accessible_bases })
     }
 
+    /// Creates a single minimal record in a sandbox table via the Records API.
+    ///
+    /// Safety invariants:
+    /// - Never called from app runtime or Tauri commands.
+    /// - Used only in the sandbox record write integration test.
+    /// - Returns only a sanitized outcome (record_created, record_count, table_name).
+    /// - No record ID is included in the returned outcome.
+    /// - Token is used for the Authorization header and is not returned.
+    /// - No linked fields, no attachments, no update operations.
+    pub fn create_single_sandbox_record(
+        &self,
+        base_id: &str,
+        table_id_or_name: &str,
+        table_name: &str,
+        request: &CreateSandboxRecordRequest,
+    ) -> ClientResult<CreateSandboxRecordOutcome> {
+        let url = endpoints::create_records_path(base_id, table_id_or_name);
+        let payload = super::models::AirtableCreateRecordsRequest {
+            records: vec![AirtableRecordFields {
+                fields: request.fields.clone(),
+            }],
+        };
+        let body_str = serde_json::to_string(&payload)
+            .map_err(|e| AirtableClientError::MalformedResponse(e.to_string()))?;
+        let body = self.send_post(url, body_str)?;
+
+        #[derive(serde::Deserialize)]
+        struct CreateRecordsResponse {
+            records: Vec<serde_json::Value>,
+        }
+
+        let resp = serde_json::from_str::<CreateRecordsResponse>(&body)
+            .map_err(|e| AirtableClientError::MalformedResponse(e.to_string()))?;
+
+        let record_created = !resp.records.is_empty();
+        Ok(CreateSandboxRecordOutcome {
+            record_created,
+            record_count: resp.records.len(),
+            table_name: table_name.to_string(),
+        })
+    }
+
     /// Creates a table in a base via the Airtable Metadata API.
     ///
     /// Safety invariants:
@@ -217,7 +259,9 @@ mod tests {
     use super::*;
     use crate::airtable::auth::AirtableToken;
     use crate::airtable::http::MockHttpTransport;
-    use crate::airtable::models::{CreateTableFieldSpec, CreateTableRequest};
+    use crate::airtable::models::{
+        CreateSandboxRecordRequest, CreateTableFieldSpec, CreateTableRequest,
+    };
     use crate::airtable::pagination::ListRecordsOptions;
 
     const SENTINEL: &str = "pat_example_client_sentinel_0123456789";
@@ -481,6 +525,108 @@ mod tests {
         // are not performed at this stage.
         let serialized = serde_json::to_string(&outcome).expect("serialize");
         assert!(!serialized.contains("write"));
+    }
+
+    // ── create_table tests ────────────────────────────────────────────────────
+
+    // ── create_single_sandbox_record tests ───────────────────────────────────
+
+    #[test]
+    fn create_single_sandbox_record_returns_sanitized_outcome() {
+        let body = r#"{"records":[{"id":"recNewRecord001","fields":{"Name":"Test"},"createdTime":"2025-01-01T00:00:00.000Z"}]}"#;
+        let transport = MockHttpTransport::ok(body);
+        let client = AirtableClient::new(AirtableToken::new("pat_sentinel"), transport);
+        let req = CreateSandboxRecordRequest {
+            fields: {
+                let mut m = std::collections::HashMap::new();
+                m.insert(
+                    "Name".to_string(),
+                    serde_json::Value::String("Test".to_string()),
+                );
+                m
+            },
+        };
+        let outcome = client
+            .create_single_sandbox_record("appTestBase001", "tblTest01", "SandboxTest", &req)
+            .expect("should succeed");
+        assert!(outcome.record_created);
+        assert_eq!(outcome.record_count, 1);
+        assert_eq!(outcome.table_name, "SandboxTest");
+    }
+
+    #[test]
+    fn create_single_sandbox_record_outcome_does_not_contain_token() {
+        let body = r#"{"records":[{"id":"recNewRecord001","fields":{"Name":"Test"},"createdTime":"2025-01-01T00:00:00.000Z"}]}"#;
+        let transport = MockHttpTransport::ok(body);
+        let sentinel = "pat_sandbox_record_sentinel_0123456789";
+        let client = AirtableClient::new(AirtableToken::new(sentinel), transport);
+        let req = CreateSandboxRecordRequest {
+            fields: {
+                let mut m = std::collections::HashMap::new();
+                m.insert(
+                    "Name".to_string(),
+                    serde_json::Value::String("Test".to_string()),
+                );
+                m
+            },
+        };
+        let outcome = client
+            .create_single_sandbox_record("appTestBase001", "tblTest01", "SandboxTest", &req)
+            .expect("should succeed");
+        let serialized = serde_json::to_string(&outcome).expect("serialize");
+        assert!(!serialized.contains(sentinel));
+    }
+
+    #[test]
+    fn create_single_sandbox_record_outcome_does_not_contain_record_id() {
+        let body = r#"{"records":[{"id":"recNewRecord001","fields":{"Name":"Test"},"createdTime":"2025-01-01T00:00:00.000Z"}]}"#;
+        let transport = MockHttpTransport::ok(body);
+        let client = AirtableClient::new(AirtableToken::new("pat_sentinel"), transport);
+        let req = CreateSandboxRecordRequest {
+            fields: {
+                let mut m = std::collections::HashMap::new();
+                m.insert(
+                    "Name".to_string(),
+                    serde_json::Value::String("Test".to_string()),
+                );
+                m
+            },
+        };
+        let outcome = client
+            .create_single_sandbox_record("appTestBase001", "tblTest01", "SandboxTest", &req)
+            .expect("should succeed");
+        let serialized = serde_json::to_string(&outcome).expect("serialize");
+        // Record ID must not appear in the sanitized outcome
+        assert!(!serialized.contains("recNewRecord001"));
+        assert!(!serialized.contains("\"id\""));
+    }
+
+    #[test]
+    fn create_single_sandbox_record_empty_records_returns_not_created() {
+        let body = r#"{"records":[]}"#;
+        let transport = MockHttpTransport::ok(body);
+        let client = AirtableClient::new(AirtableToken::new("pat_sentinel"), transport);
+        let req = CreateSandboxRecordRequest {
+            fields: std::collections::HashMap::new(),
+        };
+        let outcome = client
+            .create_single_sandbox_record("appTestBase001", "tblTest01", "SandboxTest", &req)
+            .expect("should succeed");
+        assert!(!outcome.record_created);
+        assert_eq!(outcome.record_count, 0);
+    }
+
+    #[test]
+    fn create_single_sandbox_record_401_maps_to_invalid_token() {
+        let transport = MockHttpTransport::with_status(401, r#"{"error":"UNAUTHORIZED"}"#);
+        let client = AirtableClient::new(AirtableToken::new("pat_sentinel"), transport);
+        let req = CreateSandboxRecordRequest {
+            fields: std::collections::HashMap::new(),
+        };
+        let err = client
+            .create_single_sandbox_record("appTestBase001", "tblTest01", "SandboxTest", &req)
+            .unwrap_err();
+        assert_eq!(err, AirtableClientError::InvalidToken);
     }
 
     // ── create_table tests ────────────────────────────────────────────────────

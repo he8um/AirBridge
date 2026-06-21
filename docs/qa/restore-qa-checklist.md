@@ -2447,3 +2447,65 @@ Record any failures here with a brief description and steps to reproduce.
 - [ ] Final validation reads remain disabled.
 - [ ] Attachment handling remains disabled.
 - [ ] Live end-to-end restore execution remains disabled.
+
+---
+
+## Sandbox Record Write Harness Checklist
+
+### Opt-in gate
+
+- [ ] Default `cargo test` does NOT run the live sandbox record write test.
+- [ ] Missing `AIRBRIDGE_ENABLE_LIVE_RECORD_WRITE_TEST` does not perform a network call.
+- [ ] Missing token env var does not perform a network call.
+- [ ] Missing base ID env var does not perform a network call.
+- [ ] Missing table ID/name env var does not perform a network call.
+- [ ] `all_required_env_vars_present()` returns `false` in all cases above.
+
+### Pre-call contract verification
+
+- [ ] `evaluate_live_record_write_test_contract()` returns `EligibleButNotExecuted` before live call.
+- [ ] `build_sandbox_record_write_adapter()` returns `ReadyForSandboxCall` before live call.
+- [ ] `run_sandbox_adapter_chain()` returns `MockRunNotExecuted` before live call.
+- [ ] `evaluate_write_gate()` returns `Disabled` before live call.
+
+### Live call behavior (opt-in, ignored by default)
+
+- [ ] Single record create only — Records API POST.
+- [ ] Minimal `Name` string field — no linked fields, no attachment fields.
+- [ ] No record update operations.
+- [ ] No linked record update endpoint called.
+- [ ] No attachment endpoint called.
+- [ ] No final validation read performed.
+
+### Post-call invariants (opt-in, ignored by default)
+
+- [ ] `outcome.record_created` is `true`.
+- [ ] `outcome.record_count` is 1.
+- [ ] `outcome.table_name` is non-empty.
+- [ ] `evaluate_write_gate()` still returns `Disabled` after live call.
+- [ ] App runtime execution, reads, and writes remain disabled.
+
+### Safety invariants
+
+- [ ] Token, base ID, table ID/name never printed or asserted on value.
+- [ ] No record ID exposed in sanitized outcome.
+- [ ] `evaluate_write_gate()` unchanged — still `Disabled/DisabledByProductPolicy`.
+- [ ] No Tauri command added.
+- [ ] No TypeScript/UI surface added.
+- [ ] No restore success state introduced.
+- [ ] App runtime restore execution remains disabled.
+
+### Serialization checks
+
+- [ ] No token (`pat_`, `"token"`, `"apiKey"`) in serialized outcome.
+- [ ] No record ID (`"id"`, `recNewRecord`, `rec_`) in serialized outcome.
+- [ ] No raw HTTP body in serialized outcome.
+- [ ] No attachment URL in serialized outcome.
+- [ ] No success state (`"succeeded"`, `restoreComplete`) in serialized outcome.
+
+### Pending work (still disabled)
+
+- [ ] Linked record updates remain disabled.
+- [ ] Final validation reads remain disabled.
+- [ ] Attachment handling remains disabled.
+- [ ] Live end-to-end restore execution remains disabled.

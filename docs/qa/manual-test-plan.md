@@ -3761,3 +3761,82 @@ These test cases cover the command contract layer: confirmation enforcement, out
   1. Search `apps/desktop/src-tauri/src/commands/restore.rs` for `live_record_write`.
   2. Search TypeScript sources for `liveRecordWrite` or `live_record_write`.
 - Expected result: No matches. This feature is internal Rust only.
+
+---
+
+## Sandbox Record Write Harness
+
+### TC-SRWH-01: Default test suite does not perform network call
+
+- Preconditions: No `AIRBRIDGE_ENABLE_LIVE_RECORD_WRITE_TEST`, `AIRBRIDGE_SANDBOX_AIRTABLE_TOKEN`, `AIRBRIDGE_SANDBOX_TARGET_BASE_ID`, or `AIRBRIDGE_SANDBOX_TARGET_TABLE_ID_OR_NAME` set.
+- Steps:
+  1. Run `npm --prefix apps/desktop run rust:test`.
+- Expected result: All tests pass. No network call is made. The `#[ignore]` live test is skipped.
+
+### TC-SRWH-02: Missing enable flag causes skip
+
+- Preconditions: Token, base ID, and table ID/name set but `AIRBRIDGE_ENABLE_LIVE_RECORD_WRITE_TEST` is absent.
+- Steps:
+  1. Run the harness with `-- --ignored`.
+- Expected result: Test returns immediately (skip path). No network call. No panic.
+
+### TC-SRWH-03: Missing token causes skip
+
+- Preconditions: `AIRBRIDGE_ENABLE_LIVE_RECORD_WRITE_TEST=true`, base ID and table set, but `AIRBRIDGE_SANDBOX_AIRTABLE_TOKEN` absent.
+- Steps:
+  1. Run the harness with `-- --ignored`.
+- Expected result: Test returns immediately. No network call. No panic.
+
+### TC-SRWH-04: Missing base ID causes skip
+
+- Preconditions: `AIRBRIDGE_ENABLE_LIVE_RECORD_WRITE_TEST=true`, token and table set, but `AIRBRIDGE_SANDBOX_TARGET_BASE_ID` absent.
+- Steps:
+  1. Run the harness with `-- --ignored`.
+- Expected result: Test returns immediately. No network call. No panic.
+
+### TC-SRWH-05: Missing table ID/name causes skip
+
+- Preconditions: `AIRBRIDGE_ENABLE_LIVE_RECORD_WRITE_TEST=true`, token and base ID set, but `AIRBRIDGE_SANDBOX_TARGET_TABLE_ID_OR_NAME` absent.
+- Steps:
+  1. Run the harness with `-- --ignored`.
+- Expected result: Test returns immediately. No network call. No panic.
+
+### TC-SRWH-06: Pre-call contract verification passes
+
+- Preconditions: All four required env vars set. Sandbox base and table available.
+- Steps:
+  1. Run with `-- --ignored`.
+  2. Observe contract check assertions pass before any live call.
+- Expected result: `EligibleButNotExecuted`, `ReadyForSandboxCall`, `MockRunNotExecuted`, write gate `Disabled` — all pass before the live call.
+
+### TC-SRWH-07: Live record create succeeds
+
+- Preconditions: All four required env vars set. Target table must exist in the sandbox base with a `Name` field (singleLineText).
+- Steps:
+  1. Run with `-- --ignored`.
+  2. Observe outcome assertions.
+- Expected result: `record_created=true`, `record_count=1`, `table_name` non-empty. No panic.
+
+### TC-SRWH-08: Write gate remains Disabled after live call
+
+- Preconditions: All four required env vars set.
+- Steps:
+  1. Run with `-- --ignored`.
+  2. Observe post-call write gate assertion.
+- Expected result: `evaluate_write_gate()` still returns `Disabled` after the live call.
+
+### TC-SRWH-09: No token or record ID in serialized outcome
+
+- Preconditions: None (unit-level assertion in the test).
+- Steps:
+  1. Serialize the sanitized `CreateSandboxRecordOutcome` result.
+  2. Check for `pat_`, `"id"`, `recNewRecord`, raw HTTP body.
+- Expected result: None of the above appear in the outcome JSON.
+
+### TC-SRWH-10: No Tauri command or UI surface added
+
+- Preconditions: None.
+- Steps:
+  1. Search `apps/desktop/src-tauri/src/commands/restore.rs` for `live_record_write`.
+  2. Search TypeScript sources for `liveRecordWrite` or `live_record_write`.
+- Expected result: No matches. This feature is internal Rust only.

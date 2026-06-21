@@ -563,6 +563,65 @@ The live record write integration test itself remains separate pending work.
 
 ---
 
+## Section 30: Sandbox Record Write Integration Test Harness
+
+**File:** `apps/desktop/src-tauri/tests/live_record_write_sandbox.rs`
+**Status:** Test-only, `#[ignore]` by default — no live call in default `cargo test`
+
+This integration test creates a single test record in an explicitly provided disposable sandbox Airtable table using the Records API. It is not connected to app runtime, UI, TypeScript, or any Tauri command.
+
+**Required environment variables:**
+
+- `AIRBRIDGE_ENABLE_LIVE_RECORD_WRITE_TEST=true`
+- `AIRBRIDGE_SANDBOX_AIRTABLE_TOKEN` — personal access token (never printed or asserted on)
+- `AIRBRIDGE_SANDBOX_TARGET_BASE_ID` — sandbox base ID (never printed or asserted on)
+- `AIRBRIDGE_SANDBOX_TARGET_TABLE_ID_OR_NAME` — sandbox table ID or name (never printed or asserted on)
+
+Optional: `AIRBRIDGE_SANDBOX_TEST_PREFIX`
+
+**Pre-call contract checks (verified before any live call):**
+
+1. `evaluate_write_gate()` returns `Disabled/DisabledByProductPolicy`.
+2. `evaluate_live_record_write_test_contract()` returns `EligibleButNotExecuted`.
+3. `build_sandbox_record_write_adapter()` returns `ReadyForSandboxCall`.
+4. `run_sandbox_adapter_chain()` returns `MockRunNotExecuted`.
+
+**Live call behavior:**
+
+- Calls `create_single_sandbox_record` (Records API POST) with a minimal `Name` string field.
+- No linked fields, no attachment endpoints, no final validation reads, no update operations.
+- Outcome is sanitized (`CreateSandboxRecordOutcome`): `record_created` boolean, `record_count`, `table_name` — no record ID exposed.
+
+**Post-call invariants:**
+
+- `evaluate_write_gate()` still returns `Disabled` after the live call.
+- App runtime execution, reads, and writes remain disabled.
+- No state is persisted globally.
+
+**Safety invariants (always enforced):**
+
+- Token, base ID, table ID/name are never printed, asserted on value, or included in test output.
+- No record ID is exposed in the sanitized outcome.
+- No attachment endpoint is called.
+- No linked record update is performed.
+- No final validation reads are performed.
+- No Tauri command exists for this test.
+- No TypeScript/UI surface exists for this test.
+- No restore success state is introduced.
+
+**Cleanup note:** The harness may leave a test record in the sandbox table. Delete it manually after the run. No automatic cleanup path exists. The harness must only be run against a disposable sandbox base and table.
+
+**What remains pending after this harness:**
+
+- Linked record updates remain disabled.
+- Final validation reads remain disabled.
+- Attachment handling remains disabled.
+- App runtime restore execution remains disabled.
+- Live end-to-end restore execution remains pending separate work.
+- `evaluate_write_gate()` behavior is unchanged — still returns `Disabled/DisabledByProductPolicy`.
+
+---
+
 ## Related Documents
 
 - [Restore Write Engine Skeleton](./restore-write-engine-skeleton.md)

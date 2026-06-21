@@ -245,3 +245,37 @@ pub struct CreateTableOutcome {
     /// The name provided in the request.
     pub table_name: String,
 }
+
+// ── Sandbox record write models ────────────────────────────────────────────
+
+/// Minimal request body for creating a single record via the Airtable Records API.
+///
+/// Used only in the sandbox record write integration test.
+/// Never contains a token, attachment URL, or raw HTTP body.
+/// Never called from app runtime or Tauri commands.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CreateSandboxRecordRequest {
+    /// Fields map — only safe minimal string values. No linked fields. No attachments.
+    pub fields: std::collections::HashMap<String, serde_json::Value>,
+}
+
+/// Sanitized outcome of a single sandbox record create call.
+///
+/// Safety properties:
+/// - No token field.
+/// - No raw HTTP response body.
+/// - No old or new Airtable record IDs exposed in public interface.
+/// - No attachment URLs.
+/// - No linked field values.
+/// - Never returned to UI or Tauri commands.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CreateSandboxRecordOutcome {
+    /// Whether the record create call returned a non-empty ID (sanitized boolean).
+    pub record_created: bool,
+    /// Count of records created (always 1 for a single create). No ID exposed.
+    pub record_count: usize,
+    /// Table name the record was created in (not a live Airtable table ID).
+    pub table_name: String,
+}
