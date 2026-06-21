@@ -6,6 +6,7 @@ use super::models::{
     AccessibleBase, AccessibleBaseSummary, AirtableListRecordsResponse, AirtableRecordFields,
     AirtableRecordUpdate, AirtableTable, ConnectionCheckOutcome, CreateSandboxRecordOutcome,
     CreateSandboxRecordRequest, CreateTableOutcome, CreateTableRequest, ListBasesResponse,
+    UpdateLinkedSandboxRecordOutcome, UpdateLinkedSandboxRecordRequest,
 };
 use super::pagination::ListRecordsOptions;
 
@@ -221,6 +222,69 @@ impl<T: HttpTransport> AirtableClient<T> {
         })
     }
 
+    /// Updates the linked field of a single sandbox record via the Records API (PATCH).
+    ///
+    /// Safety invariants:
+    /// - Never called from app runtime or Tauri commands.
+    /// - Used only in the sandbox linked update integration test.
+    /// - Returns only a sanitized outcome (record_updated, record_count,
+    ///   source_table_name, linked_field_name, linked_target_count).
+    /// - Source and target record IDs are never included in the returned outcome.
+    /// - Token is used for the Authorization header and is not returned.
+    /// - Only the configured linked field is updated. No schema writes.
+    /// - No attachment endpoints. No final validation reads.
+    pub fn update_single_linked_sandbox_record(
+        &self,
+        base_id: &str,
+        source_table_id_or_name: &str,
+        source_table_name: &str,
+        request: &UpdateLinkedSandboxRecordRequest,
+    ) -> ClientResult<UpdateLinkedSandboxRecordOutcome> {
+        let url = endpoints::update_records_path(base_id, source_table_id_or_name);
+
+        // Build the linked-field value as a JSON array of {id: ...} objects,
+        // which is the Airtable Records API format for linked record fields.
+        let linked_ids_json: Vec<serde_json::Value> = request
+            .target_record_ids
+            .iter()
+            .map(|id| serde_json::json!({ "id": id }))
+            .collect();
+
+        let mut fields = std::collections::HashMap::new();
+        fields.insert(
+            request.linked_field_name.clone(),
+            serde_json::Value::Array(linked_ids_json),
+        );
+
+        let record_update = AirtableRecordUpdate {
+            id: super::models::AirtableRecordId(request.source_record_id.clone()),
+            fields,
+        };
+        let payload = super::models::AirtableUpdateRecordsRequest {
+            records: vec![record_update],
+        };
+        let body_str = serde_json::to_string(&payload)
+            .map_err(|e| AirtableClientError::MalformedResponse(e.to_string()))?;
+        let body = self.send_patch(url, body_str)?;
+
+        #[derive(serde::Deserialize)]
+        struct UpdateRecordsResponse {
+            records: Vec<serde_json::Value>,
+        }
+
+        let resp = serde_json::from_str::<UpdateRecordsResponse>(&body)
+            .map_err(|e| AirtableClientError::MalformedResponse(e.to_string()))?;
+
+        let record_updated = !resp.records.is_empty();
+        Ok(UpdateLinkedSandboxRecordOutcome {
+            record_updated,
+            record_count: resp.records.len(),
+            source_table_name: source_table_name.to_string(),
+            linked_field_name: request.linked_field_name.clone(),
+            linked_target_count: request.target_record_ids.len(),
+        })
+    }
+
     /// Creates a table in a base via the Airtable Metadata API.
     ///
     /// Safety invariants:
@@ -261,6 +325,7 @@ mod tests {
     use crate::airtable::http::MockHttpTransport;
     use crate::airtable::models::{
         CreateSandboxRecordRequest, CreateTableFieldSpec, CreateTableRequest,
+        UpdateLinkedSandboxRecordRequest,
     };
     use crate::airtable::pagination::ListRecordsOptions;
 
@@ -687,5 +752,119 @@ mod tests {
             err,
             AirtableClientError::TransientServerError(422)
         ));
+    }
+
+    // ── update_single_linked_sandbox_record tests ────────────────────────────
+
+    #[test]
+    fn update_single_linked_sandbox_record_returns_sanitized_outcome() {
+        let body = r#"{"records":[{"id":"recUpdated001","fields":{"Tasks":[{"id":"recTarget001"}]},"createdTime":"2025-01-01T00:00:00.000Z"}]}"#;
+        let transport = MockHttpTransport::ok(body);
+        let req = UpdateLinkedSandboxRecordRequest {
+            source_record_id: "recSource001".to_string(),
+            linked_field_name: "Tasks".to_string(),
+            target_record_ids: vec!["recTarget001".to_string()],
+        };
+        let client = client_with(transport);
+        let outcome = client
+            .update_single_linked_sandbox_record(
+                "appTestBase001",
+                "tblSourceTable",
+                "Projects",
+                &req,
+            )
+            .expect("update must succeed");
+        assert!(outcome.record_updated);
+        assert_eq!(outcome.record_count, 1);
+        assert_eq!(outcome.source_table_name, "Projects");
+        assert_eq!(outcome.linked_field_name, "Tasks");
+        assert_eq!(outcome.linked_target_count, 1);
+    }
+
+    #[test]
+    fn update_single_linked_sandbox_record_outcome_does_not_contain_record_ids() {
+        let body = r#"{"records":[{"id":"recUpdated001","fields":{"Tasks":[{"id":"recTarget001"}]},"createdTime":"2025-01-01T00:00:00.000Z"}]}"#;
+        let transport = MockHttpTransport::ok(body);
+        let req = UpdateLinkedSandboxRecordRequest {
+            source_record_id: "recSensitiveSource".to_string(),
+            linked_field_name: "Tasks".to_string(),
+            target_record_ids: vec!["recSensitiveTarget".to_string()],
+        };
+        let client = client_with(transport);
+        let outcome = client
+            .update_single_linked_sandbox_record(
+                "appTestBase001",
+                "tblSourceTable",
+                "Projects",
+                &req,
+            )
+            .expect("update must succeed");
+        let json = serde_json::to_string(&outcome).expect("serialize");
+        assert!(!json.contains("recSensitiveSource"), "source record ID must not appear in outcome");
+        assert!(!json.contains("recSensitiveTarget"), "target record ID must not appear in outcome");
+        assert!(!json.contains("pat_"), "token must not appear in outcome");
+    }
+
+    #[test]
+    fn update_single_linked_sandbox_record_outcome_does_not_contain_token() {
+        let body = r#"{"records":[{"id":"recUpdated001","fields":{},"createdTime":"2025-01-01T00:00:00.000Z"}]}"#;
+        let transport = MockHttpTransport::ok(body);
+        let req = UpdateLinkedSandboxRecordRequest {
+            source_record_id: "recSource001".to_string(),
+            linked_field_name: "Linked".to_string(),
+            target_record_ids: vec![],
+        };
+        let client = client_with(transport);
+        let outcome = client
+            .update_single_linked_sandbox_record(
+                "appTestBase001",
+                "tblSourceTable",
+                "Projects",
+                &req,
+            )
+            .expect("update must succeed");
+        let json = serde_json::to_string(&outcome).expect("serialize");
+        assert!(!json.contains(SENTINEL));
+    }
+
+    #[test]
+    fn update_single_linked_sandbox_record_empty_response_returns_not_updated() {
+        let transport = MockHttpTransport::ok(r#"{"records":[]}"#);
+        let req = UpdateLinkedSandboxRecordRequest {
+            source_record_id: "recSource001".to_string(),
+            linked_field_name: "Tasks".to_string(),
+            target_record_ids: vec!["recTarget001".to_string()],
+        };
+        let client = client_with(transport);
+        let outcome = client
+            .update_single_linked_sandbox_record(
+                "appTestBase001",
+                "tblSourceTable",
+                "Projects",
+                &req,
+            )
+            .expect("should succeed even with empty records");
+        assert!(!outcome.record_updated);
+        assert_eq!(outcome.record_count, 0);
+    }
+
+    #[test]
+    fn update_single_linked_sandbox_record_401_maps_to_invalid_token() {
+        let transport = MockHttpTransport::with_status(401, r#"{"error":"AUTHENTICATION_REQUIRED"}"#);
+        let req = UpdateLinkedSandboxRecordRequest {
+            source_record_id: "recSource001".to_string(),
+            linked_field_name: "Tasks".to_string(),
+            target_record_ids: vec![],
+        };
+        let client = AirtableClient::new(AirtableToken::new("pat_bad_token"), transport);
+        let err = client
+            .update_single_linked_sandbox_record(
+                "appTestBase001",
+                "tblSourceTable",
+                "Projects",
+                &req,
+            )
+            .unwrap_err();
+        assert!(matches!(err, AirtableClientError::InvalidToken));
     }
 }

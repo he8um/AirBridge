@@ -3996,3 +3996,81 @@ These test cases cover the command contract layer: confirmation enforcement, out
   1. Search `apps/desktop/src-tauri/src/commands/restore.rs` for `live_final`.
   2. Search TypeScript sources for `liveFinalValidation` or `live_final_validation`.
 - Expected result: No matches. This feature is internal Rust only.
+
+---
+
+## TC-LLUSH — Live Linked Update Sandbox Harness
+
+Test cases for `tests/live_linked_update_sandbox.rs`, `src/airtable/models.rs` (new structs), and `src/airtable/client.rs` (new method).
+
+### TC-LLUSH-01: Default test run produces no network calls
+
+- Preconditions: No sandbox env vars set.
+- Steps:
+  1. Run `cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml --test live_linked_update_sandbox`.
+- Expected result: 15 tests pass, 1 ignored, 0 failed. No network call is made.
+
+### TC-LLUSH-02: Missing any required env var causes live test to skip
+
+- Preconditions: Set 5 of the 6 required env vars (omit one at a time).
+- Steps:
+  1. Set `AIRBRIDGE_ENABLE_LIVE_LINKED_UPDATE_TEST=true` and all but one required env var.
+  2. Run with `-- --ignored`.
+- Expected result: The `#[ignore]` test is skipped (returns early), not failed.
+
+### TC-LLUSH-03: evaluate_write_gate() remains Disabled in default tests
+
+- Preconditions: None.
+- Steps:
+  1. Run `cargo test --test live_linked_update_sandbox`.
+- Expected result: All write gate assertions pass (`Disabled` status).
+
+### TC-LLUSH-04: Linked update contract returns EligibleButNotExecuted
+
+- Preconditions: None.
+- Steps:
+  1. Run `cargo test --test live_linked_update_sandbox linked_update_contract`.
+- Expected result: `status == EligibleButNotExecuted`; all safety booleans `false`; `contract_only` and `no_changes_made` `true`.
+
+### TC-LLUSH-05: All adapters return ready state without live call
+
+- Preconditions: None.
+- Steps:
+  1. Run the three adapter tests (linked, record, schema) and the adapter chain test.
+- Expected result: `ReadyForSandboxCall` for all three adapters; `MockRunNotExecuted` for chain.
+
+### TC-LLUSH-06: Live test — create target record succeeds
+
+- Preconditions: All 6 required env vars set; sandbox base has target table with `Name` field.
+- Steps:
+  1. Run `-- sandbox_linked_update_creates_records_and_updates_link --ignored`.
+- Expected result: Target record created; ID extracted locally; not printed.
+
+### TC-LLUSH-07: Live test — create source record succeeds
+
+- Preconditions: Same as TC-LLUSH-06; sandbox base has source table with `Name` field and linked field.
+- Steps:
+  1. Run same test as TC-LLUSH-06.
+- Expected result: Source record created; ID extracted locally; not printed.
+
+### TC-LLUSH-08: Live test — linked field update succeeds
+
+- Preconditions: Same as TC-LLUSH-06; source table linked field correctly configured to target table.
+- Steps:
+  1. Run same test as TC-LLUSH-06.
+- Expected result: `outcome.record_updated == true`; `outcome.record_count == 1`; `outcome.linked_target_count == 1`.
+
+### TC-LLUSH-09: Serialized outcome contains no token or record IDs
+
+- Preconditions: Same as TC-LLUSH-06.
+- Steps:
+  1. Run same test as TC-LLUSH-06; inspect serialized outcome JSON in test assertions.
+- Expected result: No `pat_` prefix; no raw record ID pattern in JSON output.
+
+### TC-LLUSH-10: No Tauri command or UI surface added
+
+- Preconditions: None.
+- Steps:
+  1. Search `apps/desktop/src-tauri/src/commands/restore.rs` for `linked_update` or `live_linked`.
+  2. Search TypeScript sources for `linkedUpdate` or `live_linked_update`.
+- Expected result: No matches. This feature is internal Rust test only.

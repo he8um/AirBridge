@@ -742,6 +742,79 @@ This module evaluates whether a future live final validation read integration te
 
 ---
 
+## Section 33: Sandbox Linked Update Integration Test Harness
+
+**File:** `apps/desktop/src-tauri/tests/live_linked_update_sandbox.rs`
+**Type:** Opt-in Rust integration test (`#[ignore]` by default)
+**Added:** task `test: add live linked update sandbox harness`
+
+### Purpose
+
+Provides a live integration test for the two-step linked record update flow using a disposable sandbox Airtable base. The harness is fully blocked from running in standard `cargo test` and requires explicit opt-in via six environment variables.
+
+### Required environment variables
+
+| Env Var | Required | Purpose |
+|---------|----------|---------|
+| `AIRBRIDGE_ENABLE_LIVE_LINKED_UPDATE_TEST` | Yes (`true`) | Master opt-in flag |
+| `AIRBRIDGE_SANDBOX_AIRTABLE_TOKEN` | Yes | PAT for sandbox base |
+| `AIRBRIDGE_SANDBOX_TARGET_BASE_ID` | Yes | Sandbox base ID |
+| `AIRBRIDGE_SANDBOX_LINK_SOURCE_TABLE_ID_OR_NAME` | Yes | Source table (has linked field) |
+| `AIRBRIDGE_SANDBOX_LINK_TARGET_TABLE_ID_OR_NAME` | Yes | Target table (linked-to) |
+| `AIRBRIDGE_SANDBOX_LINK_FIELD_NAME` | Yes | Linked field name in source table |
+| `AIRBRIDGE_SANDBOX_TEST_PREFIX` | No | Prefix for test field values |
+
+### Pre-call contract gating
+
+Before any live Airtable call is made, the `#[ignore]` test verifies:
+
+1. `evaluate_write_gate()` returns `Disabled`.
+2. `evaluate_live_linked_update_test_contract()` returns `EligibleButNotExecuted`.
+3. `build_sandbox_linked_second_pass_adapter()` returns `ReadyForSandboxCall`.
+4. `build_sandbox_record_write_adapter()` returns `ReadyForSandboxCall`.
+5. `build_sandbox_schema_write_adapter()` returns `ReadyForSandboxCall`.
+6. `run_sandbox_adapter_chain()` returns `MockRunNotExecuted`.
+
+### Live calls (only when all env vars set + `--ignored` flag)
+
+1. `POST` target table — create one minimal record; ID extracted as local opaque handle.
+2. `POST` source table — create one minimal record; ID extracted as local opaque handle.
+3. `PATCH` source table — set linked field to point at target record ID.
+
+The IDs are used only as opaque handles for the PATCH call. They are never printed, asserted on by value, serialized into outcome structs, or included in post-call assertions.
+
+### Post-call assertions
+
+- `outcome.record_updated` is `true`.
+- `outcome.record_count == 1`.
+- `outcome.linked_target_count == 1`.
+- `outcome.source_table_name` is non-empty.
+- Serialized outcome JSON contains no `pat_` (token) or record ID patterns.
+- `evaluate_write_gate()` still returns `Disabled`.
+
+### Safety invariants
+
+- Token, base ID, table IDs, field name, and record IDs are never printed or included in any outcome.
+- `UpdateLinkedSandboxRecordOutcome` exposes only boolean/count/name fields.
+- `evaluate_write_gate()` returns `Disabled` before and after live calls — unchanged.
+- App runtime execution, reads, and writes remain disabled.
+- No schema writes, no attachment endpoints, no final validation reads, no record deletes.
+- No Tauri command added. No TypeScript/UI surface.
+- Test may leave sandbox-only records; must only be run against disposable base/tables.
+- No automatic cleanup path.
+
+### New models (added to `src/airtable/models.rs`)
+
+**`UpdateLinkedSandboxRecordRequest`** — sandbox-only PATCH request. Contains `source_record_id` (opaque), `linked_field_name`, `target_record_ids`. No token field.
+
+**`UpdateLinkedSandboxRecordOutcome`** — sanitized result. Contains `record_updated: bool`, `record_count: usize`, `source_table_name: String`, `linked_field_name: String`, `linked_target_count: usize`. No record IDs, no token, no raw HTTP.
+
+### New client method (added to `src/airtable/client.rs`)
+
+**`update_single_linked_sandbox_record(base_id, source_table, source_table_name, request)`** — issues one PATCH to the Records API. Constructs the `[{"id": "recXXX"}]` linked field wire format internally. Returns `UpdateLinkedSandboxRecordOutcome`. Covered by 5 unit tests.
+
+---
+
 ## Related Documents
 
 - [Restore Write Engine Skeleton](./restore-write-engine-skeleton.md)

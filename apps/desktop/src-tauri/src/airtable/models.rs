@@ -279,3 +279,56 @@ pub struct CreateSandboxRecordOutcome {
     /// Table name the record was created in (not a live Airtable table ID).
     pub table_name: String,
 }
+
+// ── Sandbox linked update models ────────────────────────────────────────────
+
+/// Request for performing a single minimal linked record update via the Airtable
+/// Records API (PATCH).
+///
+/// Used only in the sandbox linked update integration test.
+/// Never called from app runtime or Tauri commands.
+///
+/// Safety properties:
+/// - No token field.
+/// - No raw HTTP body.
+/// - No attachment URL.
+/// - The `source_record_id` is an opaque internal handle for the test — it is
+///   never included in serialized outcomes or assertion messages.
+/// - Only the linked field is updated. No other field updates.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateLinkedSandboxRecordRequest {
+    /// Opaque source record ID — used only as the PATCH target.
+    /// Never printed, never serialized into outcome structs.
+    pub source_record_id: String,
+    /// Name of the linked field in the source table.
+    /// Not sensitive — it is a field name, not a token or record ID.
+    pub linked_field_name: String,
+    /// List of target record IDs to set in the linked field.
+    /// These are opaque handles for the live call only.
+    /// Never included in sanitized outcomes.
+    pub target_record_ids: Vec<String>,
+}
+
+/// Sanitized outcome of a single sandbox linked record update call.
+///
+/// Safety properties:
+/// - No token field.
+/// - No raw HTTP response body.
+/// - No old or new Airtable record IDs in the public interface.
+/// - No attachment URLs.
+/// - Never returned to UI or Tauri commands.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateLinkedSandboxRecordOutcome {
+    /// Whether the update call returned a non-empty record response (sanitized boolean).
+    pub record_updated: bool,
+    /// Count of records returned in the update response (always 1 for a single update).
+    pub record_count: usize,
+    /// Source table name for the linked field (not a live record ID).
+    pub source_table_name: String,
+    /// Name of the linked field that was updated.
+    pub linked_field_name: String,
+    /// Count of target IDs that were linked. No raw IDs.
+    pub linked_target_count: usize,
+}

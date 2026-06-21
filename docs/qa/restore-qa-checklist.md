@@ -2653,3 +2653,70 @@ Record any failures here with a brief description and steps to reproduce.
 - [ ] Attachment binary handling remains disabled.
 - [ ] App runtime restore execution remains disabled.
 - [ ] Live end-to-end restore execution remains disabled.
+
+---
+
+## LLUSH — Live Linked Update Sandbox Harness
+
+Checklist for `tests/live_linked_update_sandbox.rs` and supporting models/client.
+
+### Default (non-ignored) test pass
+
+- [ ] `cargo test --test live_linked_update_sandbox` passes with 0 failures, 1 ignored.
+- [ ] No network call is made during the default run.
+- [ ] `evaluate_write_gate()` returns `Disabled` in all default tests.
+
+### Env var guard
+
+- [ ] Missing `AIRBRIDGE_ENABLE_LIVE_LINKED_UPDATE_TEST` causes `#[ignore]` test to skip, not fail.
+- [ ] Missing `AIRBRIDGE_SANDBOX_AIRTABLE_TOKEN` causes skip.
+- [ ] Missing `AIRBRIDGE_SANDBOX_TARGET_BASE_ID` causes skip.
+- [ ] Missing `AIRBRIDGE_SANDBOX_LINK_SOURCE_TABLE_ID_OR_NAME` causes skip.
+- [ ] Missing `AIRBRIDGE_SANDBOX_LINK_TARGET_TABLE_ID_OR_NAME` causes skip.
+- [ ] Missing `AIRBRIDGE_SANDBOX_LINK_FIELD_NAME` causes skip.
+
+### Pre-call contract gating (default tests)
+
+- [ ] `evaluate_live_linked_update_test_contract()` returns `EligibleButNotExecuted` with all prereqs satisfied.
+- [ ] `contract_only` is `true`.
+- [ ] `airtable_client_called` is `false`.
+- [ ] `network_writes_attempted` is `false`.
+- [ ] `network_reads_attempted` is `false`.
+- [ ] `app_runtime_execution_enabled` is `false`.
+- [ ] `app_runtime_writes_enabled` is `false`.
+- [ ] `app_runtime_reads_enabled` is `false`.
+- [ ] `no_changes_made` is `true`.
+- [ ] `build_sandbox_linked_second_pass_adapter()` returns `ReadyForSandboxCall`.
+- [ ] `build_sandbox_record_write_adapter()` returns `ReadyForSandboxCall`.
+- [ ] `build_sandbox_schema_write_adapter()` returns `ReadyForSandboxCall`.
+- [ ] `run_sandbox_adapter_chain()` returns `MockRunNotExecuted`.
+
+### Opt-in live test assertions (manual, requires sandbox setup)
+
+- [ ] `outcome.record_updated` is `true`.
+- [ ] `outcome.record_count` is `1`.
+- [ ] `outcome.linked_target_count` is `1`.
+- [ ] `outcome.source_table_name` is non-empty.
+- [ ] Serialized `outcome` JSON contains no `pat_` token prefix.
+- [ ] Serialized `outcome` JSON contains no raw record ID pattern (`recSensitive`).
+- [ ] `evaluate_write_gate()` returns `Disabled` after live calls.
+
+### Safety invariants
+
+- [ ] Token never appears in any test output, assertion, or serialized struct.
+- [ ] Record IDs never appear in any assertion message or serialized outcome.
+- [ ] No Tauri command added for the harness.
+- [ ] No TypeScript/UI surface added.
+- [ ] No schema write performed.
+- [ ] No attachment endpoint called.
+- [ ] No final validation read performed.
+- [ ] No record delete performed.
+- [ ] `evaluate_write_gate()` returns `Disabled` before and after all live calls.
+- [ ] App runtime execution, reads, and writes remain disabled.
+
+### Pending work (still disabled after this harness)
+
+- [ ] Final validation read integration test remains separate pending work.
+- [ ] Attachment binary handling remains disabled.
+- [ ] App runtime restore execution remains disabled.
+- [ ] Live end-to-end restore execution remains disabled.
