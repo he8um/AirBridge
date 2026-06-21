@@ -3840,3 +3840,81 @@ These test cases cover the command contract layer: confirmation enforcement, out
   1. Search `apps/desktop/src-tauri/src/commands/restore.rs` for `live_record_write`.
   2. Search TypeScript sources for `liveRecordWrite` or `live_record_write`.
 - Expected result: No matches. This feature is internal Rust only.
+
+---
+
+## Live Linked Update Test Contract (LLUTC)
+
+### TC-LLUTC-01: Disabled mode returns Blocked
+
+- Preconditions: None.
+- Steps:
+  1. Call `evaluate_live_linked_update_test_contract` with `mode=Disabled`.
+- Expected result: Status `Blocked`. `blocked_reason` contains `LLUTC-PRE-01`. All safety invariants hold.
+
+### TC-LLUTC-02: Missing explicit flag returns Blocked at LLUTC-PRE-02
+
+- Preconditions: None.
+- Steps:
+  1. Call with `mode=SandboxIntegrationCandidate`, `explicit_internal_live_linked_update_test_contract_requested=false`.
+- Expected result: Status `Blocked`. `blocked_reason` contains `LLUTC-PRE-02`.
+
+### TC-LLUTC-03: Record contract not eligible returns Blocked at LLUTC-PRE-04
+
+- Preconditions: None.
+- Steps:
+  1. Call with all flags set but `mapping_coverage_sufficient=false` (blocks the record write contract).
+- Expected result: Status `Blocked`. `blocked_reason` contains `LLUTC-PRE-04`.
+
+### TC-LLUTC-04: Linked adapter not ready returns Blocked
+
+- Preconditions: None.
+- Steps:
+  1. Call with `linked_second_pass_preview_ready=false`.
+- Expected result: Status `Blocked`. `contract_only=true`. No network call made.
+
+### TC-LLUTC-05: All 11 prerequisites satisfied returns EligibleButNotExecuted
+
+- Preconditions: None.
+- Steps:
+  1. Call with all safety booleans `true`, `mode=SandboxIntegrationCandidate`, explicit flag `true`, valid plans.
+- Expected result: Status `EligibleButNotExecuted`. All 11 prerequisites `Ready`. Message mentions "remains separate pending work".
+
+### TC-LLUTC-06: Safety snapshot invariants always hold
+
+- Preconditions: None.
+- Steps:
+  1. Call with all prerequisites satisfied.
+  2. Inspect `safety_snapshot`.
+- Expected result: `contract_only=true`, `write_gate_disabled=true`, all runtime/network booleans `false`.
+
+### TC-LLUTC-07: evaluate_write_gate() unchanged after evaluation
+
+- Preconditions: None.
+- Steps:
+  1. Call the contract.
+  2. Call `evaluate_write_gate()` independently.
+- Expected result: `Disabled/DisabledByProductPolicy` — unchanged before and after.
+
+### TC-LLUTC-08: Serialized result contains no token, path, record ID, or attachment URL
+
+- Preconditions: None.
+- Steps:
+  1. Serialize the result to JSON.
+  2. Check for `pat_`, `/Users/`, `"fields":{`, `"oldRecordId"`, `cdn.airtable.com`, `"succeeded"`.
+- Expected result: None of the above appear in the JSON.
+
+### TC-LLUTC-09: Required future-live conditions present in result
+
+- Preconditions: None.
+- Steps:
+  1. Inspect `required_future_live_conditions` in the result.
+- Expected result: Contains "disposable sandbox-only base required", "attachment handling remains disabled", "final validation reads remain disabled".
+
+### TC-LLUTC-10: No Tauri command or UI surface added
+
+- Preconditions: None.
+- Steps:
+  1. Search `apps/desktop/src-tauri/src/commands/restore.rs` for `live_linked`.
+  2. Search TypeScript sources for `liveLinkedUpdate` or `live_linked_update`.
+- Expected result: No matches. This feature is internal Rust only.

@@ -622,6 +622,66 @@ Optional: `AIRBRIDGE_SANDBOX_TEST_PREFIX`
 
 ---
 
+## Section 31: Live Linked Update Test Contract
+
+**File:** `apps/desktop/src-tauri/src/restore/live_linked_update_test_contract.rs`
+**Status:** Contract-only — no live call, no network access, no Airtable API call
+
+This module evaluates whether a future live linked record update integration test could be attempted, without performing any live call. It is not connected to app runtime, UI, TypeScript, or any Tauri command.
+
+**Prerequisites (LLUTC-PRE-01 through LLUTC-PRE-11):**
+
+| ID | Probe |
+|----|-------|
+| LLUTC-PRE-01 | Mode is `SandboxIntegrationCandidate` |
+| LLUTC-PRE-02 | `explicit_internal_live_linked_update_test_contract_requested` is `true` |
+| LLUTC-PRE-03 | `evaluate_write_gate()` returns `Disabled/DisabledByProductPolicy` |
+| LLUTC-PRE-04 | `evaluate_live_record_write_test_contract()` returns `EligibleButNotExecuted` |
+| LLUTC-PRE-05 | `build_sandbox_linked_second_pass_adapter()` returns `ReadyForSandboxCall` |
+| LLUTC-PRE-06 | `build_sandbox_record_write_adapter()` returns `ReadyForSandboxCall` |
+| LLUTC-PRE-07 | `build_sandbox_schema_write_adapter()` returns `ReadyForSandboxCall` |
+| LLUTC-PRE-08 | `run_sandbox_adapter_chain()` returns `MockRunNotExecuted` |
+| LLUTC-PRE-09 | `build_sandbox_gate_arming_decision()` returns `ArmedNotExecutable` |
+| LLUTC-PRE-10 | `run_sandbox_restore_simulator()` returns `SimulatedNotExecuted` |
+| LLUTC-PRE-11 | `build_sandbox_enablement_readiness_report()` returns `ReadyButDisabled` |
+
+**Safety invariants (always enforced):**
+
+- `contract_only` is always `true`.
+- `app_runtime_execution_enabled` is always `false`.
+- `app_runtime_writes_enabled` is always `false`.
+- `app_runtime_reads_enabled` is always `false`.
+- `network_reads_attempted` is always `false`.
+- `network_writes_attempted` is always `false`.
+- `airtable_client_called` is always `false`.
+- `no_changes_made` is always `true`.
+- `evaluate_write_gate()` is never modified — always returns `Disabled/DisabledByProductPolicy`.
+- No token field, no absolute path, no record payload, no raw HTTP body, no old/new record IDs, no attachment URL in the result.
+- No `succeeded`, `complete`, `enabled`, `done`, or `executionReady` status variant exists.
+- No UI path, no Tauri command, no TypeScript surface exists.
+- The live linked update integration test itself remains separate pending work.
+
+**Required future-live conditions (reported, not executed):**
+
+- Disposable sandbox-only base required — no production base may be used.
+- Live schema and live record harnesses must have prepared sandbox-only records before linked updates.
+- Explicit test-only credentials required in future task — no token accepted by this contract.
+- No UI execution path allowed — live call must be a separate Rust-internal task.
+- Only linked update operations allowed — no schema or first-pass record create operations.
+- Attachment handling remains disabled — must not be enabled in this task.
+- Final validation reads remain disabled — must not be enabled in this task.
+
+**What remains pending after this contract:**
+
+- Live linked record update integration test remains separate pending work.
+- Final validation reads remain disabled.
+- Attachment handling remains disabled.
+- App runtime restore execution remains disabled.
+- Live end-to-end restore execution remains pending separate work.
+- `evaluate_write_gate()` behavior is unchanged — still returns `Disabled/DisabledByProductPolicy`.
+
+---
+
 ## Related Documents
 
 - [Restore Write Engine Skeleton](./restore-write-engine-skeleton.md)

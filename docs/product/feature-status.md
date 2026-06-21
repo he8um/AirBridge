@@ -1,7 +1,7 @@
 # Feature Status Matrix
 
 **Version:** 0.1.0-alpha  
-**Updated:** 2026-06-21 (7)
+**Updated:** 2026-06-21 (8)
 
 This matrix describes the current status of each feature area. Status values:
 
@@ -402,6 +402,39 @@ The live call creates a single record with a minimal `Name` field (string value 
 The test may leave a sandbox-only test record in the target table. It must only be run against a disposable sandbox base and table. No cleanup is performed automatically. No UI path, no Tauri command, no TypeScript surface exists. App runtime restore execution remains disabled.
 
 Linked record updates, final validation reads, attachment handling, and live end-to-end restore execution remain pending.
+
+### Live Linked Update Test Contract (internal, contract-only)
+
+The live linked update test contract (`evaluate_live_linked_update_test_contract` in `restore/live_linked_update_test_contract.rs`) is an internal Rust module — it is not exposed as a Tauri command and has no UI surface. It is a contract-only readiness layer that evaluates whether a future live linked record update integration test could be attempted, without performing any live call.
+
+The contract evaluates 11 prerequisites (LLUTC-PRE-01 through LLUTC-PRE-11):
+
+| ID | Prerequisite |
+|----|-------------|
+| LLUTC-PRE-01 | Mode is `sandboxIntegrationCandidate` |
+| LLUTC-PRE-02 | `explicit_internal_live_linked_update_test_contract_requested` is true |
+| LLUTC-PRE-03 | `evaluate_write_gate()` returns `Disabled/DisabledByProductPolicy` |
+| LLUTC-PRE-04 | Live record write test contract returns `EligibleButNotExecuted` |
+| LLUTC-PRE-05 | Sandbox linked second-pass adapter returns `ReadyForSandboxCall` |
+| LLUTC-PRE-06 | Sandbox record write adapter returns `ReadyForSandboxCall` |
+| LLUTC-PRE-07 | Sandbox schema write adapter returns `ReadyForSandboxCall` |
+| LLUTC-PRE-08 | Sandbox adapter chain runner returns `MockRunNotExecuted` |
+| LLUTC-PRE-09 | Sandbox gate arming decision returns `ArmedNotExecutable` |
+| LLUTC-PRE-10 | Sandbox restore simulator returns `SimulatedNotExecuted` |
+| LLUTC-PRE-11 | Sandbox enablement readiness returns `ReadyButDisabled` |
+
+`eligibleButNotExecuted` does NOT perform any Airtable network call. `contractOnly` is always `true`. `appRuntimeExecutionEnabled` is always `false`. `appRuntimeWritesEnabled` is always `false`. `appRuntimeReadsEnabled` is always `false`. `networkReadsAttempted` is always `false`. `networkWritesAttempted` is always `false`. `airtableClientCalled` is always `false`. `noChangesMade` is always `true`. No token is accepted or stored. `evaluate_write_gate()` remains `Disabled/DisabledByProductPolicy`. No UI surface, no Tauri command, no TypeScript path exists.
+
+The contract reports the following required future-live conditions (not executed):
+- Disposable sandbox-only base required.
+- Live schema and live record harnesses must have prepared sandbox-only records before linked updates.
+- Explicit test-only credentials required in future task.
+- No UI execution path allowed.
+- Only linked update operations allowed — no schema or first-pass record create operations.
+- Attachment handling remains disabled.
+- Final validation reads remain disabled.
+
+The live linked update integration test itself remains separate pending work.
 
 ---
 
