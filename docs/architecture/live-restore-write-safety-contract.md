@@ -1001,6 +1001,81 @@ Optional: `AIRBRIDGE_SANDBOX_EXPECTED_MIN_RECORD_COUNT`, `AIRBRIDGE_SANDBOX_TEST
 
 ---
 
+## Section 37: Post-E2E Restore Readiness Audit (Rust-internal, no network calls)
+
+**Module:** `apps/desktop/src-tauri/src/restore/post_e2e_restore_readiness_audit.rs`
+**Public function:** `audit_post_e2e_restore_readiness(request, schema_plan, record_plan)`
+**Status:** Rust-internal only. No Tauri command. No network call. No UI surface.
+
+### Purpose
+
+Produces a sanitized internal readiness report by inspecting and composing existing contract and harness readiness concepts. Does not execute any harness. Does not call Airtable. Does not accept credential values. Intended for maintainer use and Rust unit tests only.
+
+### Required inputs (audit gates)
+
+All of the following must be `true` for `SandboxHarnessesReadyRuntimeDisabled` to be returned:
+
+| Gate | Input |
+|------|-------|
+| Explicit audit flag | `explicit_internal_post_e2e_audit_requested == true` |
+| Write gate | `evaluate_write_gate()` returns `Disabled` |
+| E2E contract | Returns `EligibleButNotExecuted` |
+| Schema harness | `schema_harness_ignored_by_default == true` |
+| Record harness | `record_harness_ignored_by_default == true` |
+| Linked update harness | `linked_update_harness_ignored_by_default == true` |
+| Final validation harness | `final_validation_harness_ignored_by_default == true` |
+| E2E restore harness | `e2e_restore_harness_ignored_by_default == true` |
+| Restore command | `restore_command_does_not_expose_live_execution == true` |
+| No Tauri command | `no_tauri_command_exposes_live_execution == true` |
+| No TS/UI path | `no_typescript_ui_path_exposes_live_execution == true` |
+
+### Audit items (12 total)
+
+| Item ID | Label |
+|---------|-------|
+| PERRA-ITEM-01 | Schema write sandbox harness is `#[ignore]` by default |
+| PERRA-ITEM-02 | Record write sandbox harness is `#[ignore]` by default |
+| PERRA-ITEM-03 | Linked update sandbox harness is `#[ignore]` by default |
+| PERRA-ITEM-04 | Final validation sandbox harness is `#[ignore]` by default |
+| PERRA-ITEM-05 | E2E restore sandbox harness is `#[ignore]` by default |
+| PERRA-ITEM-06 | E2E restore test contract returns `EligibleButNotExecuted` |
+| PERRA-ITEM-07 | `evaluate_write_gate()` returns `Disabled/DisabledByProductPolicy` |
+| PERRA-ITEM-08 | `commands/restore.rs` does not expose live restore execution |
+| PERRA-ITEM-09 | No Tauri command exposes live restore execution |
+| PERRA-ITEM-10 | No TypeScript/UI path exposes live restore execution |
+| PERRA-ITEM-11 | Attachment binary handling remains disabled |
+| PERRA-ITEM-12 | App runtime execution/writes/reads remain disabled |
+
+### Pending work items (7 total)
+
+| Pending ID | Label |
+|------------|-------|
+| PERRA-PENDING-01 | Product decision for runtime restore enablement |
+| PERRA-PENDING-02 | Runtime restore command contract (if ever approved) |
+| PERRA-PENDING-03 | UI review/confirmation design (if ever approved) |
+| PERRA-PENDING-04 | Credential handling review for any future runtime path |
+| PERRA-PENDING-05 | Attachment binary handling (remains disabled) |
+| PERRA-PENDING-06 | Cleanup strategy for sandbox-created tables/records |
+| PERRA-PENDING-07 | Security review before any user-facing restore execution |
+
+### Safety invariants
+
+- `app_runtime_execution_enabled`, `app_runtime_writes_enabled`, `app_runtime_reads_enabled` always `false`.
+- `live_harnesses_ignored_by_default`, `no_changes_made` always `true`.
+- `network_reads_attempted`, `network_writes_attempted`, `airtable_client_called` always `false`.
+- `tauri_command_exposes_live_restore`, `typescript_ui_path_exposes_live_restore` always `false`.
+- No token, base ID, table/field/record values accepted.
+- `evaluate_write_gate()` never modified.
+- No restore success/completed/enabled product state exists.
+- Not reachable from UI, TypeScript, or any Tauri command.
+- **`SandboxHarnessesReadyRuntimeDisabled` does NOT mean product-level restore is complete or approved.**
+
+### Test count
+
+- 28 unit tests in `#[cfg(test)]` block
+
+---
+
 ## Related Documents
 
 - [Restore Write Engine Skeleton](./restore-write-engine-skeleton.md)

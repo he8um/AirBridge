@@ -2966,3 +2966,64 @@ Checklist for `tests/live_final_validation_sandbox.rs` and supporting models/cli
 - [ ] No Tauri command test passes.
 - [ ] No attachment test passes.
 - [ ] No restore success state test passes.
+
+---
+
+## PERRA — Post-E2E Restore Readiness Audit
+
+### Opt-in gate
+
+- [ ] `audit_post_e2e_restore_readiness()` returns `Blocked` when `explicit_internal_post_e2e_audit_requested` is `false`.
+- [ ] `audit_post_e2e_restore_readiness()` returns `Blocked` when any harness-ignored flag is `false`.
+- [ ] `audit_post_e2e_restore_readiness()` returns `Blocked` when `no_tauri_command_exposes_live_execution` is `false`.
+- [ ] `audit_post_e2e_restore_readiness()` returns `Blocked` when `no_typescript_ui_path_exposes_live_execution` is `false`.
+- [ ] `audit_post_e2e_restore_readiness()` returns `Blocked` when E2E contract does not return `EligibleButNotExecuted`.
+
+### Full eligible path
+
+- [ ] `audit_post_e2e_restore_readiness()` returns `SandboxHarnessesReadyRuntimeDisabled` when all 11 gates pass.
+- [ ] Result message does not contain "restore ready", "restore complete", or "restore succeeded".
+- [ ] All 12 audit items present; all with `Ready` status when full request provided.
+- [ ] 7 pending work items present; `pending_work_count == 7`.
+- [ ] `live_harnesses_ignored_by_default` is `true`.
+- [ ] `safety_snapshot.e2e_contract_eligible_not_executed` is `true`.
+- [ ] `safety_snapshot.write_gate_disabled` is `true`.
+
+### Safety invariants (always enforced)
+
+- [ ] `app_runtime_execution_enabled` is always `false`.
+- [ ] `app_runtime_writes_enabled` is always `false`.
+- [ ] `app_runtime_reads_enabled` is always `false`.
+- [ ] `network_reads_attempted` is always `false`.
+- [ ] `network_writes_attempted` is always `false`.
+- [ ] `airtable_client_called` is always `false`.
+- [ ] `no_changes_made` is always `true`.
+- [ ] `live_harnesses_ignored_by_default` is always `true`.
+- [ ] `safety_snapshot.tauri_command_exposes_live_restore` is always `false`.
+- [ ] `safety_snapshot.typescript_ui_path_exposes_live_restore` is always `false`.
+- [ ] All safety fields enforced even when `Blocked`.
+
+### Pending work
+
+- [ ] `PERRA-PENDING-01` present: product decision for runtime restore enablement.
+- [ ] `PERRA-PENDING-02` present: runtime restore command contract (if ever approved).
+- [ ] `PERRA-PENDING-03` present: UI review/confirmation design (if ever approved).
+- [ ] `PERRA-PENDING-04` present: credential handling review.
+- [ ] `PERRA-PENDING-05` present: attachment binary handling remains disabled.
+- [ ] `PERRA-PENDING-06` present: cleanup strategy for sandbox-created data.
+- [ ] `PERRA-PENDING-07` present: security review before user-facing restore execution.
+
+### Serialization safety
+
+- [ ] No `pat_` token prefix in serialized JSON.
+- [ ] No `/Users/`, `/home/`, `/tmp/` in serialized JSON.
+- [ ] No `"fields":{`, `"records":[{` in serialized JSON.
+- [ ] No `oldRecordId`, `newRecordId` in serialized JSON.
+- [ ] No `cdn.airtable.com`, `attachmentUrl` in serialized JSON.
+- [ ] No `restoreSuccess`, `restoreComplete`, `"succeeded"`, `executionReady` in serialized JSON.
+
+### No Tauri command or UI path
+
+- [ ] No Tauri command exposes the audit.
+- [ ] No TypeScript/UI surface references the audit.
+- [ ] `evaluate_write_gate()` returns `Disabled` after calling the audit.

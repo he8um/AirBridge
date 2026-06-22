@@ -4315,3 +4315,80 @@ Test cases for `tests/live_final_validation_sandbox.rs`, `src/airtable/models.rs
   2. Confirm `evaluate_write_gate()` still returns `Disabled`.
   3. Confirm no TypeScript or frontend path references the harness.
 - Expected result: The harness is only reachable via explicit `cargo test --test live_e2e_restore_sandbox -- --ignored`. No app runtime path exists.
+
+---
+
+## TC-PERRA — Post-E2E Restore Readiness Audit Test Cases
+
+### TC-PERRA-01: Default request is blocked
+
+- Preconditions: None.
+- Steps:
+  1. Call `audit_post_e2e_restore_readiness()` with all inputs false/zero.
+- Expected result: Status is `Blocked`. `blocked_reason` is present.
+
+### TC-PERRA-02: Missing explicit audit flag is blocked
+
+- Preconditions: None.
+- Steps:
+  1. Call with full valid request but `explicit_internal_post_e2e_audit_requested = false`.
+- Expected result: Status is `Blocked`. `blocked_reason` contains `explicit_internal_post_e2e_audit_requested`.
+
+### TC-PERRA-03: Any harness not confirmed as ignored blocks audit
+
+- Preconditions: None.
+- Steps:
+  1. Call with each of the five harness flags set to `false` in turn.
+- Expected result: Status is `Blocked` for each missing flag.
+
+### TC-PERRA-04: Full request returns SandboxHarnessesReadyRuntimeDisabled
+
+- Preconditions: None.
+- Steps:
+  1. Call with all 11 gate inputs satisfied.
+- Expected result: Status is `SandboxHarnessesReadyRuntimeDisabled`. All 12 audit items present. 7 pending work items present.
+
+### TC-PERRA-05: Safety invariants hold in eligible result
+
+- Preconditions: TC-PERRA-04 passes.
+- Steps:
+  1. Inspect result from TC-PERRA-04.
+- Expected result: `app_runtime_execution_enabled`, `app_runtime_writes_enabled`, `app_runtime_reads_enabled`, `network_reads_attempted`, `network_writes_attempted`, `airtable_client_called` all `false`. `no_changes_made` is `true`. `live_harnesses_ignored_by_default` is `true`.
+
+### TC-PERRA-06: Safety invariants hold in blocked result
+
+- Preconditions: None.
+- Steps:
+  1. Inspect result from TC-PERRA-01.
+- Expected result: Same safety fields all enforced as in TC-PERRA-05.
+
+### TC-PERRA-07: Pending work includes attachment handling and product approval
+
+- Preconditions: TC-PERRA-04 passes.
+- Steps:
+  1. Inspect `pending_work` from TC-PERRA-04.
+- Expected result: At least one pending work item references attachment handling. At least one references product decision/approval. `pending_work_count == 7`.
+
+### TC-PERRA-08: Serialization contains no sensitive data
+
+- Preconditions: TC-PERRA-04 passes.
+- Steps:
+  1. Serialize result from TC-PERRA-04 to JSON.
+  2. Scan for: `pat_`, `/Users/`, `/home/`, `/tmp/`, `"fields":{`, `"records":[{`, `oldRecordId`, `newRecordId`, `cdn.airtable.com`, `attachmentUrl`, `restoreSuccess`, `restoreComplete`, `"succeeded"`, `executionReady`.
+- Expected result: None of the above strings are present.
+
+### TC-PERRA-09: Message does not imply restore is complete
+
+- Preconditions: TC-PERRA-04 passes.
+- Steps:
+  1. Inspect `message` field from TC-PERRA-04.
+- Expected result: Message does not contain "restore ready", "restore complete", or "restore succeeded". Message references pending work and disabled runtime execution.
+
+### TC-PERRA-10: No Tauri command or UI path introduced
+
+- Preconditions: None.
+- Steps:
+  1. Confirm `src/restore/post_e2e_restore_readiness_audit.rs` is not referenced from any Tauri command.
+  2. Confirm `evaluate_write_gate()` still returns `Disabled`.
+  3. Confirm no TypeScript or frontend path references the audit module.
+- Expected result: The audit module is only reachable from Rust unit tests and internal callers. No app runtime path exists.

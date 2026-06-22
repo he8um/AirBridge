@@ -26,6 +26,7 @@ pub mod live_write_readiness_policy;
 pub mod mapping_checkpoint_execution_preview;
 pub mod ordering;
 pub mod plan;
+pub mod post_e2e_restore_readiness_audit;
 pub mod rate_limit_backoff_policy;
 pub mod record_import_batches;
 pub mod record_import_plan;

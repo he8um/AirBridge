@@ -1,7 +1,7 @@
 # Feature Status Matrix
 
 **Version:** 0.1.0-alpha  
-**Updated:** 2026-06-22 (13)
+**Updated:** 2026-06-22 (14)
 
 This matrix describes the current status of each feature area. Status values:
 
@@ -55,6 +55,7 @@ This matrix describes the current status of each feature area. Status values:
 | Sandbox final validation read harness (integration test) | Test-only, ignored by default | Internal only — no UI surface, no Tauri command; `#[ignore]` by default; requires `AIRBRIDGE_ENABLE_LIVE_FINAL_VALIDATION_TEST=true`, `AIRBRIDGE_SANDBOX_AIRTABLE_TOKEN`, `AIRBRIDGE_SANDBOX_TARGET_BASE_ID`, `AIRBRIDGE_SANDBOX_VALIDATION_TABLE_ID_OR_NAME`; single read-only GET records call; no records created, updated, or deleted; no schema writes, no linked updates, no attachment endpoints; `evaluate_write_gate()` remains Disabled before and after; sanitized outcome (no record IDs, no raw field values exposed); safe against any accessible sandbox table | Attachment handling and live E2E restore remain pending |
 | Live E2E restore test contract | Disabled | Internal only — no UI surface, no Tauri command, no token, no network call; contract-only readiness layer; `eligibleButNotExecuted` does NOT perform any live call; `contractOnly` always true; 9 prerequisites (LE2ERTC-PRE-01 through LE2ERTC-PRE-09); 5 planned E2E phases reported but not executed (schema write, record write, linked update, final validation read, final non-success guard) |
 | Live E2E restore sandbox harness | Disabled | Test-only, `#[ignore]` by default — no UI surface, no Tauri command; sequences all 5 phases (schema write → record write → linked update → final validation read → final non-runtime guard); requires all 9 env vars; pre-call E2E contract + per-phase contract + write gate verification before each live call; post-call write gate and app runtime guard after each phase; 19 default non-ignored tests + 1 `#[ignore]` live test |
+| Post-E2E restore readiness audit | Disabled | Rust-internal only — no UI surface, no Tauri command, no Airtable call; inspects and composes existing contract/harness readiness concepts; returns `sandboxHarnessesReadyRuntimeDisabled` only when all 5 harnesses confirmed as `#[ignore]`, E2E contract eligible, write gate Disabled, and no Tauri/UI/TS path exists for live execution; includes 7 explicit pending work items; 28 unit tests |
 | Sandbox adapter chain runner | Disabled | Internal only — no UI surface, no Tauri command | No Airtable calls; no token; no network reads or writes; no checkpoint files written; mock/no-op adapters only; write gate always disabled; `noChangesMade` always true; `airtableClientCalled` always false; `mockRunNotExecuted` does NOT enable any live execution path | Live end-to-end sandbox restore execution remains separate pending work |
 | Schema write engine foundation | Disabled | Request plan builder available — internal only | No Airtable writes; no token required; request builders exist; write gate always disabled; `noChangesMade` always true; `networkWritesAttempted` always false | Enable live schema writes when write engine is ready |
 | Record write engine foundation | Disabled | Request plan builder available — internal only | No Airtable writes; no token required; request builders exist; write gate always disabled; `noChangesMade` always true; `networkWritesAttempted` always false; no raw record payloads; old-to-new ID mapping deferred to execution | Enable live record writes when write engine is ready |
@@ -628,6 +629,45 @@ Safety invariants:
 - The test is safe against any accessible sandbox table (read-only).
 
 The harness includes 17 default (non-ignored) tests covering: missing env var guards, write gate invariant, FV contract eligibility, FV reader plan state, all adapter readiness checks, adapter chain mock run, and absence of Tauri command/write/attachment operations.
+
+### Post-E2E Restore Readiness Audit (Rust-internal, no network calls)
+
+The post-E2E restore readiness audit (`src/restore/post_e2e_restore_readiness_audit.rs`) is a Rust-internal module — it has no Tauri command, no UI surface, no TypeScript path, and does not call Airtable. It inspects and composes existing contract and harness readiness concepts to produce a sanitized internal readiness report for maintainers.
+
+The audit returns `SandboxHarnessesReadyRuntimeDisabled` only when all of the following are confirmed:
+
+- All five sandbox harnesses are `#[ignore]` by default (schema write, record write, linked update, final validation, E2E restore)
+- The live E2E restore test contract returns `EligibleButNotExecuted`
+- `evaluate_write_gate()` returns `Disabled/DisabledByProductPolicy`
+- `commands/restore.rs` does not expose live restore execution
+- No Tauri command exposes live restore execution
+- No TypeScript/UI path exposes live restore execution
+- `explicit_internal_post_e2e_audit_requested` is `true`
+
+**This status does not mean product-level restore is complete or approved.**
+
+The audit always includes 7 explicit pending work items:
+
+| ID | Pending Work |
+|----|-------------|
+| PERRA-PENDING-01 | Product decision for runtime restore enablement |
+| PERRA-PENDING-02 | Runtime restore command contract (if ever approved) |
+| PERRA-PENDING-03 | UI review/confirmation design (if ever approved) |
+| PERRA-PENDING-04 | Credential handling review for any future runtime path |
+| PERRA-PENDING-05 | Attachment binary handling (remains disabled) |
+| PERRA-PENDING-06 | Cleanup strategy for sandbox-created tables/records |
+| PERRA-PENDING-07 | Security review before any user-facing restore execution |
+
+Safety invariants:
+- `app_runtime_execution_enabled`, `app_runtime_writes_enabled`, `app_runtime_reads_enabled` are always `false`.
+- `live_harnesses_ignored_by_default`, `no_changes_made` are always `true`.
+- `network_reads_attempted`, `network_writes_attempted`, `airtable_client_called` are always `false`.
+- No token, base ID, table/field/record values are accepted.
+- Not reachable from UI, TypeScript, or any Tauri command.
+- `evaluate_write_gate()` is never modified.
+- No restore success/completed/enabled product state exists.
+
+The module includes 28 unit tests covering all blocked inputs, safety invariants, serialization safety, pending work requirements, and the full-request eligible path.
 
 ---
 
