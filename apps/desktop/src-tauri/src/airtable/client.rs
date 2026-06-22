@@ -6,7 +6,8 @@ use super::models::{
     AccessibleBase, AccessibleBaseSummary, AirtableListRecordsResponse, AirtableRecordFields,
     AirtableRecordUpdate, AirtableTable, ConnectionCheckOutcome, CreateSandboxRecordOutcome,
     CreateSandboxRecordRequest, CreateTableOutcome, CreateTableRequest, ListBasesResponse,
-    UpdateLinkedSandboxRecordOutcome, UpdateLinkedSandboxRecordRequest,
+    SandboxValidationReadOutcome, UpdateLinkedSandboxRecordOutcome,
+    UpdateLinkedSandboxRecordRequest,
 };
 use super::pagination::ListRecordsOptions;
 
@@ -282,6 +283,51 @@ impl<T: HttpTransport> AirtableClient<T> {
             source_table_name: source_table_name.to_string(),
             linked_field_name: request.linked_field_name.clone(),
             linked_target_count: request.target_record_ids.len(),
+        })
+    }
+
+    /// Lists the first page of records in a table for sandbox validation reads.
+    ///
+    /// Safety invariants:
+    /// - Never called from app runtime or Tauri commands.
+    /// - Used only in the sandbox final validation read integration test.
+    /// - Returns only boolean/count fields — no record IDs, no raw field values,
+    ///   no attachment URLs, no raw HTTP body.
+    /// - Token is used for the Authorization header and is not returned.
+    /// - Read-only: no records are created, updated, or deleted.
+    /// - No attachment endpoints are accessed.
+    pub fn list_sandbox_records_for_validation(
+        &self,
+        base_id: &str,
+        table_id_or_name: &str,
+        expected_min_count: Option<usize>,
+    ) -> ClientResult<SandboxValidationReadOutcome> {
+        let url = endpoints::list_records_path(base_id, table_id_or_name);
+        // Request the minimum page needed: 1 record is enough to confirm reachability.
+        // Using pageSize=1 avoids loading a large table. If expected_min_count > 1
+        // we fetch up to 100 (one page) to check the count.
+        let page_size = expected_min_count
+            .map(|n| n.min(100).max(1) as u32)
+            .unwrap_or(1);
+        let query = vec![("pageSize".to_string(), page_size.to_string())];
+        let body = self.send_get(url, query)?;
+
+        #[derive(serde::Deserialize)]
+        struct MinimalListResponse {
+            records: Vec<serde_json::Value>,
+        }
+
+        let resp = serde_json::from_str::<MinimalListResponse>(&body)
+            .map_err(|e| AirtableClientError::MalformedResponse(e.to_string()))?;
+
+        let observed = resp.records.len();
+        let min_ok = expected_min_count.map(|n| observed >= n).unwrap_or(true);
+
+        Ok(SandboxValidationReadOutcome {
+            table_reachable: true,
+            observed_record_count: observed,
+            min_count_satisfied: min_ok,
+            has_records: observed > 0,
         })
     }
 
@@ -800,8 +846,14 @@ mod tests {
             )
             .expect("update must succeed");
         let json = serde_json::to_string(&outcome).expect("serialize");
-        assert!(!json.contains("recSensitiveSource"), "source record ID must not appear in outcome");
-        assert!(!json.contains("recSensitiveTarget"), "target record ID must not appear in outcome");
+        assert!(
+            !json.contains("recSensitiveSource"),
+            "source record ID must not appear in outcome"
+        );
+        assert!(
+            !json.contains("recSensitiveTarget"),
+            "target record ID must not appear in outcome"
+        );
         assert!(!json.contains("pat_"), "token must not appear in outcome");
     }
 
@@ -850,7 +902,8 @@ mod tests {
 
     #[test]
     fn update_single_linked_sandbox_record_401_maps_to_invalid_token() {
-        let transport = MockHttpTransport::with_status(401, r#"{"error":"AUTHENTICATION_REQUIRED"}"#);
+        let transport =
+            MockHttpTransport::with_status(401, r#"{"error":"AUTHENTICATION_REQUIRED"}"#);
         let req = UpdateLinkedSandboxRecordRequest {
             source_record_id: "recSource001".to_string(),
             linked_field_name: "Tasks".to_string(),
@@ -864,6 +917,91 @@ mod tests {
                 "Projects",
                 &req,
             )
+            .unwrap_err();
+        assert!(matches!(err, AirtableClientError::InvalidToken));
+    }
+
+    // ── list_sandbox_records_for_validation tests ─────────────────────────────
+
+    #[test]
+    fn list_sandbox_records_for_validation_returns_sanitized_outcome() {
+        let body = r#"{"records":[{"id":"recABC","fields":{"Name":"test"}},{"id":"recDEF","fields":{"Name":"test2"}}]}"#;
+        let transport = MockHttpTransport::ok(body);
+        let client = client_with(transport);
+        let outcome = client
+            .list_sandbox_records_for_validation("appTestBase001", "tblTestTable01", None)
+            .expect("list must succeed");
+        assert!(outcome.table_reachable);
+        assert_eq!(outcome.observed_record_count, 2);
+        assert!(outcome.has_records);
+        assert!(outcome.min_count_satisfied);
+    }
+
+    #[test]
+    fn list_sandbox_records_for_validation_outcome_does_not_contain_record_ids() {
+        let body = r#"{"records":[{"id":"recSECRET123","fields":{"Name":"secret"}}]}"#;
+        let transport = MockHttpTransport::ok(body);
+        let client = client_with(transport);
+        let outcome = client
+            .list_sandbox_records_for_validation("appTestBase001", "tblTestTable01", None)
+            .expect("list must succeed");
+        let json = serde_json::to_string(&outcome).expect("serialize");
+        assert!(
+            !json.contains("recSECRET123"),
+            "outcome must not contain record IDs"
+        );
+        assert!(
+            !json.contains("secret"),
+            "outcome must not contain raw field values"
+        );
+    }
+
+    #[test]
+    fn list_sandbox_records_for_validation_outcome_does_not_contain_token() {
+        let body = r#"{"records":[]}"#;
+        let transport = MockHttpTransport::ok(body);
+        let client = client_with(transport);
+        let outcome = client
+            .list_sandbox_records_for_validation("appTestBase001", "tblTestTable01", None)
+            .expect("list must succeed");
+        let json = serde_json::to_string(&outcome).expect("serialize");
+        assert!(!json.contains("pat_"), "outcome must not contain token");
+        assert!(!json.contains("apiKey"), "outcome must not contain apiKey");
+    }
+
+    #[test]
+    fn list_sandbox_records_for_validation_empty_response_returns_no_records() {
+        let transport = MockHttpTransport::ok(r#"{"records":[]}"#);
+        let client = client_with(transport);
+        let outcome = client
+            .list_sandbox_records_for_validation("appTestBase001", "tblTestTable01", None)
+            .expect("list must succeed");
+        assert!(outcome.table_reachable);
+        assert_eq!(outcome.observed_record_count, 0);
+        assert!(!outcome.has_records);
+        assert!(outcome.min_count_satisfied);
+    }
+
+    #[test]
+    fn list_sandbox_records_for_validation_min_count_not_satisfied() {
+        let body = r#"{"records":[{"id":"rec1","fields":{}}]}"#;
+        let transport = MockHttpTransport::ok(body);
+        let client = client_with(transport);
+        let outcome = client
+            .list_sandbox_records_for_validation("appTestBase001", "tblTestTable01", Some(5))
+            .expect("list must succeed");
+        assert!(outcome.table_reachable);
+        assert_eq!(outcome.observed_record_count, 1);
+        assert!(!outcome.min_count_satisfied);
+    }
+
+    #[test]
+    fn list_sandbox_records_for_validation_401_maps_to_invalid_token() {
+        let transport =
+            MockHttpTransport::with_status(401, r#"{"error":"AUTHENTICATION_REQUIRED"}"#);
+        let client = AirtableClient::new(AirtableToken::new("pat_bad_token"), transport);
+        let err = client
+            .list_sandbox_records_for_validation("appTestBase001", "tblTestTable01", None)
             .unwrap_err();
         assert!(matches!(err, AirtableClientError::InvalidToken));
     }

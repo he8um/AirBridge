@@ -332,3 +332,31 @@ pub struct UpdateLinkedSandboxRecordOutcome {
     /// Count of target IDs that were linked. No raw IDs.
     pub linked_target_count: usize,
 }
+
+// ── Sandbox final validation read models ─────────────────────────────────────
+
+/// Sanitized outcome of a sandbox final validation read call.
+///
+/// Used only in the sandbox final validation read integration test.
+/// Never called from app runtime or Tauri commands.
+///
+/// Safety properties:
+/// - No token field.
+/// - No raw HTTP response body.
+/// - No Airtable record IDs, table IDs, base IDs, or field IDs.
+/// - No raw record field values.
+/// - No attachment URLs.
+/// - Contains only booleans and safe counts.
+/// - Never returned to UI or Tauri commands.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SandboxValidationReadOutcome {
+    /// Whether the table endpoint was reachable (GET returned a non-error response).
+    pub table_reachable: bool,
+    /// Count of records observed in the first page (capped, no raw IDs).
+    pub observed_record_count: usize,
+    /// Whether the observed count met the expected minimum (if provided).
+    pub min_count_satisfied: bool,
+    /// Whether any records were present at all.
+    pub has_records: bool,
+}

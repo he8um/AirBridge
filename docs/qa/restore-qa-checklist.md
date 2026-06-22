@@ -2716,7 +2716,73 @@ Checklist for `tests/live_linked_update_sandbox.rs` and supporting models/client
 
 ### Pending work (still disabled after this harness)
 
-- [ ] Final validation read integration test remains separate pending work.
+- [ ] Attachment binary handling remains disabled.
+- [ ] App runtime restore execution remains disabled.
+- [ ] Live end-to-end restore execution remains disabled.
+
+---
+
+## LFVSH — Live Final Validation Sandbox Harness
+
+Checklist for `tests/live_final_validation_sandbox.rs` and supporting models/client.
+
+### Default (non-ignored) test pass
+
+- [ ] `cargo test --test live_final_validation_sandbox` passes with 0 failures, 1 ignored.
+- [ ] No network call is made during the default run.
+- [ ] `evaluate_write_gate()` returns `Disabled` in all default tests.
+
+### Env var guard
+
+- [ ] Missing `AIRBRIDGE_ENABLE_LIVE_FINAL_VALIDATION_TEST` causes `#[ignore]` test to skip, not fail.
+- [ ] Missing `AIRBRIDGE_SANDBOX_AIRTABLE_TOKEN` causes skip.
+- [ ] Missing `AIRBRIDGE_SANDBOX_TARGET_BASE_ID` causes skip.
+- [ ] Missing `AIRBRIDGE_SANDBOX_VALIDATION_TABLE_ID_OR_NAME` causes skip.
+
+### Pre-call contract gating (default tests)
+
+- [ ] `evaluate_live_final_validation_test_contract()` returns `EligibleButNotExecuted`.
+- [ ] `contract_only` is `true`.
+- [ ] `airtable_client_called` is `false`.
+- [ ] `network_writes_attempted` is `false`.
+- [ ] `network_reads_attempted` is `false`.
+- [ ] `app_runtime_execution_enabled` is `false`.
+- [ ] `app_runtime_writes_enabled` is `false`.
+- [ ] `app_runtime_reads_enabled` is `false`.
+- [ ] `no_changes_made` is `true`.
+- [ ] `build_final_validation_reader_plan()` returns `NotExecuted`.
+- [ ] `reads_enabled` is `false`, `writes_enabled` is `false`.
+- [ ] `build_sandbox_final_validation_adapter()` returns `ReadyForSandboxCall`.
+- [ ] `build_sandbox_linked_second_pass_adapter()` returns `ReadyForSandboxCall`.
+- [ ] `build_sandbox_record_write_adapter()` returns `ReadyForSandboxCall`.
+- [ ] `build_sandbox_schema_write_adapter()` returns `ReadyForSandboxCall`.
+- [ ] `run_sandbox_adapter_chain()` returns `MockRunNotExecuted`.
+
+### Opt-in live test assertions (manual, requires sandbox setup)
+
+- [ ] `outcome.table_reachable` is `true`.
+- [ ] If `AIRBRIDGE_SANDBOX_EXPECTED_MIN_RECORD_COUNT` set: `outcome.min_count_satisfied` is `true`.
+- [ ] Serialized `outcome` JSON contains no `pat_` token prefix.
+- [ ] Serialized `outcome` JSON contains no record ID pattern (`rec`).
+- [ ] `evaluate_write_gate()` returns `Disabled` after live read.
+- [ ] `build_final_validation_reader_plan()` still returns `NotExecuted` after live read.
+
+### Safety invariants
+
+- [ ] Token never appears in any test output, assertion, or serialized struct.
+- [ ] Record IDs never appear in any assertion message or serialized outcome.
+- [ ] Raw field values never appear in serialized outcome.
+- [ ] No Tauri command added for the harness.
+- [ ] No TypeScript/UI surface added.
+- [ ] No records created, updated, or deleted.
+- [ ] No schema write performed.
+- [ ] No linked update performed.
+- [ ] No attachment endpoint called.
+- [ ] `evaluate_write_gate()` returns `Disabled` before and after all live calls.
+- [ ] App runtime execution, reads, and writes remain disabled.
+
+### Pending work (still disabled after this harness)
+
 - [ ] Attachment binary handling remains disabled.
 - [ ] App runtime restore execution remains disabled.
 - [ ] Live end-to-end restore execution remains disabled.

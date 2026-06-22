@@ -4074,3 +4074,88 @@ Test cases for `tests/live_linked_update_sandbox.rs`, `src/airtable/models.rs` (
   1. Search `apps/desktop/src-tauri/src/commands/restore.rs` for `linked_update` or `live_linked`.
   2. Search TypeScript sources for `linkedUpdate` or `live_linked_update`.
 - Expected result: No matches. This feature is internal Rust test only.
+
+---
+
+## TC-LFVSH — Live Final Validation Sandbox Harness
+
+Test cases for `tests/live_final_validation_sandbox.rs`, `src/airtable/models.rs` (`SandboxValidationReadOutcome`), and `src/airtable/client.rs` (`list_sandbox_records_for_validation`).
+
+### TC-LFVSH-01: Default test run produces no network calls
+
+- Preconditions: No sandbox env vars set.
+- Steps:
+  1. Run `cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml --test live_final_validation_sandbox`.
+- Expected result: 17 tests pass, 1 ignored, 0 failed. No network call is made.
+
+### TC-LFVSH-02: Missing any required env var causes live test to skip
+
+- Preconditions: Set 3 of the 4 required env vars (omit one at a time).
+- Steps:
+  1. Set `AIRBRIDGE_ENABLE_LIVE_FINAL_VALIDATION_TEST=true` and all but one required env var.
+  2. Run with `-- --ignored`.
+- Expected result: The `#[ignore]` test is skipped (returns early), not failed.
+
+### TC-LFVSH-03: evaluate_write_gate() remains Disabled in default tests
+
+- Preconditions: None.
+- Steps:
+  1. Run `cargo test --test live_final_validation_sandbox`.
+- Expected result: All write gate assertions pass (`Disabled` status).
+
+### TC-LFVSH-04: FV contract returns EligibleButNotExecuted
+
+- Preconditions: None.
+- Steps:
+  1. Run `cargo test --test live_final_validation_sandbox fv_contract`.
+- Expected result: `status == EligibleButNotExecuted`; all safety booleans correct.
+
+### TC-LFVSH-05: FV reader plan returns NotExecuted while gate disabled
+
+- Preconditions: None.
+- Steps:
+  1. Run `cargo test --test live_final_validation_sandbox fv_reader_plan`.
+- Expected result: `status == NotExecuted`; `reads_enabled == false`; `writes_enabled == false`.
+
+### TC-LFVSH-06: All adapters return ready state without live call
+
+- Preconditions: None.
+- Steps:
+  1. Run the four adapter tests and the chain runner test.
+- Expected result: `ReadyForSandboxCall` for all adapters; `MockRunNotExecuted` for chain.
+
+### TC-LFVSH-07: Live test — validation table is reachable
+
+- Preconditions: All 4 required env vars set; sandbox table is accessible.
+- Steps:
+  1. Run `-- sandbox_final_validation_reads_table_and_verifies_contract --ignored`.
+- Expected result: `outcome.table_reachable == true`.
+
+### TC-LFVSH-08: Live test — record count observation
+
+- Preconditions: Same as TC-LFVSH-07; optionally set `AIRBRIDGE_SANDBOX_EXPECTED_MIN_RECORD_COUNT`.
+- Steps:
+  1. Run same test as TC-LFVSH-07.
+- Expected result: If min count set, `outcome.min_count_satisfied == true`.
+
+### TC-LFVSH-09: Serialized outcome contains no token or record IDs
+
+- Preconditions: Same as TC-LFVSH-07.
+- Steps:
+  1. Run same test; inspect serialized outcome in test assertions.
+- Expected result: No `pat_` prefix; no `rec` record ID pattern in JSON output.
+
+### TC-LFVSH-10: evaluate_write_gate() and reader plan unchanged after live read
+
+- Preconditions: Same as TC-LFVSH-07.
+- Steps:
+  1. After the live call, check write gate and reader plan status.
+- Expected result: Gate still `Disabled`; reader plan still `NotExecuted`.
+
+### TC-LFVSH-11: No Tauri command or UI surface added
+
+- Preconditions: None.
+- Steps:
+  1. Search `apps/desktop/src-tauri/src/commands/restore.rs` for `final_validation` or `live_fv`.
+  2. Search TypeScript sources for `finalValidation` or `live_final_validation`.
+- Expected result: No matches from this task. This feature is internal Rust test only.

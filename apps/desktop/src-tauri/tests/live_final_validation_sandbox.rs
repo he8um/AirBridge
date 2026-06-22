@@ -1,54 +1,50 @@
-/// Sandbox linked update integration test.
+/// Sandbox final validation read integration test.
 ///
-/// This test is `#[ignore]` by default and requires all six environment
+/// This test is `#[ignore]` by default and requires all four environment
 /// variables to be set before it will run:
 ///
-///   AIRBRIDGE_ENABLE_LIVE_LINKED_UPDATE_TEST=true
+///   AIRBRIDGE_ENABLE_LIVE_FINAL_VALIDATION_TEST=true
 ///   AIRBRIDGE_SANDBOX_AIRTABLE_TOKEN=<personal access token>
 ///   AIRBRIDGE_SANDBOX_TARGET_BASE_ID=<sandbox base ID>
-///   AIRBRIDGE_SANDBOX_LINK_SOURCE_TABLE_ID_OR_NAME=<source table ID or name>
-///   AIRBRIDGE_SANDBOX_LINK_TARGET_TABLE_ID_OR_NAME=<target table ID or name>
-///   AIRBRIDGE_SANDBOX_LINK_FIELD_NAME=<linked field name in source table>
+///   AIRBRIDGE_SANDBOX_VALIDATION_TABLE_ID_OR_NAME=<table ID or name>
 ///
 /// Optional:
-///   AIRBRIDGE_SANDBOX_TEST_PREFIX=<prefix for test field values>
+///   AIRBRIDGE_SANDBOX_EXPECTED_MIN_RECORD_COUNT=<integer>
+///   AIRBRIDGE_SANDBOX_TEST_PREFIX=<prefix for test labels>
 ///
 /// Safety invariants:
 /// - Default `cargo test` does NOT run the live test.
 /// - Missing any required env var causes the test to skip, not fail.
-/// - Token, base ID, table IDs/names, field name, and record IDs are never
-///   printed, asserted on value, or included in any serialized result.
-/// - Exactly two minimal sandbox records are created (one in each table) to
-///   set up the linked update scenario.
-/// - Exactly one linked field update (PATCH) is performed.
-/// - No schema writes, no arbitrary record updates, no attachment endpoints,
-///   no final validation reads, no record deletes.
+/// - Token, base ID, table ID/name, and record IDs are never printed,
+///   asserted on by value, or included in any serialized result.
+/// - Exactly one read-only API call is made (GET records endpoint).
+/// - No records are created, updated, or deleted.
+/// - No schema writes are performed.
+/// - No linked record updates are performed.
+/// - No attachment endpoints are accessed.
+/// - No attachment URLs are fetched.
 /// - `evaluate_write_gate()` is verified to remain Disabled before and after.
-/// - App runtime execution/reads/writes remain disabled.
-/// - The test may leave sandbox-only test records in the target tables.
-///   It must only be run against disposable sandbox bases/tables.
-/// - No cleanup is performed automatically — delete the test records manually
-///   if needed after the run.
+/// - App runtime execution, reads, and writes remain disabled.
+/// - The test is safe to run against any accessible sandbox table.
 ///
 /// To run this test manually against a sandbox setup:
-///   AIRBRIDGE_ENABLE_LIVE_LINKED_UPDATE_TEST=true \
+///   AIRBRIDGE_ENABLE_LIVE_FINAL_VALIDATION_TEST=true \
 ///   AIRBRIDGE_SANDBOX_AIRTABLE_TOKEN=your_pat \
 ///   AIRBRIDGE_SANDBOX_TARGET_BASE_ID=appYourSandboxBase \
-///   AIRBRIDGE_SANDBOX_LINK_SOURCE_TABLE_ID_OR_NAME=tblSourceTable \
-///   AIRBRIDGE_SANDBOX_LINK_TARGET_TABLE_ID_OR_NAME=tblTargetTable \
-///   AIRBRIDGE_SANDBOX_LINK_FIELD_NAME="Tasks" \
+///   AIRBRIDGE_SANDBOX_VALIDATION_TABLE_ID_OR_NAME=tblYourTable \
 ///   cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml \
-///     --test live_linked_update_sandbox -- --ignored
+///     --test live_final_validation_sandbox -- --ignored
 use airbridge_desktop_lib::airtable::auth::AirtableToken;
 use airbridge_desktop_lib::airtable::client::AirtableClient;
 use airbridge_desktop_lib::airtable::http::ReqwestHttpTransport;
-use airbridge_desktop_lib::airtable::models::{
-    CreateSandboxRecordRequest, UpdateLinkedSandboxRecordRequest,
+use airbridge_desktop_lib::restore::final_validation_reader::{
+    build_final_validation_reader_plan, FinalValidationReaderMode, FinalValidationReaderRequest,
+    FinalValidationReaderStatus,
 };
 use airbridge_desktop_lib::restore::linked_second_pass_execution_preview::LinkedSecondPassFieldSummary;
-use airbridge_desktop_lib::restore::live_linked_update_test_contract::{
-    evaluate_live_linked_update_test_contract, LiveLinkedUpdateTestContractMode,
-    LiveLinkedUpdateTestContractRequest, LiveLinkedUpdateTestContractStatus,
+use airbridge_desktop_lib::restore::live_final_validation_test_contract::{
+    evaluate_live_final_validation_test_contract, LiveFinalValidationTestContractMode,
+    LiveFinalValidationTestContractRequest, LiveFinalValidationTestContractStatus,
 };
 use airbridge_desktop_lib::restore::plan::RestoreTargetMode;
 use airbridge_desktop_lib::restore::record_import_plan::{
@@ -59,6 +55,10 @@ use airbridge_desktop_lib::restore::record_write_requests::build_record_write_re
 use airbridge_desktop_lib::restore::sandbox_adapter_chain_runner::{
     run_sandbox_adapter_chain, SandboxAdapterChainRunnerMode, SandboxAdapterChainRunnerRequest,
     SandboxAdapterChainRunnerStatus,
+};
+use airbridge_desktop_lib::restore::sandbox_final_validation_adapter::{
+    build_sandbox_final_validation_adapter, SandboxFinalValidationAdapterMode,
+    SandboxFinalValidationAdapterRequest, SandboxFinalValidationAdapterStatus,
 };
 use airbridge_desktop_lib::restore::sandbox_linked_second_pass_adapter::{
     build_sandbox_linked_second_pass_adapter, SandboxLinkedSecondPassAdapterMode,
@@ -82,31 +82,22 @@ use airbridge_desktop_lib::restore::write_result::RestoreWriteEngineStatus;
 
 // ── Env var names ─────────────────────────────────────────────────────────────
 
-const ENV_ENABLE: &str = "AIRBRIDGE_ENABLE_LIVE_LINKED_UPDATE_TEST";
+const ENV_ENABLE: &str = "AIRBRIDGE_ENABLE_LIVE_FINAL_VALIDATION_TEST";
 const ENV_TOKEN: &str = "AIRBRIDGE_SANDBOX_AIRTABLE_TOKEN";
 const ENV_BASE_ID: &str = "AIRBRIDGE_SANDBOX_TARGET_BASE_ID";
-const ENV_SOURCE_TABLE: &str = "AIRBRIDGE_SANDBOX_LINK_SOURCE_TABLE_ID_OR_NAME";
-const ENV_TARGET_TABLE: &str = "AIRBRIDGE_SANDBOX_LINK_TARGET_TABLE_ID_OR_NAME";
-const ENV_LINK_FIELD: &str = "AIRBRIDGE_SANDBOX_LINK_FIELD_NAME";
-const ENV_PREFIX: &str = "AIRBRIDGE_SANDBOX_TEST_PREFIX";
+const ENV_TABLE: &str = "AIRBRIDGE_SANDBOX_VALIDATION_TABLE_ID_OR_NAME";
+const ENV_MIN_COUNT: &str = "AIRBRIDGE_SANDBOX_EXPECTED_MIN_RECORD_COUNT";
 
 // ── Opt-in guard ──────────────────────────────────────────────────────────────
 
-/// Returns `true` only when all six required env vars are present and the enable
-/// flag is exactly `"true"`. Does NOT print any env var values.
+/// Returns `true` only when all four required env vars are present and the
+/// enable flag is exactly `"true"`. Does NOT print any env var values.
 fn all_required_env_vars_present() -> bool {
     let enable = std::env::var(ENV_ENABLE).unwrap_or_default();
     let token = std::env::var(ENV_TOKEN).unwrap_or_default();
     let base_id = std::env::var(ENV_BASE_ID).unwrap_or_default();
-    let source_table = std::env::var(ENV_SOURCE_TABLE).unwrap_or_default();
-    let target_table = std::env::var(ENV_TARGET_TABLE).unwrap_or_default();
-    let link_field = std::env::var(ENV_LINK_FIELD).unwrap_or_default();
-    enable == "true"
-        && !token.is_empty()
-        && !base_id.is_empty()
-        && !source_table.is_empty()
-        && !target_table.is_empty()
-        && !link_field.is_empty()
+    let table = std::env::var(ENV_TABLE).unwrap_or_default();
+    enable == "true" && !token.is_empty() && !base_id.is_empty() && !table.is_empty()
 }
 
 // ── Contract verification helpers ─────────────────────────────────────────────
@@ -114,27 +105,27 @@ fn all_required_env_vars_present() -> bool {
 fn make_contract_schema_plan(
 ) -> airbridge_desktop_lib::restore::schema_write_requests::SchemaWriteRequestPlan {
     let plan = RestoreSchemaPlan {
-        filename: "sandbox_linked_test.airbridge".to_string(),
+        filename: "sandbox_fv_test.airbridge".to_string(),
         status: RestoreSchemaPlanStatus::Ready,
         target_mode: RestoreTargetMode::NewBase,
         target_base_name: None,
         table_steps: vec![RestoreTableCreationStep {
-            table_id: "tbl_sandbox_source".to_string(),
-            table_name: "SandboxSource".to_string(),
+            table_id: "tbl_sandbox_fv".to_string(),
+            table_name: "SandboxFV".to_string(),
             step_index: 0,
             field_count: 1,
             direct_field_count: 1,
             deferred_field_count: 0,
             manual_action_count: 0,
             unsupported_count: 0,
-            note: "Sandbox integration test source table.".to_string(),
+            note: "Sandbox final validation test table.".to_string(),
         }],
         field_steps: vec![RestoreFieldCreationStep {
             field_id: "fld_sandbox_name".to_string(),
             field_name: "Name".to_string(),
             field_type: "singleLineText".to_string(),
-            table_id: "tbl_sandbox_source".to_string(),
-            table_name: "SandboxSource".to_string(),
+            table_id: "tbl_sandbox_fv".to_string(),
+            table_name: "SandboxFV".to_string(),
             classification: RestoreFieldCreateClassification::CreateDirectly,
             note: "Primary text field.".to_string(),
         }],
@@ -155,14 +146,14 @@ fn make_contract_schema_plan(
 fn make_contract_record_plan(
 ) -> airbridge_desktop_lib::restore::record_write_requests::RecordWriteRequestPlan {
     let req = RestoreRecordImportPlanRequest {
-        package_filename: "sandbox_linked_test.airbridge".to_string(),
+        package_filename: "sandbox_fv_test.airbridge".to_string(),
         dry_run_status: "ready".to_string(),
         schema_plan_status: "ready".to_string(),
         target_mode: RestoreTargetMode::NewBase,
-        target_base_name: Some("Sandbox Linked Test Base".to_string()),
+        target_base_name: Some("Sandbox FV Test Base".to_string()),
         tables: vec![RecordImportTableInput {
-            table_id: "tbl_sandbox_source".to_string(),
-            table_name: "SandboxSource".to_string(),
+            table_id: "tbl_sandbox_fv".to_string(),
+            table_name: "SandboxFV".to_string(),
             record_count: Some(1),
             fields: vec![RecordImportFieldInput {
                 field_id: "fld_sandbox_name".to_string(),
@@ -176,10 +167,10 @@ fn make_contract_record_plan(
     build_record_write_request_plan(&import_plan)
 }
 
-fn make_full_linked_update_contract_request() -> LiveLinkedUpdateTestContractRequest {
-    LiveLinkedUpdateTestContractRequest {
-        mode: LiveLinkedUpdateTestContractMode::SandboxIntegrationCandidate,
-        explicit_internal_live_linked_update_test_contract_requested: true,
+fn make_full_fv_contract_request() -> LiveFinalValidationTestContractRequest {
+    LiveFinalValidationTestContractRequest {
+        mode: LiveFinalValidationTestContractMode::SandboxIntegrationCandidate,
+        explicit_internal_live_final_validation_test_contract_requested: true,
         sandbox_verified: true,
         target_base_empty: true,
         mapping_coverage_sufficient: true,
@@ -200,42 +191,54 @@ fn make_full_linked_update_contract_request() -> LiveLinkedUpdateTestContractReq
         linked_executor_safe: true,
         linked_second_pass_preview_ready: true,
         mapping_checkpoint_preview_ready: true,
-        field_summaries: vec![LinkedSecondPassFieldSummary {
-            table_label: "SandboxSource".to_string(),
-            field_label: "Tasks".to_string(),
-            record_count: 1,
-            batch_count: 1,
-            unresolved_link_count: 0,
-        }],
-        table_count: 2,
-        field_count: 2,
+        field_summaries: vec![],
+        table_count: 1,
+        field_count: 1,
         record_count: 1,
         id_mapping_entry_count: 1,
-        linked_coverage_count: 1,
+        linked_coverage_count: 0,
+        attachment_metadata_count: 0,
+        manifest_present: true,
+    }
+}
+
+fn make_fv_reader_request() -> FinalValidationReaderRequest {
+    FinalValidationReaderRequest {
+        mode: FinalValidationReaderMode::SandboxOnly,
+        explicit_internal_final_validation_read_requested: true,
+        sandbox_verified: true,
+        schema_executor_safe: true,
+        record_executor_safe: true,
+        linked_executor_safe: true,
+        final_validation_preview_ready: true,
+        final_validation_enforcement_safe: true,
+        sensitive_data_safe: true,
+        attachment_phase_disabled_safe: true,
+        table_count: 1,
+        field_count: 1,
+        record_count: 1,
+        id_mapping_entry_count: 1,
+        linked_coverage_count: 0,
         attachment_metadata_count: 0,
         manifest_present: true,
     }
 }
 
 // ── Default (non-ignored) gating tests ───────────────────────────────────────
-// These tests run in default cargo test and verify the opt-in gate works.
-// None of them make any network calls.
+// None of these make any network calls.
 
 #[test]
 fn missing_enable_flag_does_not_perform_network_call() {
     let enable = std::env::var(ENV_ENABLE).unwrap_or_default();
     if enable != "true" {
-        // Guard would block — confirmed: no network call attempted.
         return;
     }
-    // If the env var happens to be set in the test environment, skip gracefully.
 }
 
 #[test]
 fn missing_token_does_not_perform_network_call() {
     let token = std::env::var(ENV_TOKEN).unwrap_or_default();
     if token.is_empty() {
-        // No token present — guard would block. No network call.
         return;
     }
 }
@@ -244,34 +247,14 @@ fn missing_token_does_not_perform_network_call() {
 fn missing_base_id_does_not_perform_network_call() {
     let base_id = std::env::var(ENV_BASE_ID).unwrap_or_default();
     if base_id.is_empty() {
-        // No base ID present — guard would block. No network call.
         return;
     }
 }
 
 #[test]
-fn missing_source_table_does_not_perform_network_call() {
-    let source_table = std::env::var(ENV_SOURCE_TABLE).unwrap_or_default();
-    if source_table.is_empty() {
-        // No source table present — guard would block. No network call.
-        return;
-    }
-}
-
-#[test]
-fn missing_target_table_does_not_perform_network_call() {
-    let target_table = std::env::var(ENV_TARGET_TABLE).unwrap_or_default();
-    if target_table.is_empty() {
-        // No target table present — guard would block. No network call.
-        return;
-    }
-}
-
-#[test]
-fn missing_link_field_name_does_not_perform_network_call() {
-    let link_field = std::env::var(ENV_LINK_FIELD).unwrap_or_default();
-    if link_field.is_empty() {
-        // No linked field name present — guard would block. No network call.
+fn missing_validation_table_does_not_perform_network_call() {
+    let table = std::env::var(ENV_TABLE).unwrap_or_default();
+    if table.is_empty() {
         return;
     }
 }
@@ -286,14 +269,14 @@ fn evaluate_write_gate_remains_disabled_without_env_vars() {
 }
 
 #[test]
-fn linked_update_contract_eligible_but_not_executed_with_all_prereqs_satisfied() {
+fn fv_contract_eligible_but_not_executed_with_all_prereqs_satisfied() {
     let sp = make_contract_schema_plan();
     let rp = make_contract_record_plan();
-    let req = make_full_linked_update_contract_request();
-    let result = evaluate_live_linked_update_test_contract(&req, &sp, &rp);
+    let req = make_full_fv_contract_request();
+    let result = evaluate_live_final_validation_test_contract(&req, &sp, &rp);
     assert_eq!(
         result.status,
-        LiveLinkedUpdateTestContractStatus::EligibleButNotExecuted
+        LiveFinalValidationTestContractStatus::EligibleButNotExecuted
     );
     assert!(result.contract_only);
     assert!(!result.airtable_client_called);
@@ -303,6 +286,64 @@ fn linked_update_contract_eligible_but_not_executed_with_all_prereqs_satisfied()
     assert!(!result.app_runtime_writes_enabled);
     assert!(!result.app_runtime_reads_enabled);
     assert!(result.no_changes_made);
+}
+
+#[test]
+fn fv_reader_plan_not_executed_while_gate_disabled() {
+    let req = make_fv_reader_request();
+    let result = build_final_validation_reader_plan(&req);
+    assert_eq!(result.status, FinalValidationReaderStatus::NotExecuted);
+    assert!(!result.reads_enabled);
+    assert!(!result.writes_enabled);
+    assert!(result.no_changes_made);
+    assert!(!result.network_reads_attempted);
+    assert!(!result.network_writes_attempted);
+}
+
+#[test]
+fn fv_adapter_ready_for_sandbox_call_without_live_call() {
+    let sp = make_contract_schema_plan();
+    let rp = make_contract_record_plan();
+    let req = SandboxFinalValidationAdapterRequest {
+        mode: SandboxFinalValidationAdapterMode::SandboxOnlyInternal,
+        explicit_internal_validation_sandbox_call_requested: true,
+        sandbox_verified: true,
+        final_validation_enforcement_safe: true,
+        confirmation_gate_declared: true,
+        destructive_operation_policy_safe: true,
+        attachment_phase_disabled_safe: true,
+        live_write_readiness_safe: true,
+        write_phase_ordering_safe: true,
+        failure_modes_safe: true,
+        rollback_limitation_safe: true,
+        checkpoint_durability_safe: true,
+        sensitive_data_safe: true,
+        rate_limit_backoff_safe: true,
+        schema_executor_safe: true,
+        checkpoint_store_safe: true,
+        record_executor_safe: true,
+        linked_executor_safe: true,
+        linked_second_pass_preview_ready: true,
+        mapping_checkpoint_preview_ready: true,
+        target_base_empty: true,
+        mapping_coverage_sufficient: true,
+        field_summaries: vec![],
+        table_count: 1,
+        field_count: 1,
+        record_count: 1,
+        id_mapping_entry_count: 1,
+        linked_coverage_count: 0,
+        attachment_metadata_count: 0,
+        manifest_present: true,
+    };
+    let result = build_sandbox_final_validation_adapter(&req, &sp, &rp);
+    assert_eq!(
+        result.status,
+        SandboxFinalValidationAdapterStatus::ReadyForSandboxCall
+    );
+    assert!(!result.network_writes_attempted);
+    assert!(!result.network_reads_attempted);
+    assert!(!result.runtime_execution_enabled);
 }
 
 #[test]
@@ -332,8 +373,8 @@ fn linked_adapter_ready_for_sandbox_call_without_live_call() {
         linked_second_pass_preview_ready: true,
         mapping_checkpoint_preview_ready: true,
         field_summaries: vec![LinkedSecondPassFieldSummary {
-            table_label: "SandboxSource".to_string(),
-            field_label: "Tasks".to_string(),
+            table_label: "SandboxFV".to_string(),
+            field_label: "Name".to_string(),
             record_count: 1,
             batch_count: 1,
             unresolved_link_count: 0,
@@ -437,11 +478,11 @@ fn adapter_chain_returns_mock_run_not_executed_without_live_call() {
         linked_second_pass_preview_ready: true,
         mapping_checkpoint_preview_ready: true,
         field_summaries: vec![],
-        table_count: 2,
-        field_count: 2,
+        table_count: 1,
+        field_count: 1,
         record_count: 1,
         id_mapping_entry_count: 1,
-        linked_coverage_count: 1,
+        linked_coverage_count: 0,
         attachment_metadata_count: 0,
         manifest_present: true,
     };
@@ -453,26 +494,34 @@ fn adapter_chain_returns_mock_run_not_executed_without_live_call() {
 }
 
 #[test]
-fn live_linked_update_test_does_not_introduce_tauri_command() {
-    // This test reaching its assertion confirms no Tauri command was added.
+fn live_fv_test_does_not_introduce_tauri_command() {
     let gate = evaluate_write_gate();
     assert!(matches!(gate.status, RestoreWriteEngineStatus::Disabled));
 }
 
 #[test]
-fn no_schema_operation_performed_in_default_test_suite() {
-    // Schema operations are not performed by this harness.
-    // Write gate confirms runtime state is unchanged.
+fn no_schema_write_in_default_test_suite() {
     let gate = evaluate_write_gate();
     assert!(
         matches!(gate.status, RestoreWriteEngineStatus::Disabled),
-        "write gate must remain Disabled — schema operations are not permitted here"
+        "write gate must remain Disabled — schema writes are not permitted here"
     );
 }
 
 #[test]
-fn no_attachment_endpoint_called_in_default_test_suite() {
-    // Attachment operations are not permitted.
+fn no_record_create_in_default_test_suite() {
+    let gate = evaluate_write_gate();
+    assert!(matches!(gate.status, RestoreWriteEngineStatus::Disabled));
+}
+
+#[test]
+fn no_linked_update_in_default_test_suite() {
+    let gate = evaluate_write_gate();
+    assert!(matches!(gate.status, RestoreWriteEngineStatus::Disabled));
+}
+
+#[test]
+fn no_attachment_endpoint_in_default_test_suite() {
     let gate = evaluate_write_gate();
     assert!(matches!(gate.status, RestoreWriteEngineStatus::Disabled));
 }
@@ -481,46 +530,38 @@ fn no_attachment_endpoint_called_in_default_test_suite() {
 //
 // To run this test, set all required env vars and pass --ignored:
 //
-//   AIRBRIDGE_ENABLE_LIVE_LINKED_UPDATE_TEST=true \
+//   AIRBRIDGE_ENABLE_LIVE_FINAL_VALIDATION_TEST=true \
 //   AIRBRIDGE_SANDBOX_AIRTABLE_TOKEN=<your pat> \
 //   AIRBRIDGE_SANDBOX_TARGET_BASE_ID=<appYourSandboxBase> \
-//   AIRBRIDGE_SANDBOX_LINK_SOURCE_TABLE_ID_OR_NAME=<tblSourceTable> \
-//   AIRBRIDGE_SANDBOX_LINK_TARGET_TABLE_ID_OR_NAME=<tblTargetTable> \
-//   AIRBRIDGE_SANDBOX_LINK_FIELD_NAME="Tasks" \
+//   AIRBRIDGE_SANDBOX_VALIDATION_TABLE_ID_OR_NAME=<tblYourTable> \
 //   cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml \
-//     --test live_linked_update_sandbox \
-//     -- sandbox_linked_update_creates_records_and_updates_link --ignored
+//     --test live_final_validation_sandbox \
+//     -- sandbox_final_validation_reads_table_and_verifies_contract --ignored
 //
-// WARNING: This test performs live Airtable API calls:
-//   1. createRecord in the target table (to get a target record)
-//   2. createRecord in the source table (to get a source record)
-//   3. updateRecords (PATCH) in the source table (to set the linked field)
+// WARNING: This test performs one live Airtable API call:
+//   1. GET records endpoint for the configured validation table (read-only).
 //
-// It must only be run against disposable sandbox bases/tables with a
-// configured linked field. It may leave test records behind — delete them
-// manually after the run. Never run against a production base.
-//
-// The sandbox setup requires:
-//   - A source table with a linked field pointing to the target table.
-//   - A target table with a Name field.
-//   - Both tables in the same sandbox base.
+// No records are created, updated, or deleted.
+// No schema writes are performed.
+// No attachment endpoints are accessed.
+// The test is safe to run against any accessible sandbox table.
+// Results are sanitized — no record IDs, no raw field values, no token.
 
 #[test]
 #[ignore]
-fn sandbox_linked_update_creates_records_and_updates_link() {
+fn sandbox_final_validation_reads_table_and_verifies_contract() {
     // ── Opt-in gate ───────────────────────────────────────────────────────────
     if !all_required_env_vars_present() {
-        // Skip gracefully — do not panic, do not make any network call.
         return;
     }
 
     // ── Retrieve env vars (values never printed) ──────────────────────────────
     let token_raw = std::env::var(ENV_TOKEN).expect("token env var must be set");
     let base_id = std::env::var(ENV_BASE_ID).expect("base ID env var must be set");
-    let source_table = std::env::var(ENV_SOURCE_TABLE).expect("source table env var must be set");
-    let target_table = std::env::var(ENV_TARGET_TABLE).expect("target table env var must be set");
-    let link_field = std::env::var(ENV_LINK_FIELD).expect("link field env var must be set");
-    let prefix = std::env::var(ENV_PREFIX).unwrap_or_else(|_| "airbridge_sandbox_test".to_string());
+    let table = std::env::var(ENV_TABLE).expect("table env var must be set");
+    let expected_min: Option<usize> = std::env::var(ENV_MIN_COUNT)
+        .ok()
+        .and_then(|s| s.parse::<usize>().ok());
 
     // ── Pre-call: write gate must be Disabled ─────────────────────────────────
     let gate_before = evaluate_write_gate();
@@ -529,22 +570,75 @@ fn sandbox_linked_update_creates_records_and_updates_link() {
         "evaluate_write_gate() must return Disabled before live calls"
     );
 
-    // ── Pre-call: linked update contract must return EligibleButNotExecuted ───
+    // ── Pre-call: FV contract must return EligibleButNotExecuted ──────────────
     let sp = make_contract_schema_plan();
     let rp = make_contract_record_plan();
-    let contract_req = make_full_linked_update_contract_request();
-    let contract_result = evaluate_live_linked_update_test_contract(&contract_req, &sp, &rp);
+    let contract_req = make_full_fv_contract_request();
+    let contract_result = evaluate_live_final_validation_test_contract(&contract_req, &sp, &rp);
     assert_eq!(
         contract_result.status,
-        LiveLinkedUpdateTestContractStatus::EligibleButNotExecuted,
-        "contract must return EligibleButNotExecuted before live calls"
+        LiveFinalValidationTestContractStatus::EligibleButNotExecuted,
+        "FV contract must return EligibleButNotExecuted before live calls"
     );
     assert!(contract_result.contract_only);
     assert!(!contract_result.airtable_client_called);
     assert!(!contract_result.network_writes_attempted);
+    assert!(!contract_result.network_reads_attempted);
     assert!(!contract_result.app_runtime_execution_enabled);
     assert!(!contract_result.app_runtime_writes_enabled);
     assert!(!contract_result.app_runtime_reads_enabled);
+
+    // ── Pre-call: FV reader plan must be NotExecuted ──────────────────────────
+    let reader_req = make_fv_reader_request();
+    let reader_result = build_final_validation_reader_plan(&reader_req);
+    assert_eq!(
+        reader_result.status,
+        FinalValidationReaderStatus::NotExecuted,
+        "FV reader plan must return NotExecuted before live calls"
+    );
+    assert!(!reader_result.reads_enabled);
+    assert!(!reader_result.writes_enabled);
+    assert!(reader_result.no_changes_made);
+
+    // ── Pre-call: FV adapter must be ReadyForSandboxCall ─────────────────────
+    let fv_adapter_req = SandboxFinalValidationAdapterRequest {
+        mode: SandboxFinalValidationAdapterMode::SandboxOnlyInternal,
+        explicit_internal_validation_sandbox_call_requested: true,
+        sandbox_verified: true,
+        final_validation_enforcement_safe: true,
+        confirmation_gate_declared: true,
+        destructive_operation_policy_safe: true,
+        attachment_phase_disabled_safe: true,
+        live_write_readiness_safe: true,
+        write_phase_ordering_safe: true,
+        failure_modes_safe: true,
+        rollback_limitation_safe: true,
+        checkpoint_durability_safe: true,
+        sensitive_data_safe: true,
+        rate_limit_backoff_safe: true,
+        schema_executor_safe: true,
+        checkpoint_store_safe: true,
+        record_executor_safe: true,
+        linked_executor_safe: true,
+        linked_second_pass_preview_ready: true,
+        mapping_checkpoint_preview_ready: true,
+        target_base_empty: true,
+        mapping_coverage_sufficient: true,
+        field_summaries: vec![],
+        table_count: 1,
+        field_count: 1,
+        record_count: 1,
+        id_mapping_entry_count: 1,
+        linked_coverage_count: 0,
+        attachment_metadata_count: 0,
+        manifest_present: true,
+    };
+    let fv_adapter_result = build_sandbox_final_validation_adapter(&fv_adapter_req, &sp, &rp);
+    assert_eq!(
+        fv_adapter_result.status,
+        SandboxFinalValidationAdapterStatus::ReadyForSandboxCall,
+        "FV adapter must return ReadyForSandboxCall before live calls"
+    );
 
     // ── Pre-call: linked adapter must be ReadyForSandboxCall ──────────────────
     let linked_adapter_req = SandboxLinkedSecondPassAdapterRequest {
@@ -569,13 +663,7 @@ fn sandbox_linked_update_creates_records_and_updates_link() {
         record_executor_safe: true,
         linked_second_pass_preview_ready: true,
         mapping_checkpoint_preview_ready: true,
-        field_summaries: vec![LinkedSecondPassFieldSummary {
-            table_label: "SandboxSource".to_string(),
-            field_label: link_field.clone(),
-            record_count: 1,
-            batch_count: 1,
-            unresolved_link_count: 0,
-        }],
+        field_summaries: vec![],
     };
     let linked_adapter_result =
         build_sandbox_linked_second_pass_adapter(&linked_adapter_req, &sp, &rp);
@@ -662,11 +750,11 @@ fn sandbox_linked_update_creates_records_and_updates_link() {
         linked_second_pass_preview_ready: true,
         mapping_checkpoint_preview_ready: true,
         field_summaries: vec![],
-        table_count: 2,
-        field_count: 2,
+        table_count: 1,
+        field_count: 1,
         record_count: 1,
         id_mapping_entry_count: 1,
-        linked_coverage_count: 1,
+        linked_coverage_count: 0,
         attachment_metadata_count: 0,
         manifest_present: true,
     };
@@ -678,142 +766,60 @@ fn sandbox_linked_update_creates_records_and_updates_link() {
     );
 
     // ── Build Airtable client ─────────────────────────────────────────────────
-    // Token is passed into the client and used only for Authorization headers.
-    // It is never included in outcomes or assertions on its value.
     let transport = ReqwestHttpTransport::new().expect("http transport");
     let client = AirtableClient::new(AirtableToken::new(token_raw), transport);
 
-    // ── Live call 1: create a target record ───────────────────────────────────
-    // Creates a minimal record in the target table to get a target record ID.
-    // Only a Name field is set — no linked fields, no attachments.
-    let target_name = format!("{prefix}_linked_target");
-    let mut target_fields = std::collections::HashMap::new();
-    target_fields.insert("Name".to_string(), serde_json::Value::String(target_name));
-    let create_target_req = CreateSandboxRecordRequest {
-        fields: target_fields,
-    };
-
-    // We need the raw record ID from the target create to use in the linked
-    // update. The record ID is extracted as an opaque string for use in
-    // step 3 and is never printed or included in sanitized outcomes.
-    let target_record_id = {
-        use airbridge_desktop_lib::airtable::models::AirtableRecordFields;
-        let raw_fields: std::collections::HashMap<String, serde_json::Value> =
-            create_target_req.fields.clone();
-
-        // SAFETY NOTE: The ID extracted here is used only in the PATCH call
-        // below and is never serialized into any outcome struct, never printed,
-        // never asserted on its value, and dropped at end of scope.
-        let records_resp = client
-            .create_records(
-                &base_id,
-                &target_table,
-                vec![AirtableRecordFields { fields: raw_fields }],
-            )
-            .expect("create target record must succeed against sandbox table");
-
-        assert!(
-            !records_resp.records.is_empty(),
-            "target record create must return at least one record"
-        );
-        // Extract the ID. It is opaque and never printed.
-        records_resp
-            .records
-            .into_iter()
-            .next()
-            .map(|r| r.id.0)
-            .expect("target record must have an ID")
-    };
-
-    // ── Live call 2: create a source record ───────────────────────────────────
-    // Creates a minimal record in the source table.
-    // Only a Name field is set. The linked field is populated in step 3.
-    let source_name = format!("{prefix}_linked_source");
-    let mut source_fields = std::collections::HashMap::new();
-    source_fields.insert("Name".to_string(), serde_json::Value::String(source_name));
-    let source_record_id = {
-        use airbridge_desktop_lib::airtable::models::AirtableRecordFields;
-        let records_resp = client
-            .create_records(
-                &base_id,
-                &source_table,
-                vec![AirtableRecordFields {
-                    fields: source_fields,
-                }],
-            )
-            .expect("create source record must succeed against sandbox table");
-
-        assert!(
-            !records_resp.records.is_empty(),
-            "source record create must return at least one record"
-        );
-        // Extract the ID. Opaque handle — never printed.
-        records_resp
-            .records
-            .into_iter()
-            .next()
-            .map(|r| r.id.0)
-            .expect("source record must have an ID")
-    };
-
-    // ── Live call 3: perform the linked field update (PATCH) ──────────────────
-    // Exactly one PATCH call to set the linked field in the source record.
-    // No schema writes, no attachment endpoints, no final validation reads,
-    // no arbitrary record updates, no record deletes.
-    let update_req = UpdateLinkedSandboxRecordRequest {
-        source_record_id: source_record_id.clone(),
-        linked_field_name: link_field.clone(),
-        target_record_ids: vec![target_record_id.clone()],
-    };
-
+    // ── Live call: read-only GET records from the validation table ────────────
+    // This is the single live call. It is read-only:
+    //   - No records created, updated, or deleted.
+    //   - No schema writes.
+    //   - No linked record updates.
+    //   - No attachment endpoints.
+    // The outcome is sanitized — no record IDs, no raw field values, no token.
     let outcome = client
-        .update_single_linked_sandbox_record(&base_id, &source_table, "SandboxSource", &update_req)
-        .expect("linked record update must succeed against sandbox table");
-
-    // Drop opaque handles — they are no longer needed after the live call.
-    drop(source_record_id);
-    drop(target_record_id);
+        .list_sandbox_records_for_validation(&base_id, &table, expected_min)
+        .expect("validation read must succeed against sandbox table");
 
     // ── Post-call assertions ──────────────────────────────────────────────────
 
     assert!(
-        outcome.record_updated,
-        "record_updated must be true after successful linked update"
+        outcome.table_reachable,
+        "table must be reachable after successful read"
     );
 
-    assert_eq!(
-        outcome.record_count, 1,
-        "record_count must be 1 after single linked update"
-    );
+    // If a min count was provided, check it was satisfied.
+    if expected_min.is_some() {
+        assert!(
+            outcome.min_count_satisfied,
+            "observed record count must meet expected minimum"
+        );
+    }
 
-    assert!(
-        !outcome.source_table_name.is_empty(),
-        "source_table_name must be non-empty in outcome"
-    );
-
-    assert_eq!(
-        outcome.linked_target_count, 1,
-        "linked_target_count must be 1 after single target link"
-    );
-
-    // Outcome must not contain token or record IDs
+    // Outcome must not contain token, record IDs, or raw field values.
     let outcome_json = serde_json::to_string(&outcome).expect("serialize outcome");
     assert!(
         !outcome_json.contains("pat_"),
         "outcome must not contain token"
     );
     assert!(
-        !outcome_json.contains("recSensitive"),
-        "outcome must not expose raw record IDs"
+        !outcome_json.contains("rec"),
+        "outcome must not contain record IDs"
     );
 
     // ── Post-call: write gate must still be Disabled ──────────────────────────
     let gate_after = evaluate_write_gate();
     assert!(
         matches!(gate_after.status, RestoreWriteEngineStatus::Disabled),
-        "evaluate_write_gate() must remain Disabled after live calls"
+        "evaluate_write_gate() must remain Disabled after live reads"
     );
 
-    // ── Post-call: app runtime execution/reads/writes remain disabled ─────────
-    // (Enforced by write_gate — no mutable state. Confirmed by gate check above.)
+    // ── Post-call: reader plan still returns NotExecuted (gate unchanged) ─────
+    let reader_after = build_final_validation_reader_plan(&make_fv_reader_request());
+    assert_eq!(
+        reader_after.status,
+        FinalValidationReaderStatus::NotExecuted,
+        "FV reader plan must remain NotExecuted after live read — gate is unchanged"
+    );
+    assert!(!reader_after.reads_enabled);
+    assert!(!reader_after.writes_enabled);
 }

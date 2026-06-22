@@ -815,6 +815,75 @@ The IDs are used only as opaque handles for the PATCH call. They are never print
 
 ---
 
+## Section 34: Sandbox Final Validation Read Integration Test Harness
+
+**File:** `apps/desktop/src-tauri/tests/live_final_validation_sandbox.rs`
+**Type:** Opt-in Rust integration test (`#[ignore]` by default)
+**Added:** task `test: add live final validation sandbox harness`
+
+### Purpose
+
+Provides a live integration test for the final validation read flow using an accessible sandbox Airtable table. The harness is fully blocked from running in standard `cargo test` and requires explicit opt-in via four environment variables.
+
+### Required environment variables
+
+| Env Var | Required | Purpose |
+|---------|----------|---------|
+| `AIRBRIDGE_ENABLE_LIVE_FINAL_VALIDATION_TEST` | Yes (`true`) | Master opt-in flag |
+| `AIRBRIDGE_SANDBOX_AIRTABLE_TOKEN` | Yes | PAT for sandbox base |
+| `AIRBRIDGE_SANDBOX_TARGET_BASE_ID` | Yes | Sandbox base ID |
+| `AIRBRIDGE_SANDBOX_VALIDATION_TABLE_ID_OR_NAME` | Yes | Table to read from |
+| `AIRBRIDGE_SANDBOX_EXPECTED_MIN_RECORD_COUNT` | No | Minimum record count to assert |
+
+### Pre-call contract gating
+
+Before any live Airtable call is made, the `#[ignore]` test verifies:
+
+1. `evaluate_write_gate()` returns `Disabled`.
+2. `evaluate_live_final_validation_test_contract()` returns `EligibleButNotExecuted`.
+3. `build_final_validation_reader_plan()` returns `NotExecuted`.
+4. `build_sandbox_final_validation_adapter()` returns `ReadyForSandboxCall`.
+5. `build_sandbox_linked_second_pass_adapter()` returns `ReadyForSandboxCall`.
+6. `build_sandbox_record_write_adapter()` returns `ReadyForSandboxCall`.
+7. `build_sandbox_schema_write_adapter()` returns `ReadyForSandboxCall`.
+8. `run_sandbox_adapter_chain()` returns `MockRunNotExecuted`.
+
+### Live call (only when all env vars set + `--ignored` flag)
+
+1. `GET` records endpoint for the validation table — first page only (read-only).
+
+No records are created, updated, or deleted. No schema writes. No linked updates. No attachment endpoints.
+
+### Post-call assertions
+
+- `outcome.table_reachable` is `true`.
+- If `AIRBRIDGE_SANDBOX_EXPECTED_MIN_RECORD_COUNT` is set: `outcome.min_count_satisfied` is `true`.
+- Serialized outcome JSON contains no `pat_` (token) or `rec` (record ID) patterns.
+- `evaluate_write_gate()` still returns `Disabled`.
+- `build_final_validation_reader_plan()` still returns `NotExecuted` — gate unchanged.
+
+### Safety invariants
+
+- Token, base ID, table ID, and record IDs are never printed or included in any outcome.
+- `SandboxValidationReadOutcome` exposes only boolean/count fields — no record IDs, no raw field values.
+- `evaluate_write_gate()` returns `Disabled` before and after — unchanged.
+- The validation reader plan remains `NotExecuted` — read gate is unchanged.
+- App runtime execution, reads, and writes remain disabled.
+- No records created, updated, or deleted.
+- No schema writes, no linked updates, no attachment endpoints.
+- No Tauri command added. No TypeScript/UI surface.
+- Safe against any accessible sandbox table (read-only).
+
+### New model (added to `src/airtable/models.rs`)
+
+**`SandboxValidationReadOutcome`** — sanitized result. Contains `table_reachable: bool`, `observed_record_count: usize`, `min_count_satisfied: bool`, `has_records: bool`. No record IDs, no raw field values, no token, no raw HTTP.
+
+### New client method (added to `src/airtable/client.rs`)
+
+**`list_sandbox_records_for_validation(base_id, table_id_or_name, expected_min_count)`** — issues one GET to the Records API (first page, minimal page size). Returns `SandboxValidationReadOutcome`. Covered by 6 unit tests.
+
+---
+
 ## Related Documents
 
 - [Restore Write Engine Skeleton](./restore-write-engine-skeleton.md)
