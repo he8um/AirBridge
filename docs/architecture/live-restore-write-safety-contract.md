@@ -932,11 +932,72 @@ Evaluates whether a future live E2E sandbox restore integration harness could be
 - No token field, no path field, no record payload, no raw HTTP body, no record IDs, no attachment URL.
 - No `Succeeded`, `Complete`, `Enabled`, `Done`, or `ExecutionReady` status exists.
 - Not reachable from UI, TypeScript, or any Tauri command.
-- The live E2E sandbox restore integration harness remains separate pending work.
-
 ### Sub-contract chain verified
 
 `LiveE2ERestoreTestContract` → verifies `LiveFinalValidationTestContract` → verifies `LiveLinkedUpdateTestContract` → verifies `LiveRecordWriteTestContract` → verifies `LiveSchemaWriteTestContract`.
+
+---
+
+## Section 36: Live E2E Restore Sandbox Integration Harness (test-only, ignored by default)
+
+**File:** `apps/desktop/src-tauri/tests/live_e2e_restore_sandbox.rs`  
+**Status:** Test-only. `#[ignore]` by default. No app runtime path. No Tauri command.
+
+### Purpose
+
+Sequences all five restore phases in a single opt-in integration test against a disposable sandbox base. Combines the four independently-verified phase harnesses with a final non-runtime guard phase.
+
+### Required environment variables (9)
+
+| Env Var | Purpose |
+|---------|---------|
+| `AIRBRIDGE_ENABLE_LIVE_E2E_RESTORE_TEST` | Must be exactly `true` |
+| `AIRBRIDGE_SANDBOX_AIRTABLE_TOKEN` | Personal access token |
+| `AIRBRIDGE_SANDBOX_TARGET_BASE_ID` | Sandbox base ID |
+| `AIRBRIDGE_SANDBOX_SCHEMA_TABLE_NAME` | Name for the new table (phase 1) |
+| `AIRBRIDGE_SANDBOX_RECORD_TABLE_ID_OR_NAME` | Table for record writes (phase 2) |
+| `AIRBRIDGE_SANDBOX_LINK_SOURCE_TABLE_ID_OR_NAME` | Source table for linked update (phase 3) |
+| `AIRBRIDGE_SANDBOX_LINK_TARGET_TABLE_ID_OR_NAME` | Target table for linked update (phase 3) |
+| `AIRBRIDGE_SANDBOX_LINK_FIELD_NAME` | Linked field name in source table (phase 3) |
+| `AIRBRIDGE_SANDBOX_VALIDATION_TABLE_ID_OR_NAME` | Table for validation read (phase 4) |
+
+Optional: `AIRBRIDGE_SANDBOX_EXPECTED_MIN_RECORD_COUNT`, `AIRBRIDGE_SANDBOX_TEST_PREFIX`.
+
+### Phase sequence
+
+| Phase | Operation | API Call |
+|-------|-----------|----------|
+| 1 — Schema write | Create table in sandbox base | `POST` createTable |
+| 2 — Record write | Create single record | `POST` records |
+| 3 — Linked update | Create target + source records; PATCH linked field | `POST` records (×2), `PATCH` records |
+| 4 — Final validation read | List records (read-only, first page) | `GET` records |
+| 5 — Final non-runtime guard | Verify write gate + app runtime state | No network call |
+
+### Pre-call gating (before each live call)
+
+- Top-level E2E contract verified: `EligibleButNotExecuted`.
+- Phase-specific contract verified: `EligibleButNotExecuted`.
+- `evaluate_write_gate()` verified: `Disabled`.
+
+### Post-call gating (after each phase)
+
+- `evaluate_write_gate()` verified still `Disabled`.
+
+### Safety invariants
+
+- Token, base ID, table IDs/names, field names, and record IDs are never printed, asserted on by value, or included in any serialized result.
+- Record IDs used in phase 3 PATCH are held as local `String` variables only, used once, then dropped.
+- All outcome structs contain only boolean/count/name fields.
+- App runtime execution, reads, and writes remain disabled throughout.
+- No attachment endpoints. No record deletes. No schema deletes.
+- Must only be run against a disposable sandbox base. No automatic cleanup.
+- Not reachable from UI, TypeScript, or any Tauri command.
+- `evaluate_write_gate()` always returns `Disabled` — never modified.
+
+### Test count
+
+- 19 default non-ignored tests (run in standard `cargo test`)
+- 1 `#[ignore]` live test (requires all 9 env vars + `--ignored` flag)
 
 ---
 

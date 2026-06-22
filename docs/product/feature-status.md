@@ -1,7 +1,7 @@
 # Feature Status Matrix
 
 **Version:** 0.1.0-alpha  
-**Updated:** 2026-06-22 (12)
+**Updated:** 2026-06-22 (13)
 
 This matrix describes the current status of each feature area. Status values:
 
@@ -53,7 +53,8 @@ This matrix describes the current status of each feature area. Status values:
 | Live linked update test contract | Disabled | Internal only — no UI surface, no Tauri command, no token, no network call; contract-only readiness layer; `eligibleButNotExecuted` does NOT perform any live call; `contractOnly` always true; 10 prerequisites (LLUTC-PRE-01 through LLUTC-PRE-10); live linked update integration test was separate pending work |
 | Sandbox linked update harness (integration test) | Test-only, ignored by default | Internal only — no UI surface, no Tauri command; `#[ignore]` by default; requires `AIRBRIDGE_ENABLE_LIVE_LINKED_UPDATE_TEST=true`, `AIRBRIDGE_SANDBOX_AIRTABLE_TOKEN`, `AIRBRIDGE_SANDBOX_TARGET_BASE_ID`, `AIRBRIDGE_SANDBOX_LINK_SOURCE_TABLE_ID_OR_NAME`, `AIRBRIDGE_SANDBOX_LINK_TARGET_TABLE_ID_OR_NAME`, `AIRBRIDGE_SANDBOX_LINK_FIELD_NAME`; two-step setup (`createRecord` in target + source tables) + one PATCH to update linked field; no schema writes, no attachment endpoints, no final validation reads; `evaluate_write_gate()` remains Disabled before and after; sanitized outcome (no record IDs exposed); test may leave sandbox-only records — must only run against disposable sandbox base/tables; no cleanup path | Attachment handling and live E2E restore remain pending |
 | Sandbox final validation read harness (integration test) | Test-only, ignored by default | Internal only — no UI surface, no Tauri command; `#[ignore]` by default; requires `AIRBRIDGE_ENABLE_LIVE_FINAL_VALIDATION_TEST=true`, `AIRBRIDGE_SANDBOX_AIRTABLE_TOKEN`, `AIRBRIDGE_SANDBOX_TARGET_BASE_ID`, `AIRBRIDGE_SANDBOX_VALIDATION_TABLE_ID_OR_NAME`; single read-only GET records call; no records created, updated, or deleted; no schema writes, no linked updates, no attachment endpoints; `evaluate_write_gate()` remains Disabled before and after; sanitized outcome (no record IDs, no raw field values exposed); safe against any accessible sandbox table | Attachment handling and live E2E restore remain pending |
-| Live E2E restore test contract | Disabled | Internal only — no UI surface, no Tauri command, no token, no network call; contract-only readiness layer; `eligibleButNotExecuted` does NOT perform any live call; `contractOnly` always true; 9 prerequisites (LE2ERTC-PRE-01 through LE2ERTC-PRE-09); 5 planned E2E phases reported but not executed (schema write, record write, linked update, final validation read, final non-success guard); live E2E sandbox restore integration harness remains separate pending work |
+| Live E2E restore test contract | Disabled | Internal only — no UI surface, no Tauri command, no token, no network call; contract-only readiness layer; `eligibleButNotExecuted` does NOT perform any live call; `contractOnly` always true; 9 prerequisites (LE2ERTC-PRE-01 through LE2ERTC-PRE-09); 5 planned E2E phases reported but not executed (schema write, record write, linked update, final validation read, final non-success guard) |
+| Live E2E restore sandbox harness | Disabled | Test-only, `#[ignore]` by default — no UI surface, no Tauri command; sequences all 5 phases (schema write → record write → linked update → final validation read → final non-runtime guard); requires all 9 env vars; pre-call E2E contract + per-phase contract + write gate verification before each live call; post-call write gate and app runtime guard after each phase; 19 default non-ignored tests + 1 `#[ignore]` live test |
 | Sandbox adapter chain runner | Disabled | Internal only — no UI surface, no Tauri command | No Airtable calls; no token; no network reads or writes; no checkpoint files written; mock/no-op adapters only; write gate always disabled; `noChangesMade` always true; `airtableClientCalled` always false; `mockRunNotExecuted` does NOT enable any live execution path | Live end-to-end sandbox restore execution remains separate pending work |
 | Schema write engine foundation | Disabled | Request plan builder available — internal only | No Airtable writes; no token required; request builders exist; write gate always disabled; `noChangesMade` always true; `networkWritesAttempted` always false | Enable live schema writes when write engine is ready |
 | Record write engine foundation | Disabled | Request plan builder available — internal only | No Airtable writes; no token required; request builders exist; write gate always disabled; `noChangesMade` always true; `networkWritesAttempted` always false; no raw record payloads; old-to-new ID mapping deferred to execution | Enable live record writes when write engine is ready |
@@ -549,7 +550,52 @@ The contract reports the following required future-live conditions (not executed
 - App runtime restore execution remains disabled.
 - Final non-success guard must prevent any restore-succeeded or restore-complete state.
 
-The live E2E sandbox restore integration harness remains separate pending work.
+### Live E2E Restore Sandbox Harness (test-only, ignored by default)
+
+The live E2E restore sandbox harness (`tests/live_e2e_restore_sandbox.rs`) is an opt-in Rust integration test — it is not a Tauri command, has no UI surface, and is `#[ignore]` by default. It sequences all five restore phases using the individually-verified sandbox phase harnesses.
+
+To run the live `#[ignore]` test, all nine required environment variables must be set:
+
+| Env Var | Purpose |
+|---------|---------|
+| `AIRBRIDGE_ENABLE_LIVE_E2E_RESTORE_TEST` | Must be exactly `true` |
+| `AIRBRIDGE_SANDBOX_AIRTABLE_TOKEN` | Personal access token |
+| `AIRBRIDGE_SANDBOX_TARGET_BASE_ID` | Sandbox base ID (`appXXX`) |
+| `AIRBRIDGE_SANDBOX_SCHEMA_TABLE_NAME` | Name for the new table created in phase 1 |
+| `AIRBRIDGE_SANDBOX_RECORD_TABLE_ID_OR_NAME` | Table for record writes in phase 2 |
+| `AIRBRIDGE_SANDBOX_LINK_SOURCE_TABLE_ID_OR_NAME` | Source table for linked update in phase 3 |
+| `AIRBRIDGE_SANDBOX_LINK_TARGET_TABLE_ID_OR_NAME` | Target table for linked update in phase 3 |
+| `AIRBRIDGE_SANDBOX_LINK_FIELD_NAME` | Linked field name in source table |
+| `AIRBRIDGE_SANDBOX_VALIDATION_TABLE_ID_OR_NAME` | Table for validation read in phase 4 |
+
+Optional: `AIRBRIDGE_SANDBOX_EXPECTED_MIN_RECORD_COUNT` — minimum record count to assert in phase 4. `AIRBRIDGE_SANDBOX_TEST_PREFIX` — prefix for test-created values (default: `airbridge_e2e_test`).
+
+The harness performs live Airtable API calls (only when all env vars are set and `--ignored` is passed):
+
+1. Phase 1 — `POST` createTable endpoint: creates a new table in the sandbox base.
+2. Phase 2 — `POST` records endpoint: creates a single record in the configured table.
+3. Phase 3 — `POST` records (×2) to create target and source records; `PATCH` records endpoint to update the linked field on the source record.
+4. Phase 4 — `GET` records endpoint for the configured validation table (read-only, first page only).
+5. Phase 5 — Pure safety assertion: no network call; confirms write gate remains `Disabled` and app runtime state unchanged.
+
+Before each live call, the harness verifies:
+- The top-level E2E contract returns `EligibleButNotExecuted`.
+- The phase-specific contract returns `EligibleButNotExecuted`.
+- `evaluate_write_gate()` returns `Disabled`.
+
+After each phase, the harness verifies:
+- `evaluate_write_gate()` still returns `Disabled`.
+
+Safety invariants:
+
+- Token, base ID, table IDs/names, field names, and record IDs are never printed, asserted on by value, or included in any serialized result.
+- Record IDs are held as local `String` variables only, used once in the PATCH, then dropped.
+- All outcome structs contain only boolean/count/name fields — no record IDs, no raw field values, no attachment URLs.
+- App runtime execution, reads, and writes remain disabled throughout.
+- No attachment endpoints are called. No record deletes. No schema deletes.
+- The test may leave sandbox-only tables and records in the target base — it MUST only be run against a disposable sandbox base. No automatic cleanup is performed.
+
+The harness includes 19 default (non-ignored) tests covering: each missing env var guard, write gate invariant, E2E contract eligibility, all four phase contract eligibility states, adapter chain mock run, no Tauri command, no attachment, no restore success state.
 
 ### Sandbox Final Validation Read Harness (test-only, ignored by default)
 

@@ -2867,6 +2867,102 @@ Checklist for `tests/live_final_validation_sandbox.rs` and supporting models/cli
 
 ### Message / pending work
 
-- [ ] Eligible message contains `remains separate pending work`.
 - [ ] No Tauri command introduced.
 - [ ] No real Airtable client called (`network_reads_attempted`, `network_writes_attempted`, `airtable_client_called` all `false`).
+
+---
+
+## LE2ERTSH — Live E2E Restore Sandbox Harness
+
+### Opt-in guard
+
+- [ ] `all_required_env_vars_present()` returns `false` when `AIRBRIDGE_ENABLE_LIVE_E2E_RESTORE_TEST` is not `"true"`.
+- [ ] `all_required_env_vars_present()` returns `false` when any of the 9 required env vars is missing.
+- [ ] `all_required_env_vars_present()` returns `true` only when all 9 required env vars are present and enable flag is `"true"`.
+- [ ] Live `#[ignore]` test returns without panicking when any required env var is missing.
+- [ ] Default `cargo test` skips the live `#[ignore]` test.
+
+### Pre-call E2E contract verification
+
+- [ ] E2E contract returns `EligibleButNotExecuted` before any live call.
+- [ ] `contract_only` is `true` before any live call.
+- [ ] `airtable_client_called` is `false` before any live call.
+- [ ] `network_writes_attempted` is `false` before any live call.
+- [ ] `network_reads_attempted` is `false` before any live call.
+- [ ] `app_runtime_execution_enabled` is `false` before any live call.
+- [ ] `app_runtime_writes_enabled` is `false` before any live call.
+- [ ] `app_runtime_reads_enabled` is `false` before any live call.
+- [ ] `no_changes_made` is `true` before any live call.
+- [ ] Adapter chain returns `MockRunNotExecuted` before any live call.
+
+### Phase 1 — Schema write
+
+- [ ] Schema contract returns `EligibleButNotExecuted` before phase 1 live call.
+- [ ] `evaluate_write_gate()` returns `Disabled` before phase 1 live call.
+- [ ] `CreateTableOutcome.table_name` matches requested name.
+- [ ] `CreateTableOutcome.table_id` is non-empty.
+- [ ] Serialized phase 1 outcome does not contain `pat_`.
+- [ ] `evaluate_write_gate()` returns `Disabled` after phase 1 live call.
+
+### Phase 2 — Record write
+
+- [ ] Record contract returns `EligibleButNotExecuted` before phase 2 live call.
+- [ ] `evaluate_write_gate()` returns `Disabled` before phase 2 live call.
+- [ ] `CreateSandboxRecordOutcome.record_created` is `true`.
+- [ ] `CreateSandboxRecordOutcome.record_count` equals 1.
+- [ ] Serialized phase 2 outcome does not contain `pat_`.
+- [ ] Serialized phase 2 outcome does not contain `"id"`.
+- [ ] `evaluate_write_gate()` returns `Disabled` after phase 2 live call.
+
+### Phase 3 — Linked update
+
+- [ ] Linked update contract returns `EligibleButNotExecuted` before phase 3 live call.
+- [ ] `evaluate_write_gate()` returns `Disabled` before phase 3 live call.
+- [ ] Target record created successfully (ID held locally, never printed).
+- [ ] Source record created successfully (ID held locally, never printed).
+- [ ] `UpdateLinkedSandboxRecordOutcome.record_updated` is `true`.
+- [ ] `UpdateLinkedSandboxRecordOutcome.linked_target_count` equals 1.
+- [ ] Serialized phase 3 outcome does not contain `pat_`.
+- [ ] Serialized phase 3 outcome does not contain `"id"`.
+- [ ] `evaluate_write_gate()` returns `Disabled` after phase 3 live call.
+
+### Phase 4 — Final validation read
+
+- [ ] FV contract returns `EligibleButNotExecuted` before phase 4 live call.
+- [ ] `evaluate_write_gate()` returns `Disabled` before phase 4 live call.
+- [ ] `SandboxValidationReadOutcome.table_reachable` is `true`.
+- [ ] `has_records` is `true` when `AIRBRIDGE_SANDBOX_EXPECTED_MIN_RECORD_COUNT` is set.
+- [ ] `min_count_satisfied` is `true` when `AIRBRIDGE_SANDBOX_EXPECTED_MIN_RECORD_COUNT` is set.
+- [ ] Serialized phase 4 outcome does not contain `pat_`.
+- [ ] Serialized phase 4 outcome does not contain `rec`.
+- [ ] `evaluate_write_gate()` returns `Disabled` after phase 4 live call.
+
+### Phase 5 — Final non-runtime guard
+
+- [ ] `evaluate_write_gate()` returns `Disabled` after all phases complete.
+- [ ] `app_runtime_execution_enabled` remains `false` in final E2E contract result.
+- [ ] `app_runtime_writes_enabled` remains `false` in final E2E contract result.
+- [ ] `app_runtime_reads_enabled` remains `false` in final E2E contract result.
+- [ ] `airtable_client_called` remains `false` in final E2E contract result.
+- [ ] `no_changes_made` remains `true` in final E2E contract result.
+- [ ] Serialized final E2E result does not contain `restoreSuccess`.
+- [ ] Serialized final E2E result does not contain `restoreComplete`.
+- [ ] Serialized final E2E result does not contain `"succeeded"`.
+
+### Serialization safety (all phases)
+
+- [ ] No `pat_` token prefix in any serialized outcome.
+- [ ] No `"id"` key in any serialized record outcome.
+- [ ] No `rec` in any serialized validation outcome.
+- [ ] No `restoreSuccess`, `restoreComplete`, or `"succeeded"` in any serialized result.
+
+### Default non-ignored tests
+
+- [ ] 19 default tests pass in standard `cargo test`.
+- [ ] Each missing env var test returns without panicking.
+- [ ] Write gate invariant test passes.
+- [ ] All four phase contract eligibility tests pass.
+- [ ] Adapter chain mock run test passes.
+- [ ] No Tauri command test passes.
+- [ ] No attachment test passes.
+- [ ] No restore success state test passes.

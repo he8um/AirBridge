@@ -4237,3 +4237,81 @@ Test cases for `tests/live_final_validation_sandbox.rs`, `src/airtable/models.rs
 - Steps:
   1. Call `evaluate_write_gate()` before and after TC-LE2ERTC-04 and TC-LE2ERTC-01.
 - Expected result: Returns `Disabled/DisabledByProductPolicy` in all cases. Calling `evaluate_live_e2e_restore_test_contract` never changes the gate.
+
+---
+
+## TC-LE2ERTSH — Live E2E Restore Sandbox Harness Test Cases
+
+### TC-LE2ERTSH-01: Default cargo test skips live test
+
+- Preconditions: None. No env vars set.
+- Steps:
+  1. Run `cargo test --test live_e2e_restore_sandbox` without setting any env vars and without `--ignored`.
+- Expected result: 19 tests pass. 1 test is listed as `ignored`. No Airtable network call is made.
+
+### TC-LE2ERTSH-02: Missing required env var causes graceful skip
+
+- Preconditions: Set 8 of 9 required env vars. Omit one.
+- Steps:
+  1. Run `cargo test --test live_e2e_restore_sandbox -- sandbox_e2e_restore_sequences_all_phases_and_verifies_contracts --ignored`.
+- Expected result: Test returns without panicking (skip). No Airtable network call is made.
+
+### TC-LE2ERTSH-03: Write gate is Disabled before and after each phase
+
+- Preconditions: All 9 required env vars set; `--ignored` flag passed.
+- Steps:
+  1. Run the live E2E test.
+  2. Observe that write gate is verified before and after each phase in the test output.
+- Expected result: All write gate assertions pass. `evaluate_write_gate()` returns `Disabled` throughout.
+
+### TC-LE2ERTSH-04: Phase 1 schema write creates table with correct name
+
+- Preconditions: TC-LE2ERTSH-03 passes.
+- Steps:
+  1. Inspect phase 1 assertion output.
+- Expected result: `CreateTableOutcome.table_name` matches `{prefix}_{schema_table_name}`. `table_id` is non-empty. No `pat_` in serialized outcome.
+
+### TC-LE2ERTSH-05: Phase 2 record write creates exactly one record
+
+- Preconditions: TC-LE2ERTSH-03 passes.
+- Steps:
+  1. Inspect phase 2 assertion output.
+- Expected result: `record_created` is `true`. `record_count` equals 1. No `"id"` in serialized outcome.
+
+### TC-LE2ERTSH-06: Phase 3 linked update patches linked field
+
+- Preconditions: TC-LE2ERTSH-03 passes.
+- Steps:
+  1. Inspect phase 3 assertion output.
+- Expected result: `record_updated` is `true`. `linked_target_count` equals 1. No `"id"` in serialized outcome.
+
+### TC-LE2ERTSH-07: Phase 4 final validation read reaches table
+
+- Preconditions: TC-LE2ERTSH-03 passes.
+- Steps:
+  1. Inspect phase 4 assertion output.
+- Expected result: `table_reachable` is `true`. No `pat_` or `rec` in serialized outcome.
+
+### TC-LE2ERTSH-08: Phase 5 non-runtime guard confirms app runtime remains disabled
+
+- Preconditions: TC-LE2ERTSH-03 passes.
+- Steps:
+  1. Inspect phase 5 assertion output.
+- Expected result: `app_runtime_execution_enabled`, `app_runtime_writes_enabled`, `app_runtime_reads_enabled` are all `false`. `airtable_client_called` is `false`. `no_changes_made` is `true`. No `restoreSuccess`, `restoreComplete`, or `"succeeded"` in serialized results.
+
+### TC-LE2ERTSH-09: No sensitive data in any serialized outcome
+
+- Preconditions: TC-LE2ERTSH-03 passes.
+- Steps:
+  1. Inspect all serialized outcome strings from phases 1–5.
+  2. Scan for: `pat_`, `"id"`, `rec`, `restoreSuccess`, `restoreComplete`, `"succeeded"`.
+- Expected result: None of the above strings are present in any serialized outcome.
+
+### TC-LE2ERTSH-10: No app runtime path, Tauri command, or UI surface introduced
+
+- Preconditions: None.
+- Steps:
+  1. Confirm `tests/live_e2e_restore_sandbox.rs` is not referenced from any Tauri command.
+  2. Confirm `evaluate_write_gate()` still returns `Disabled`.
+  3. Confirm no TypeScript or frontend path references the harness.
+- Expected result: The harness is only reachable via explicit `cargo test --test live_e2e_restore_sandbox -- --ignored`. No app runtime path exists.
