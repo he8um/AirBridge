@@ -1076,6 +1076,86 @@ All of the following must be `true` for `SandboxHarnessesReadyRuntimeDisabled` t
 
 ---
 
+## Section 38: Restore Release Readiness Snapshot (Rust-internal, no network calls)
+
+**Module:** `apps/desktop/src-tauri/src/restore/restore_release_readiness_snapshot.rs`
+**Public function:** `build_restore_release_readiness_snapshot(request, schema_plan, record_plan)`
+**Status:** Rust-internal only. No Tauri command. No network call. No UI surface.
+
+### Purpose
+
+Produces a sanitized, structured release-readiness snapshot for maintainers by composing the post-E2E restore readiness audit and write gate results. It reports 12 distinct readiness areas, 7 pending work items, and 3 maintainer recommendations. It does not execute any harness, does not call Airtable, and does not accept credential values.
+
+### Return status
+
+`AlphaReadyRestoreRuntimeDisabled` is returned only when ALL of the following are true:
+
+| Condition | Input |
+|-----------|-------|
+| Explicit snapshot flag | `explicit_internal_restore_release_snapshot_requested == true` |
+| Write gate | `evaluate_write_gate()` returns `Disabled/DisabledByProductPolicy` |
+| No Tauri live execution | `no_tauri_command_exposes_live_execution == true` |
+| No TS/UI live execution | `no_typescript_ui_path_exposes_live_execution == true` |
+| Restore command safe | `restore_command_does_not_expose_live_execution == true` |
+| Post-E2E audit | `audit_post_e2e_restore_readiness()` returns `SandboxHarnessesReadyRuntimeDisabled` |
+
+`AlphaReadyRestoreRuntimeDisabled` does **NOT** mean user-facing restore execution is complete or approved for production use.
+
+### 12 readiness areas
+
+| Area ID | Name | Default status |
+|---------|------|----------------|
+| RRRS-AREA-01 | Backup package creation | `Ready` when `backup_package_creation_ready` |
+| RRRS-AREA-02 | Package inspection | `Ready` when `package_inspection_ready` |
+| RRRS-AREA-03 | Restore dry-run planning | `Ready` when `restore_dry_run_planning_ready` |
+| RRRS-AREA-04 | Restore execution preview | `Ready` when `restore_execution_preview_ready` |
+| RRRS-AREA-05 | Sandbox schema write harness | `Ready` when `schema_harness_ignored_by_default` |
+| RRRS-AREA-06 | Sandbox record write harness | `Ready` when `record_harness_ignored_by_default` |
+| RRRS-AREA-07 | Sandbox linked update harness | `Ready` when `linked_update_harness_ignored_by_default` |
+| RRRS-AREA-08 | Sandbox final validation read harness | `Ready` when `final_validation_harness_ignored_by_default` |
+| RRRS-AREA-09 | Sandbox E2E restore harness | `Ready` when `e2e_restore_harness_ignored_by_default` |
+| RRRS-AREA-10 | Runtime restore execution | Always `Disabled` |
+| RRRS-AREA-11 | Attachment handling | Always `Disabled` |
+| RRRS-AREA-12 | Product/security approval | Always `PendingApproval` |
+
+### 7 pending work items
+
+| Pending ID | Label |
+|------------|-------|
+| RRRS-PENDING-01 | Product/security decision for runtime restore enablement |
+| RRRS-PENDING-02 | Runtime restore command contract (if ever approved) |
+| RRRS-PENDING-03 | UI confirmation and failure-state design (if ever approved) |
+| RRRS-PENDING-04 | Credential handling review for future runtime restore |
+| RRRS-PENDING-05 | Cleanup strategy for sandbox-created tables and records |
+| RRRS-PENDING-06 | Attachment binary handling (remains disabled) |
+| RRRS-PENDING-07 | User-facing restore documentation |
+
+### 3 recommendations
+
+| Rec ID | Label |
+|--------|-------|
+| RRRS-REC-01 | Do not ship user-facing restore execution without product/security approval |
+| RRRS-REC-02 | Run sandbox E2E harness against a disposable base before any approval review |
+| RRRS-REC-03 | Address all pending work items before requesting approval |
+
+### Safety invariants
+
+- `app_runtime_execution_enabled`, `app_runtime_writes_enabled`, `app_runtime_reads_enabled` always `false`.
+- `live_harnesses_ignored_by_default`, `no_changes_made` always `true`.
+- `network_reads_attempted`, `network_writes_attempted`, `airtable_client_called` always `false`.
+- `tauri_command_exposes_live_restore`, `typescript_ui_path_exposes_live_restore` always `false`.
+- No token, base ID, table/field/record values accepted.
+- `evaluate_write_gate()` never modified.
+- No restore success/completed/enabled product state exists.
+- Not reachable from UI, TypeScript, or any Tauri command.
+- `AlphaReadyRestoreRuntimeDisabled` does NOT mean product-level restore is complete or approved.
+
+### Test count
+
+- 24 unit tests in `#[cfg(test)]` block
+
+---
+
 ## Related Documents
 
 - [Restore Write Engine Skeleton](./restore-write-engine-skeleton.md)

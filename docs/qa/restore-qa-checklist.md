@@ -1332,6 +1332,68 @@ After completing a restore, perform the following manual checks in Airtable:
 
 ---
 
+## Restore Release Readiness Snapshot Checklist (RRRS)
+
+### Before testing
+
+- [ ] Confirm `restore/restore_release_readiness_snapshot.rs` is compiled and exported in `restore/mod.rs`.
+- [ ] Confirm `build_restore_release_readiness_snapshot` has no Tauri command wrapper, no UI surface, and no TypeScript path.
+- [ ] Confirm `RestoreReleaseReadinessSnapshotResult` has no `token` field, no base ID field, no record payload, no attachment URL, no raw HTTP body, no old/new record IDs.
+
+### Blocked status invariants
+
+- [ ] Calling with `explicit_internal_restore_release_snapshot_requested: false` returns `status: blocked`.
+- [ ] Calling with any harness flag `false` returns `status: blocked` (post-E2E audit blocked).
+- [ ] Calling with `no_tauri_command_exposes_live_execution: false` returns `status: blocked`.
+- [ ] Calling with `no_typescript_ui_path_exposes_live_execution: false` returns `status: blocked`.
+- [ ] Blocked result always has `blocked_reason` set.
+
+### Alpha-ready status verification
+
+- [ ] Calling with all flags `true` returns `status: alphaReadyRestoreRuntimeDisabled`.
+- [ ] `alphaReadyRestoreRuntimeDisabled` message does not contain "restoreReady", "restoreComplete", "restoreSucceeded", or "succeeded".
+- [ ] `alphaReadyRestoreRuntimeDisabled` message explicitly states runtime restore execution is disabled.
+
+### Area reporting
+
+- [ ] `area_count` is 12.
+- [ ] RRRS-AREA-01 through RRRS-AREA-04 (backup/planning) have status `ready` when input flags are `true`.
+- [ ] RRRS-AREA-05 through RRRS-AREA-09 (sandbox harnesses) have status `ready` when harness flags are `true`.
+- [ ] RRRS-AREA-10 (runtime restore execution) always has status `disabled`.
+- [ ] RRRS-AREA-11 (attachment handling) always has status `disabled`.
+- [ ] RRRS-AREA-12 (product/security approval) always has status `pendingApproval`.
+- [ ] `disabled_area_count` is 2.
+- [ ] `pending_approval_area_count` is 1.
+
+### Safety invariants (always enforced)
+
+- [ ] `app_runtime_execution_enabled` is `false` in every result, including `alphaReadyRestoreRuntimeDisabled`.
+- [ ] `app_runtime_writes_enabled` is `false` in every result.
+- [ ] `app_runtime_reads_enabled` is `false` in every result.
+- [ ] `network_reads_attempted` is `false` in every result.
+- [ ] `network_writes_attempted` is `false` in every result.
+- [ ] `airtable_client_called` is `false` in every result.
+- [ ] `no_changes_made` is `true` in every result.
+- [ ] `live_harnesses_ignored_by_default` is `true` in every result.
+
+### Pending work
+
+- [ ] `pending_work_count` is 7.
+- [ ] Pending IDs RRRS-PENDING-01 through RRRS-PENDING-07 are present.
+- [ ] Pending work is present in `blocked` results as well as `alphaReadyRestoreRuntimeDisabled` results.
+
+### Serialization safety
+
+- [ ] Serialized result JSON contains no `pat_` prefix.
+- [ ] Serialized result JSON contains no absolute path patterns (`/Users/`, `/home/`, `/tmp/`).
+- [ ] Serialized result JSON contains no `"fields":{` (record fields).
+- [ ] Serialized result JSON contains no `"records":[{` (record list).
+- [ ] Serialized result JSON contains no `oldRecordId` or `newRecordId`.
+- [ ] Serialized result JSON contains no `cdn.airtable.com` or `attachmentUrl`.
+- [ ] Serialized result JSON contains no `restoreSuccess`, `restoreComplete`, or `"succeeded"` status.
+
+---
+
 ## Live Write Safety Contract (Pre-Enable Gate)
 
 Before any live Airtable write path is enabled, complete the separate checklist:

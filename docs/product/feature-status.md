@@ -1,7 +1,7 @@
 # Feature Status Matrix
 
 **Version:** 0.1.0-alpha  
-**Updated:** 2026-06-22 (14)
+**Updated:** 2026-06-22 (15)
 
 This matrix describes the current status of each feature area. Status values:
 
@@ -56,6 +56,7 @@ This matrix describes the current status of each feature area. Status values:
 | Live E2E restore test contract | Disabled | Internal only — no UI surface, no Tauri command, no token, no network call; contract-only readiness layer; `eligibleButNotExecuted` does NOT perform any live call; `contractOnly` always true; 9 prerequisites (LE2ERTC-PRE-01 through LE2ERTC-PRE-09); 5 planned E2E phases reported but not executed (schema write, record write, linked update, final validation read, final non-success guard) |
 | Live E2E restore sandbox harness | Disabled | Test-only, `#[ignore]` by default — no UI surface, no Tauri command; sequences all 5 phases (schema write → record write → linked update → final validation read → final non-runtime guard); requires all 9 env vars; pre-call E2E contract + per-phase contract + write gate verification before each live call; post-call write gate and app runtime guard after each phase; 19 default non-ignored tests + 1 `#[ignore]` live test |
 | Post-E2E restore readiness audit | Disabled | Rust-internal only — no UI surface, no Tauri command, no Airtable call; inspects and composes existing contract/harness readiness concepts; returns `sandboxHarnessesReadyRuntimeDisabled` only when all 5 harnesses confirmed as `#[ignore]`, E2E contract eligible, write gate Disabled, and no Tauri/UI/TS path exists for live execution; includes 7 explicit pending work items; 28 unit tests |
+| Restore release readiness snapshot | Disabled | Rust-internal only — no UI surface, no Tauri command, no Airtable call; composes post-E2E audit and write gate results into a 12-area structured readiness report; returns `alphaReadyRestoreRuntimeDisabled` only when explicit flag set, write gate Disabled, no Tauri/TS/UI path, and post-E2E audit returns `SandboxHarnessesReadyRuntimeDisabled`; does NOT mean user-facing restore execution is complete or approved; includes 7 pending work items (RRRS-PENDING-01 through RRRS-PENDING-07) and 3 recommendations; 24 unit tests |
 | Sandbox adapter chain runner | Disabled | Internal only — no UI surface, no Tauri command | No Airtable calls; no token; no network reads or writes; no checkpoint files written; mock/no-op adapters only; write gate always disabled; `noChangesMade` always true; `airtableClientCalled` always false; `mockRunNotExecuted` does NOT enable any live execution path | Live end-to-end sandbox restore execution remains separate pending work |
 | Schema write engine foundation | Disabled | Request plan builder available — internal only | No Airtable writes; no token required; request builders exist; write gate always disabled; `noChangesMade` always true; `networkWritesAttempted` always false | Enable live schema writes when write engine is ready |
 | Record write engine foundation | Disabled | Request plan builder available — internal only | No Airtable writes; no token required; request builders exist; write gate always disabled; `noChangesMade` always true; `networkWritesAttempted` always false; no raw record payloads; old-to-new ID mapping deferred to execution | Enable live record writes when write engine is ready |
@@ -629,6 +630,48 @@ Safety invariants:
 - The test is safe against any accessible sandbox table (read-only).
 
 The harness includes 17 default (non-ignored) tests covering: missing env var guards, write gate invariant, FV contract eligibility, FV reader plan state, all adapter readiness checks, adapter chain mock run, and absence of Tauri command/write/attachment operations.
+
+### Restore Release Readiness Snapshot (Rust-internal, no network calls)
+
+The restore release readiness snapshot (`build_restore_release_readiness_snapshot` in `restore/restore_release_readiness_snapshot.rs`) is a Rust-internal module — it has no Tauri command, no UI surface, no TypeScript path, and does not call Airtable. It composes the post-E2E restore readiness audit and write gate results into a structured 12-area release-readiness report for maintainers.
+
+The snapshot returns `AlphaReadyRestoreRuntimeDisabled` only when all of the following are confirmed:
+
+- `explicit_internal_restore_release_snapshot_requested` is `true`
+- `evaluate_write_gate()` returns `Disabled/DisabledByProductPolicy`
+- `restore_command_does_not_expose_live_execution` is `true`
+- No Tauri command exposes live restore execution
+- No TypeScript/UI path exposes live restore execution
+- `audit_post_e2e_restore_readiness()` returns `SandboxHarnessesReadyRuntimeDisabled`
+
+**This status does NOT mean user-facing restore execution is complete or approved.**
+
+The snapshot reports 12 distinct readiness areas (RRRS-AREA-01 through RRRS-AREA-12), separating backup/planning capabilities (areas 01–04, `Ready`) from sandbox harnesses (areas 05–09, `Ready`), runtime restore execution (area 10, `Disabled`), attachment handling (area 11, `Disabled`), and product/security approval (area 12, `PendingApproval`).
+
+The snapshot always includes 7 explicit pending work items:
+
+| ID | Pending Work |
+|----|-------------|
+| RRRS-PENDING-01 | Product/security decision for runtime restore enablement |
+| RRRS-PENDING-02 | Runtime restore command contract (if ever approved) |
+| RRRS-PENDING-03 | UI confirmation and failure-state design (if ever approved) |
+| RRRS-PENDING-04 | Credential handling review for future runtime restore |
+| RRRS-PENDING-05 | Cleanup strategy for sandbox-created tables and records |
+| RRRS-PENDING-06 | Attachment binary handling (remains disabled) |
+| RRRS-PENDING-07 | User-facing restore documentation |
+
+Safety invariants:
+- `app_runtime_execution_enabled`, `app_runtime_writes_enabled`, `app_runtime_reads_enabled` are always `false`.
+- `live_harnesses_ignored_by_default`, `no_changes_made` are always `true`.
+- `network_reads_attempted`, `network_writes_attempted`, `airtable_client_called` are always `false`.
+- No token, base ID, table/field/record values are accepted.
+- Not reachable from UI, TypeScript, or any Tauri command.
+- `evaluate_write_gate()` is never modified.
+- No restore success/completed/enabled product state exists.
+
+The module includes 24 unit tests covering all blocked inputs, safety invariants, serialization safety, area counts, and the full-request eligible path.
+
+---
 
 ### Post-E2E Restore Readiness Audit (Rust-internal, no network calls)
 

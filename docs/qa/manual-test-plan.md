@@ -4392,3 +4392,96 @@ Test cases for `tests/live_final_validation_sandbox.rs`, `src/airtable/models.rs
   2. Confirm `evaluate_write_gate()` still returns `Disabled`.
   3. Confirm no TypeScript or frontend path references the audit module.
 - Expected result: The audit module is only reachable from Rust unit tests and internal callers. No app runtime path exists.
+
+---
+
+## Restore Release Readiness Snapshot (RRRS)
+
+These test cases cover the `build_restore_release_readiness_snapshot` Rust-internal function. All are automated — manual verification is for regression confidence only.
+
+### TC-RRRSP-01: Missing explicit flag returns blocked
+
+- Preconditions: None.
+- Steps:
+  1. Call `build_restore_release_readiness_snapshot` with `explicit_internal_restore_release_snapshot_requested: false` and all other flags `true`.
+- Expected result: `status: blocked`. `blocked_reason` references the explicit flag. All safety fields enforced.
+
+### TC-RRRSP-02: Missing harness flag (any) blocks via post-E2E audit
+
+- Preconditions: None.
+- Steps:
+  1. Call `build_restore_release_readiness_snapshot` with all flags `true` except `schema_harness_ignored_by_default: false`.
+- Expected result: `status: blocked`. Post-E2E audit returns `Blocked`. `blocked_reason` set.
+
+### TC-RRRSP-03: Missing Tauri safety flag returns blocked
+
+- Preconditions: None.
+- Steps:
+  1. Call with `no_tauri_command_exposes_live_execution: false`.
+- Expected result: `status: blocked`.
+
+### TC-RRRSP-04: Missing TypeScript safety flag returns blocked
+
+- Preconditions: None.
+- Steps:
+  1. Call with `no_typescript_ui_path_exposes_live_execution: false`.
+- Expected result: `status: blocked`.
+
+### TC-RRRSP-05: Full request returns alphaReadyRestoreRuntimeDisabled
+
+- Preconditions: None.
+- Steps:
+  1. Call with all input flags `true`.
+- Expected result: `status: alphaReadyRestoreRuntimeDisabled`. `area_count == 12`. `pending_work_count == 7`.
+
+### TC-RRRSP-06: Runtime restore area is always disabled
+
+- Preconditions: TC-RRRSP-05 passes.
+- Steps:
+  1. Inspect `areas` from TC-RRRSP-05.
+- Expected result: RRRS-AREA-10 has `status: disabled`. RRRS-AREA-11 has `status: disabled`. `disabled_area_count == 2`.
+
+### TC-RRRSP-07: Product/security approval area is always pendingApproval
+
+- Preconditions: TC-RRRSP-05 passes.
+- Steps:
+  1. Inspect `areas` from TC-RRRSP-05.
+- Expected result: RRRS-AREA-12 has `status: pendingApproval`. `pending_approval_area_count == 1`.
+
+### TC-RRRSP-08: Safety invariants hold in alphaReadyRestoreRuntimeDisabled result
+
+- Preconditions: TC-RRRSP-05 passes.
+- Steps:
+  1. Inspect result from TC-RRRSP-05.
+- Expected result: `app_runtime_execution_enabled`, `app_runtime_writes_enabled`, `app_runtime_reads_enabled`, `network_reads_attempted`, `network_writes_attempted`, `airtable_client_called` all `false`. `no_changes_made` is `true`. `live_harnesses_ignored_by_default` is `true`. Safety snapshot mirrors all these values.
+
+### TC-RRRSP-09: Safety invariants hold in blocked result
+
+- Preconditions: TC-RRRSP-01 passes.
+- Steps:
+  1. Inspect result from TC-RRRSP-01.
+- Expected result: Same safety fields all enforced as in TC-RRRSP-08.
+
+### TC-RRRSP-10: Message does not imply restore is complete
+
+- Preconditions: TC-RRRSP-05 passes.
+- Steps:
+  1. Inspect `message` field from TC-RRRSP-05.
+- Expected result: Message does not contain "restore ready", "restore complete", "restore succeeded", or "succeeded". Message explicitly states runtime restore execution is disabled.
+
+### TC-RRRSP-11: Serialization contains no sensitive data
+
+- Preconditions: TC-RRRSP-05 passes.
+- Steps:
+  1. Serialize result from TC-RRRSP-05 to JSON.
+  2. Scan for: `pat_`, `/Users/`, `/home/`, `/tmp/`, `"fields":{`, `"records":[{`, `oldRecordId`, `newRecordId`, `cdn.airtable.com`, `attachmentUrl`, `restoreSuccess`, `restoreComplete`, `"succeeded"`, `executionReady`.
+- Expected result: None of the above strings are present.
+
+### TC-RRRSP-12: No Tauri command or UI path introduced
+
+- Preconditions: None.
+- Steps:
+  1. Confirm `src/restore/restore_release_readiness_snapshot.rs` is not referenced from any Tauri command.
+  2. Confirm `evaluate_write_gate()` still returns `Disabled`.
+  3. Confirm no TypeScript or frontend path references the snapshot module.
+- Expected result: The snapshot module is only reachable from Rust unit tests and internal callers. No app runtime path exists.
