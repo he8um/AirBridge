@@ -4159,3 +4159,81 @@ Test cases for `tests/live_final_validation_sandbox.rs`, `src/airtable/models.rs
   1. Search `apps/desktop/src-tauri/src/commands/restore.rs` for `final_validation` or `live_fv`.
   2. Search TypeScript sources for `finalValidation` or `live_final_validation`.
 - Expected result: No matches from this task. This feature is internal Rust test only.
+
+---
+
+## TC-LE2ERTC — Live E2E Restore Test Contract
+
+**Module:** `src/restore/live_e2e_restore_test_contract.rs`  
+**Scope:** Contract-only internal tests; no Airtable calls; no UI; no Tauri command.
+
+### TC-LE2ERTC-01: Disabled mode returns Blocked
+
+- Preconditions: None.
+- Steps:
+  1. Call `evaluate_live_e2e_restore_test_contract` with `mode: Disabled` and all prerequisites false.
+- Expected result: Status is `Blocked`. `blocked_reason` contains `LE2ERTC-PRE-01`.
+
+### TC-LE2ERTC-02: Missing explicit flag returns Blocked
+
+- Preconditions: None.
+- Steps:
+  1. Call with `mode: SandboxIntegrationCandidate` but `explicit_internal_live_e2e_restore_test_contract_requested: false`.
+- Expected result: Status is `Blocked`. `blocked_reason` contains `LE2ERTC-PRE-02`.
+
+### TC-LE2ERTC-03: FV contract not eligible returns Blocked
+
+- Preconditions: None.
+- Steps:
+  1. Call with full request but `mapping_coverage_sufficient: false`.
+- Expected result: Status is `Blocked`. `blocked_reason` contains `LE2ERTC-PRE-04`.
+
+### TC-LE2ERTC-04: All prerequisites satisfied → EligibleButNotExecuted
+
+- Preconditions: None.
+- Steps:
+  1. Call with full request (`full_request()` helper) using valid schema/record plans.
+- Expected result: Status is `EligibleButNotExecuted`. `contract_only` is `true`. All safety booleans in expected safe state.
+
+### TC-LE2ERTC-05: Safety invariants hold when eligible
+
+- Preconditions: TC-LE2ERTC-04 passes.
+- Steps:
+  1. Inspect result from TC-LE2ERTC-04.
+- Expected result: `app_runtime_execution_enabled`, `app_runtime_writes_enabled`, `app_runtime_reads_enabled`, `network_reads_attempted`, `network_writes_attempted`, `airtable_client_called` all `false`. `no_changes_made` is `true`.
+
+### TC-LE2ERTC-06: Safety invariants hold when blocked
+
+- Preconditions: None.
+- Steps:
+  1. Inspect result from TC-LE2ERTC-01.
+- Expected result: Same safety booleans all `false`/`true` as in TC-LE2ERTC-05. `contract_only` is `true`.
+
+### TC-LE2ERTC-07: Five planned phases reported
+
+- Preconditions: TC-LE2ERTC-04 passes.
+- Steps:
+  1. Inspect `planned_phases` from TC-LE2ERTC-04.
+- Expected result: 5 phases present. Phase IDs include `LE2ERTC-PHASE-01` through `LE2ERTC-PHASE-05`. All statuses are `Planned`.
+
+### TC-LE2ERTC-08: Phases are NotExecuted when blocked
+
+- Preconditions: TC-LE2ERTC-01 passes.
+- Steps:
+  1. Inspect `planned_phases` from TC-LE2ERTC-01.
+- Expected result: 5 phases present. All statuses are `NotExecuted`.
+
+### TC-LE2ERTC-09: Serialization contains no sensitive data
+
+- Preconditions: TC-LE2ERTC-04 passes.
+- Steps:
+  1. Serialize result from TC-LE2ERTC-04 to JSON.
+  2. Scan for: `pat_`, `"token"`, `/Users/`, `/home/`, `/tmp/`, `"fields":{`, `"records":[{`, `"body":{`, `"statusCode"`, `"oldRecordId"`, `"newRecordId"`, `rec_old_`, `rec_new_`, `cdn.airtable.com`, `attachmentUrl`, `"succeeded"`, `restoreComplete`, `restoreSuccess`, `executionReady`.
+- Expected result: None of the above strings are present.
+
+### TC-LE2ERTC-10: evaluate_write_gate() remains Disabled throughout
+
+- Preconditions: None.
+- Steps:
+  1. Call `evaluate_write_gate()` before and after TC-LE2ERTC-04 and TC-LE2ERTC-01.
+- Expected result: Returns `Disabled/DisabledByProductPolicy` in all cases. Calling `evaluate_live_e2e_restore_test_contract` never changes the gate.

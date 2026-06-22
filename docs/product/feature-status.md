@@ -1,7 +1,7 @@
 # Feature Status Matrix
 
 **Version:** 0.1.0-alpha  
-**Updated:** 2026-06-22 (11)
+**Updated:** 2026-06-22 (12)
 
 This matrix describes the current status of each feature area. Status values:
 
@@ -53,6 +53,7 @@ This matrix describes the current status of each feature area. Status values:
 | Live linked update test contract | Disabled | Internal only — no UI surface, no Tauri command, no token, no network call; contract-only readiness layer; `eligibleButNotExecuted` does NOT perform any live call; `contractOnly` always true; 10 prerequisites (LLUTC-PRE-01 through LLUTC-PRE-10); live linked update integration test was separate pending work |
 | Sandbox linked update harness (integration test) | Test-only, ignored by default | Internal only — no UI surface, no Tauri command; `#[ignore]` by default; requires `AIRBRIDGE_ENABLE_LIVE_LINKED_UPDATE_TEST=true`, `AIRBRIDGE_SANDBOX_AIRTABLE_TOKEN`, `AIRBRIDGE_SANDBOX_TARGET_BASE_ID`, `AIRBRIDGE_SANDBOX_LINK_SOURCE_TABLE_ID_OR_NAME`, `AIRBRIDGE_SANDBOX_LINK_TARGET_TABLE_ID_OR_NAME`, `AIRBRIDGE_SANDBOX_LINK_FIELD_NAME`; two-step setup (`createRecord` in target + source tables) + one PATCH to update linked field; no schema writes, no attachment endpoints, no final validation reads; `evaluate_write_gate()` remains Disabled before and after; sanitized outcome (no record IDs exposed); test may leave sandbox-only records — must only run against disposable sandbox base/tables; no cleanup path | Attachment handling and live E2E restore remain pending |
 | Sandbox final validation read harness (integration test) | Test-only, ignored by default | Internal only — no UI surface, no Tauri command; `#[ignore]` by default; requires `AIRBRIDGE_ENABLE_LIVE_FINAL_VALIDATION_TEST=true`, `AIRBRIDGE_SANDBOX_AIRTABLE_TOKEN`, `AIRBRIDGE_SANDBOX_TARGET_BASE_ID`, `AIRBRIDGE_SANDBOX_VALIDATION_TABLE_ID_OR_NAME`; single read-only GET records call; no records created, updated, or deleted; no schema writes, no linked updates, no attachment endpoints; `evaluate_write_gate()` remains Disabled before and after; sanitized outcome (no record IDs, no raw field values exposed); safe against any accessible sandbox table | Attachment handling and live E2E restore remain pending |
+| Live E2E restore test contract | Disabled | Internal only — no UI surface, no Tauri command, no token, no network call; contract-only readiness layer; `eligibleButNotExecuted` does NOT perform any live call; `contractOnly` always true; 9 prerequisites (LE2ERTC-PRE-01 through LE2ERTC-PRE-09); 5 planned E2E phases reported but not executed (schema write, record write, linked update, final validation read, final non-success guard); live E2E sandbox restore integration harness remains separate pending work |
 | Sandbox adapter chain runner | Disabled | Internal only — no UI surface, no Tauri command | No Airtable calls; no token; no network reads or writes; no checkpoint files written; mock/no-op adapters only; write gate always disabled; `noChangesMade` always true; `airtableClientCalled` always false; `mockRunNotExecuted` does NOT enable any live execution path | Live end-to-end sandbox restore execution remains separate pending work |
 | Schema write engine foundation | Disabled | Request plan builder available — internal only | No Airtable writes; no token required; request builders exist; write gate always disabled; `noChangesMade` always true; `networkWritesAttempted` always false | Enable live schema writes when write engine is ready |
 | Record write engine foundation | Disabled | Request plan builder available — internal only | No Airtable writes; no token required; request builders exist; write gate always disabled; `noChangesMade` always true; `networkWritesAttempted` always false; no raw record payloads; old-to-new ID mapping deferred to execution | Enable live record writes when write engine is ready |
@@ -507,6 +508,48 @@ The contract reports the following required future-live conditions (not executed
 - App runtime restore execution remains disabled.
 
 The live final validation read integration test is now implemented as the sandbox final validation read harness — see below.
+
+### Live E2E Restore Test Contract (internal, contract-only)
+
+The live E2E restore test contract (`evaluate_live_e2e_restore_test_contract` in `restore/live_e2e_restore_test_contract.rs`) is an internal Rust module — it is not exposed as a Tauri command and has no UI surface. It is a contract-only readiness layer that evaluates whether a future live E2E sandbox restore integration harness could be attempted, without performing any live call.
+
+The contract evaluates 9 prerequisites (LE2ERTC-PRE-01 through LE2ERTC-PRE-09):
+
+| ID | Prerequisite |
+|----|-------------|
+| LE2ERTC-PRE-01 | Mode is `sandboxIntegrationCandidate` |
+| LE2ERTC-PRE-02 | `explicit_internal_live_e2e_restore_test_contract_requested` is true |
+| LE2ERTC-PRE-03 | `evaluate_write_gate()` returns `Disabled/DisabledByProductPolicy` |
+| LE2ERTC-PRE-04 | Live final validation test contract returns `EligibleButNotExecuted` |
+| LE2ERTC-PRE-05 | Sandbox adapter chain runner returns `MockRunNotExecuted` |
+| LE2ERTC-PRE-06 | Sandbox gate arming decision returns `ArmedNotExecutable` |
+| LE2ERTC-PRE-07 | Sandbox restore simulator returns `SimulatedNotExecuted` |
+| LE2ERTC-PRE-08 | Sandbox enablement readiness returns `ReadyButDisabled` |
+| LE2ERTC-PRE-09 | Sandbox restore harness returns `ReadyNotExecuted` |
+
+The contract reports 5 planned E2E phases (not executed):
+
+| Phase ID | Label |
+|----------|-------|
+| LE2ERTC-PHASE-01 | Schema write (sandbox) |
+| LE2ERTC-PHASE-02 | Record write (sandbox) |
+| LE2ERTC-PHASE-03 | Linked field update (sandbox) |
+| LE2ERTC-PHASE-04 | Final validation read (sandbox) |
+| LE2ERTC-PHASE-05 | Final non-success guard |
+
+`eligibleButNotExecuted` does NOT perform any Airtable network call. `contractOnly` is always `true`. `appRuntimeExecutionEnabled` is always `false`. `appRuntimeWritesEnabled` is always `false`. `appRuntimeReadsEnabled` is always `false`. `networkReadsAttempted` is always `false`. `networkWritesAttempted` is always `false`. `airtableClientCalled` is always `false`. `noChangesMade` is always `true`. No token is accepted or stored. `evaluate_write_gate()` remains `Disabled/DisabledByProductPolicy`. No UI surface, no Tauri command, no TypeScript path exists.
+
+The contract reports the following required future-live conditions (not executed):
+- Disposable sandbox-only base required.
+- Explicit test-only credentials required in future task.
+- No UI execution path allowed.
+- All phase harnesses (schema write, record write, linked update, final validation) must be prepared and independently verified before E2E harness runs.
+- Only sandbox-only base operations allowed.
+- Attachment binary handling remains disabled.
+- App runtime restore execution remains disabled.
+- Final non-success guard must prevent any restore-succeeded or restore-complete state.
+
+The live E2E sandbox restore integration harness remains separate pending work.
 
 ### Sandbox Final Validation Read Harness (test-only, ignored by default)
 

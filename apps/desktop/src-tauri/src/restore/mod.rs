@@ -16,6 +16,7 @@ pub mod final_validation_reader;
 pub mod linked_record_updates;
 pub mod linked_second_pass_execution_preview;
 pub mod linked_second_pass_executor;
+pub mod live_e2e_restore_test_contract;
 pub mod live_final_validation_test_contract;
 pub mod live_linked_update_test_contract;
 pub mod live_record_write_test_contract;

@@ -884,6 +884,62 @@ No records are created, updated, or deleted. No schema writes. No linked updates
 
 ---
 
+## Section 35: Live E2E Restore Test Contract
+
+**Module:** `apps/desktop/src-tauri/src/restore/live_e2e_restore_test_contract.rs`  
+**Public function:** `evaluate_live_e2e_restore_test_contract(request, schema_plan, record_plan)`  
+**Status:** Contract-only. No Airtable call. No live execution.
+
+### Purpose
+
+Evaluates whether a future live E2E sandbox restore integration harness could be attempted — without performing any live call. This is the top-level contract in the safety chain: it verifies all sub-contracts (schema write, record write, linked update, final validation) and all supporting probes (adapter chain, gate arming, simulator, enablement readiness, restore harness) before reporting `EligibleButNotExecuted`.
+
+### Prerequisites (9 total)
+
+| ID | Prerequisite |
+|----|-------------|
+| LE2ERTC-PRE-01 | Mode is `sandboxIntegrationCandidate` |
+| LE2ERTC-PRE-02 | `explicit_internal_live_e2e_restore_test_contract_requested` is `true` |
+| LE2ERTC-PRE-03 | `evaluate_write_gate()` returns `Disabled/DisabledByProductPolicy` |
+| LE2ERTC-PRE-04 | Live final validation test contract returns `EligibleButNotExecuted` |
+| LE2ERTC-PRE-05 | Sandbox adapter chain runner returns `MockRunNotExecuted` |
+| LE2ERTC-PRE-06 | Sandbox gate arming decision returns `ArmedNotExecutable` |
+| LE2ERTC-PRE-07 | Sandbox restore simulator returns `SimulatedNotExecuted` |
+| LE2ERTC-PRE-08 | Sandbox enablement readiness returns `ReadyButDisabled` |
+| LE2ERTC-PRE-09 | Sandbox restore harness returns `ReadyNotExecuted` |
+
+### Planned E2E phases (reported, not executed)
+
+| Phase ID | Label |
+|----------|-------|
+| LE2ERTC-PHASE-01 | Schema write (sandbox) |
+| LE2ERTC-PHASE-02 | Record write (sandbox) |
+| LE2ERTC-PHASE-03 | Linked field update (sandbox) |
+| LE2ERTC-PHASE-04 | Final validation read (sandbox) |
+| LE2ERTC-PHASE-05 | Final non-success guard |
+
+### Safety invariants
+
+- `contract_only` is always `true`.
+- `airtable_client_called` is always `false`.
+- `network_reads_attempted` is always `false`.
+- `network_writes_attempted` is always `false`.
+- `no_changes_made` is always `true`.
+- `app_runtime_execution_enabled` is always `false`.
+- `app_runtime_writes_enabled` is always `false`.
+- `app_runtime_reads_enabled` is always `false`.
+- `evaluate_write_gate()` behavior is never modified.
+- No token field, no path field, no record payload, no raw HTTP body, no record IDs, no attachment URL.
+- No `Succeeded`, `Complete`, `Enabled`, `Done`, or `ExecutionReady` status exists.
+- Not reachable from UI, TypeScript, or any Tauri command.
+- The live E2E sandbox restore integration harness remains separate pending work.
+
+### Sub-contract chain verified
+
+`LiveE2ERestoreTestContract` → verifies `LiveFinalValidationTestContract` → verifies `LiveLinkedUpdateTestContract` → verifies `LiveRecordWriteTestContract` → verifies `LiveSchemaWriteTestContract`.
+
+---
+
 ## Related Documents
 
 - [Restore Write Engine Skeleton](./restore-write-engine-skeleton.md)

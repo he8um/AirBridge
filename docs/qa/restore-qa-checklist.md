@@ -2786,3 +2786,87 @@ Checklist for `tests/live_final_validation_sandbox.rs` and supporting models/cli
 - [ ] Attachment binary handling remains disabled.
 - [ ] App runtime restore execution remains disabled.
 - [ ] Live end-to-end restore execution remains disabled.
+
+---
+
+## LE2ERTC — Live E2E Restore Test Contract
+
+**Module:** `src/restore/live_e2e_restore_test_contract.rs`  
+**Function:** `evaluate_live_e2e_restore_test_contract(request, schema_plan, record_plan)`
+
+### Mode / flag checks
+
+- [ ] `Disabled` mode always returns `Blocked`.
+- [ ] `Disabled` mode blocked reason contains `LE2ERTC-PRE-01`.
+- [ ] Missing `explicit_internal_live_e2e_restore_test_contract_requested` returns `Blocked`.
+- [ ] Missing explicit flag blocked reason contains `LE2ERTC-PRE-02`.
+
+### Sub-contract prerequisites
+
+- [ ] FV contract not eligible (`mapping_coverage_sufficient=false`) → `Blocked` with `LE2ERTC-PRE-04`.
+- [ ] Gate arming not ready (`rollback_limitation_safe=false`) → `Blocked`.
+- [ ] Simulator not ready (`failure_modes_safe=false`) → `Blocked`.
+- [ ] Restore harness not ready (`sandbox_verified=false`) → `Blocked`.
+
+### Eligible state
+
+- [ ] All prerequisites satisfied → `EligibleButNotExecuted`.
+- [ ] `contract_only` is `true` when eligible.
+- [ ] `contract_only` is `true` when blocked.
+- [ ] `safety_snapshot.contract_only` is `true` in both states.
+
+### Safety invariants
+
+- [ ] `app_runtime_execution_enabled` is always `false` (eligible and blocked).
+- [ ] `app_runtime_writes_enabled` is always `false` (eligible and blocked).
+- [ ] `app_runtime_reads_enabled` is always `false` (eligible and blocked).
+- [ ] `network_reads_attempted` is always `false` (eligible and blocked).
+- [ ] `network_writes_attempted` is always `false` (eligible and blocked).
+- [ ] `no_changes_made` is always `true` (eligible and blocked).
+- [ ] `airtable_client_called` is always `false` (eligible and blocked).
+- [ ] `safety_snapshot.airtable_client_called` is always `false`.
+- [ ] `safety_snapshot.write_gate_disabled` is always `true`.
+- [ ] All runtime flags in snapshot are always `false` when eligible.
+- [ ] `evaluate_write_gate()` returns `Disabled` after eligible result.
+- [ ] `evaluate_write_gate()` returns `Disabled` after blocked result.
+
+### Planned phases
+
+- [ ] 5 planned phases present when eligible (`LE2ERTC-PHASE-01` through `LE2ERTC-PHASE-05`).
+- [ ] All phase statuses are `Planned` when eligible.
+- [ ] 5 phases present when blocked; all statuses are `NotExecuted`.
+- [ ] `planned_phase_count` equals 5 in both states.
+
+### Prerequisites list
+
+- [ ] 9 prerequisites present when eligible (`LE2ERTC-PRE-01` through `LE2ERTC-PRE-09`).
+- [ ] All prerequisites have `Ready` status when eligible.
+- [ ] `total_prerequisite_count` equals 9 when eligible.
+
+### Required future-live conditions
+
+- [ ] `required_future_live_conditions` is non-empty when eligible.
+- [ ] `required_future_live_conditions` is non-empty when blocked.
+- [ ] Contains `disposable sandbox-only base required`.
+- [ ] Contains `attachment binary handling remains disabled`.
+- [ ] Contains `app runtime restore execution remains disabled`.
+- [ ] Contains `final non-success guard`.
+
+### Serialization safety
+
+- [ ] No `pat_` token prefix in serialized JSON.
+- [ ] No `"token"` key in serialized JSON.
+- [ ] No absolute path (`/Users/`, `/home/`, `/tmp/`) in serialized JSON.
+- [ ] No `"fields":{` in serialized JSON.
+- [ ] No `"records":[{` in serialized JSON.
+- [ ] No `"body":{` or `"statusCode"` in serialized JSON.
+- [ ] No `"oldRecordId"` or `"newRecordId"` in serialized JSON.
+- [ ] No `rec_old_` or `rec_new_` in serialized JSON.
+- [ ] No `cdn.airtable.com` or `attachmentUrl` in serialized JSON.
+- [ ] No `"succeeded"`, `restoreComplete`, `restoreSuccess`, or `executionReady` in serialized JSON.
+
+### Message / pending work
+
+- [ ] Eligible message contains `remains separate pending work`.
+- [ ] No Tauri command introduced.
+- [ ] No real Airtable client called (`network_reads_attempted`, `network_writes_attempted`, `airtable_client_called` all `false`).
