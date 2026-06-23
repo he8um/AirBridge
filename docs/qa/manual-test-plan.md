@@ -6,9 +6,10 @@ Before executing this plan:
 
 - A release build (or development build) of AirBridge is installed and launchable on the target platform.
 - A valid Airtable personal access token is available that has read access to at least one test base.
-- A second token with write access to an empty test base is available for restore tests.
 - The tester has access to the `fixtures/` directory for offline validation steps.
 - All previous test results from this platform have been cleared (no stale state from prior runs).
+
+> **v0.1.0-alpha note:** A token with write access is only needed for the **Backup Flow** (which writes a local `.airbridge` file). **No token with restore write access is needed** — live restore execution is disabled in this version. The restore gate accepts a token for precondition validation only; it never sends it to Airtable. Restore test cases TC-REST-01 through TC-REST-05 describe future behavior and are **not applicable in v0.1.0-alpha**.
 
 ---
 
@@ -221,9 +222,14 @@ Before executing this plan:
   1. Click "Cancel" in the result area.
 - Expected result: The result panel disappears. The token input is empty. The form returns to idle state.
 
-**TC-REST-01: Dry-run restore**
+---
 
-- Preconditions: A valid `.airbridge` backup package exists (can use fixture data loaded via "Open backup"). A connection with write access to an empty target base is available.
+> **TC-REST-01 through TC-REST-05 are NOT APPLICABLE in v0.1.0-alpha.**
+> Runtime restore execution is disabled by product policy. No Tauri command, no UI surface, and no TypeScript path exposes live Airtable writes in this version. These test cases describe expected future behavior. Do not attempt to execute them against the current build.
+
+**TC-REST-01: Dry-run restore (future — not applicable in v0.1.0-alpha)**
+
+- Preconditions: A valid `.airbridge` backup package exists. A connection with write access to an empty target base is available.
 - Steps:
   1. Open the backup package.
   2. Select "Restore" and choose the target base.
@@ -231,7 +237,7 @@ Before executing this plan:
   4. Click "Start".
 - Expected result: A report is shown listing what would be created (tables, fields, records) with counts. No writes are made to Airtable. The report is exportable or copyable.
 
-**TC-REST-02: Full restore to empty base**
+**TC-REST-02: Full restore to empty base (future — not applicable in v0.1.0-alpha)**
 
 - Preconditions: Same as TC-REST-01 but with dry run disabled and a confirmed empty target base.
 - Steps:
@@ -241,21 +247,21 @@ Before executing this plan:
   4. Wait for completion.
 - Expected result: A success summary is shown. The target base in Airtable now contains the tables, fields, and records from the backup. Record counts match the backup manifest.
 
-**TC-REST-03: Restore with linked record remapping**
+**TC-REST-03: Restore with linked record remapping (future — not applicable in v0.1.0-alpha)**
 
 - Preconditions: The `linked-records-base` fixture package is opened. Target is a fresh empty base.
 - Steps:
   1. Perform a full restore.
 - Expected result: Linked record relationships are re-established in the target base. No "broken link" records remain. The restore report indicates that record IDs were remapped.
 
-**TC-REST-04: Restore with unsupported field types**
+**TC-REST-04: Restore with unsupported field types (future — not applicable in v0.1.0-alpha)**
 
 - Preconditions: A backup containing a field type not supported by the restore target (e.g., a computed formula field) is opened.
 - Steps:
   1. Attempt a restore.
 - Expected result: The unsupported fields are listed in the report. They are skipped without failing the entire restore. A warning is shown, not a hard error.
 
-**TC-REST-05: Cancel a restore mid-flight**
+**TC-REST-05: Cancel a restore mid-flight (future — not applicable in v0.1.0-alpha)**
 
 - Preconditions: A restore is in progress.
 - Steps:

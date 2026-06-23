@@ -10,6 +10,14 @@ This matrix describes the current status of each feature area. Status values:
 - **Disabled** — contract and gate implemented; execution blocked.
 - **Planned** — not yet implemented.
 
+### Alpha Interpretation
+
+- **Backup, package inspection, and restore dry-run/planning paths are safe to test** in v0.1.0-alpha. They are read-only, require no Airtable writes, and all follow confirmed safety invariants.
+- **Live restore is not user-facing.** Runtime restore execution is disabled by product policy. No Tauri command, no UI surface, and no TypeScript path exposes live Airtable writes. The restore execution gate validates preconditions and returns `readyButDisabled` — it does not write anything.
+- **Live sandbox harnesses are for maintainers only.** The five integration test harnesses (schema write, record write, linked update, final validation read, E2E restore) are `#[ignore]` by default. They require explicit opt-in via environment variables and must only run against disposable sandbox bases. They are not reachable from normal app runtime.
+- **Attachment handling is metadata-only.** Backup captures attachment metadata and URLs; file bytes are not downloaded or re-uploaded.
+- **Product and security approval is required before any user-facing restore execution is enabled.**
+
 ---
 
 | Feature | Status | User-Facing Availability | Safety Notes | Next Work |

@@ -68,6 +68,18 @@ All restore write paths are hard-disabled. `evaluate_write_gate()` returns `Disa
 
 This contract defines what must be true before `evaluate_write_gate()` is ever changed to return an enabled decision.
 
+### v0.1.0-alpha Safety Summary
+
+| Property | Status |
+|----------|--------|
+| `evaluate_write_gate()` always returns `Disabled/DisabledByProductPolicy` | Confirmed |
+| No app runtime restore execution enabled | Confirmed |
+| No UI/Tauri live restore execution surface | Confirmed — no Tauri command, no UI button, no TypeScript path |
+| All live sandbox harnesses are `#[ignore]` by default | Confirmed — opt-in only via environment variables |
+| Runtime restore execution approval | Pending — separate product and security decision |
+| Attachment binary handling | Disabled — metadata-only |
+| Restore release readiness snapshot | Returns `AlphaReadyRestoreRuntimeDisabled` when all gates pass; does NOT enable execution |
+
 ---
 
 ## 1. Sandbox-First Policy

@@ -13,7 +13,7 @@ AirBridge focuses on four core workflows:
 1. **Backup** — Export Airtable base metadata, tables, fields, records, linked-record references, select options, view metadata where available, attachment metadata, and reports into a portable `.airbridge` package.
 2. **Inspect** — Open a backup package and review its contents before attempting any restore operation.
 3. **Validate** — Check package structure, manifest compatibility, checksums, record files, schema consistency, and restore compatibility.
-4. **Restore** — Recreate supported base structure and records into a new or empty base using a staged restore process and a clear restore report.
+4. **Restore** — Plan and preview a restore into a new or empty base using a staged dry-run process with a clear readiness report. Runtime restore execution is not yet available in v0.1.0-alpha — live writes to Airtable are disabled by policy pending product and security approval.
 
 ## What AirBridge does not promise
 
@@ -104,22 +104,29 @@ Backup files can contain sensitive Airtable data. Treat `.airbridge` files like 
 
 ## Project status
 
-AirBridge is planned as an open-source project with an initial public alpha target.
+AirBridge is in public alpha (v0.1.0-alpha).
 
-Planned v0.1 scope:
+**Available in v0.1.0-alpha:**
 
-- Airtable Personal Access Token connection
-- Base selection
-- Schema and record backup
-- `.airbridge` package creation
-- Backup inspector
-- Local package validation
+- Airtable Personal Access Token connection and permission inspection
+- Base catalog and schema read
+- Schema and record backup with `.airbridge` package creation
+- Backup package inspection and validation
 - Restore compatibility report
-- Restore to new or empty base
-- Basic linked-record remapping
-- Dry-run restore planning
-- Restore report
-- Cross-platform release builds
+- Restore dry-run planning (read-only, no token required)
+- Restore schema creation planning and record import planning (read-only)
+- Restore safety gate evaluation (all preconditions validated; write engine disabled)
+- Optional OS keychain token storage
+- Local job history (in-memory)
+- Cross-platform release build workflow (macOS, Linux, Windows)
+
+**Not yet available:**
+
+- Runtime restore execution (live writes to Airtable are disabled; requires product and security approval)
+- Attachment binary backup/restore (metadata only)
+- Credential auto-fill from saved token
+- Streaming backup progress
+- Job history persistence between sessions
 
 ## Documentation
 
@@ -138,24 +145,26 @@ Start with:
 
 ## Current Status (v0.1.0-alpha)
 
-AirBridge is preparing for a v0.1.0-alpha release. The current build supports:
+AirBridge is in public alpha. The current build supports:
 
 - Personal access token connection checks and permission inspection.
 - Base catalog and schema read.
 - Backup planning and records export planning.
-- Backup package creation (requires explicit file selection and confirmation text).
+- Backup package creation (requires explicit file selection and confirmation text `CREATE BACKUP`).
 - Package inspection and validation.
-- Restore dry-run planning (read-only, no token required).
-- Restore schema creation planning — generates an ordered schema creation plan (table steps, field steps, deferred linked fields, dependency graph) from a dry-run result. Read-only; no token required; no Airtable tables or fields are created.
-- Restore record import planning — generates a complete record import batch plan (batch counts at size 10, field import policies, linked record second-pass plans, attachment policies, checkpoint plans, retry policy) from a dry-run result and schema plan. Read-only; no token required; no Airtable records are created.
-- Restore execution safety gate (all preconditions validated; write engine not yet enabled).
-- Local activity history — recent operations are shown on the Reports page with safe summaries (no tokens, no full paths, no record payloads). History is in-memory and does not persist between sessions.
+- Restore dry-run planning (read-only, no token required, no Airtable calls).
+- Restore schema creation planning (read-only, no token required, no Airtable calls).
+- Restore record import planning (read-only, no token required, no Airtable calls).
+- Restore execution safety gate — validates all preconditions. When all pass, returns a `readyButDisabled` result. No Airtable base, table, field, or record is created.
+- Optional OS keychain token storage (Settings → Saved Credentials). Token is never stored in files, logs, or results.
+- Local activity history — recent operations shown on the Reports page with safe summaries (no tokens, no full paths). History is in-memory and does not persist between sessions.
+- Cross-platform release builds via a `workflow_dispatch`-only GitHub Actions workflow. No release is published automatically.
 
-**Restore write execution is disabled in this version.** The safety gate validates all preconditions and returns a `readyButDisabled` result. No Airtable base, table, field, or record is created by restore operations.
+**Restore write execution is disabled.** This is a deliberate product policy, not a gap in the safety contract. Live Airtable writes require explicit product and security approval. The dry-run and planning flows are complete; no restore execution UI or Tauri command exists.
 
-**Token persistence is not implemented.** Tokens must be entered for each operation.
+**Attachment handling is metadata-only.** Backup packages capture attachment metadata and URLs. File bytes are not downloaded or re-uploaded. Attachment URLs from backup time may expire.
 
-**v0.1.0-alpha preparation:** A `workflow_dispatch`-only GitHub Actions release workflow builds platform artifacts (macOS, Linux, Windows) and uploads them as workflow run artifacts. No release is published automatically. See the [release process](docs/release/release-process.md) for how to trigger and review a release build.
+**Token persistence is manual.** Tokens saved to the OS keychain are not yet automatically retrieved for operations — users must still paste the token manually when initiating a backup or connection check.
 
 See the full details in:
 

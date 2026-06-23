@@ -9,6 +9,31 @@ Use this checklist when verifying the restore functionality against a release bu
 
 ---
 
+## Alpha Release QA Summary (v0.1.0-alpha)
+
+Before running any checklist items, review the following alpha state:
+
+| Area | Alpha Status | Notes |
+|------|-------------|-------|
+| Backup package creation | Available | Requires file picker + `CREATE BACKUP` confirmation |
+| Package inspection and validation | Available | Read-only; no token; filename-only in result |
+| Restore dry-run planning | Available | Read-only; no token; no Airtable calls |
+| Restore schema creation plan | Available | Read-only; no token; no Airtable calls |
+| Restore record import plan | Available | Read-only; no token; no Airtable calls |
+| Restore execution gate | Available (always disabled) | All preconditions validated; result is always `readyButDisabled` |
+| Restore safety policy gates (Gates 1–18) | Available for review | UI-visible planning only; no live writes possible |
+| Restore runtime execution | **Disabled by policy** | No UI button, no Tauri command, no TypeScript path |
+| Live sandbox harnesses | Test-only, ignored by default | `#[ignore]`; maintainer opt-in only; disposable sandbox base required |
+| Attachment binary handling | **Disabled** | Metadata and URLs only; no file bytes downloaded or uploaded |
+
+**Default test suite must not call any network endpoint** (other than Airtable for backup). Restore planning is fully offline.
+
+**Live sandbox harnesses must not run unless all required environment variables are explicitly set** and you are using a disposable sandbox Airtable base. Never run live harnesses against production data.
+
+**No restore should be tested through the UI** — no Tauri command exposes live restore execution in this version.
+
+---
+
 ## Pre-Restore: Backup File Validation
 
 - [ ] **Manifest is present and valid.** If `manifest.json` is absent or malformed, the restore is refused with a clear error message before any API calls are made.
@@ -37,17 +62,21 @@ Use this checklist when verifying the restore functionality against a release bu
 - [ ] **Blocked plan for invalid package.** Selecting a corrupted or invalid package results in a blocked-status plan with an error message — the app does not crash.
 - [ ] **No absolute paths in rendered output.** Inspect the DOM with developer tools; no directory separators appear in any visible text.
 
-## Dry-Run Mode (Legacy checklist items — applies to future restore execution)
+## Dry-Run Plan Reporting (additional verification items)
+
+> These items verify properties of the dry-run plan output. In v0.1.0-alpha the dry-run is read-only and makes no Airtable calls — "dry run makes no writes" should always hold by design.
 
 - [ ] **Dry run produces a correct plan.** For a fixture-loaded backup, the dry-run report lists all tables and fields that would be created, with accurate counts.
-- [ ] **Dry run makes no writes.** After a dry run completes, the target base in Airtable is unmodified. Verify by checking the base's record count before and after.
+- [ ] **Dry run makes no writes.** After a dry run completes, the target base in Airtable is unmodified. (This should always be true in v0.1.0-alpha; verify that `noChangesMade` is `true` in the result.)
 - [ ] **Dry run identifies unsupported fields.** Any fields whose types cannot be restored to the target base are listed in the dry-run report with their names and types.
 - [ ] **Dry run identifies linked record dependencies.** For backups with linked record fields, the dry-run report shows the link relationships that will be established and the order in which tables will be created.
 - [ ] **Dry-run report is exportable.** The report can be copied to clipboard or saved to a file.
 
 ---
 
-## Restore Permissions
+## Restore Permissions (future — not applicable in v0.1.0-alpha)
+
+> Permission checks for live writes apply only when runtime restore execution is enabled. In v0.1.0-alpha, no live writes are made. The restore execution gate checks token presence only — it never calls Airtable.
 
 - [ ] **Records write permission check.** If the token lacks write permission on the target base, an error is shown before any writes are attempted. The error message identifies the permission problem specifically.
 - [ ] **Schema write permission check.** If the token can write records but cannot create tables or fields, a specific error is shown for the schema creation failure. The user is not left wondering why records were not created.
@@ -113,20 +142,22 @@ Use this checklist when verifying the restore functionality against a release bu
 
 ## Restore Execution
 
-### Basic Restore
+> **NOT APPLICABLE in v0.1.0-alpha.** Runtime restore execution is disabled by product policy. No Tauri command, no UI surface, and no TypeScript path exposes live Airtable writes. The sections below describe expected behavior for a future release when runtime restore is approved. Do not attempt to run these checks against the current build — the expected results will never be reached.
+
+### Basic Restore (future — not applicable in v0.1.0-alpha)
 
 - [ ] **Restore to new/empty base succeeds.** Using the `simple-base` fixture and an empty target base, a full restore completes without errors. The target base in Airtable reflects all tables, fields, and records from the fixture.
 - [ ] **Table creation order is correct.** Tables are created in an order that satisfies linked record dependencies — linked tables are created before the tables that reference them.
 - [ ] **Field creation is correct.** Each restored field has the correct name and type. Select field choices are created in the correct order. Date formats and number precision are preserved where the API supports it.
 - [ ] **Record count after restore.** The number of records in the target base matches `recordCount` in the backup manifest.
 
-### Linked Record Remapping
+### Linked Record Remapping (future — not applicable in v0.1.0-alpha)
 
 - [ ] **Linked record IDs are remapped.** Using the `linked-records-base` fixture, verify that after restore, linked record fields correctly point to the restored records in the target base, not to the source record IDs from the backup.
 - [ ] **Remapping is logged in the report.** The restore report shows the old-to-new record ID mapping used during the restore.
 - [ ] **No broken links.** After restore, open the target base in Airtable and verify that linked record cells contain valid links, not empty or error states.
 
-### Unsupported Fields
+### Unsupported Fields (future — not applicable in v0.1.0-alpha)
 
 - [ ] **Unsupported fields are listed and skipped.** For a backup containing a field type that AirBridge cannot restore (e.g., formula, rollup, lookup), the restore proceeds for all supported fields and skips the unsupported ones.
 - [ ] **Skip behavior is non-destructive.** Skipping an unsupported field does not abort the restore or leave the table in a partially created state.
@@ -134,14 +165,18 @@ Use this checklist when verifying the restore functionality against a release bu
 
 ---
 
-## Rate Limit Handling
+## Rate Limit Handling (future — not applicable in v0.1.0-alpha)
+
+> Rate-limit handling applies only when live restore writes are enabled. In v0.1.0-alpha, no live writes are made.
 
 - [ ] **429 responses are retried.** If the Airtable API returns a 429 during a restore, the application pauses and retries after the retry-after interval. The user sees a "Rate limited — retrying" message, not a frozen UI.
 - [ ] **Retry does not duplicate records.** After a rate-limit retry, the record that was being written when the 429 occurred is not written twice.
 
 ---
 
-## Error Recovery
+## Error Recovery (future — not applicable in v0.1.0-alpha)
+
+> Error recovery during restore execution applies only when live restore writes are enabled. In v0.1.0-alpha, no live writes are made.
 
 - [ ] **Partial restore is reported accurately.** If a restore fails partway through (e.g., network disconnect mid-operation), the restore report shows exactly which tables and how many records were written before the failure.
 - [ ] **Application does not crash on restore failure.** The UI returns to an error state with a summary, not a blank screen or unresponsive window.
@@ -149,9 +184,11 @@ Use this checklist when verifying the restore functionality against a release bu
 
 ---
 
-## Post-Restore Verification Steps
+## Post-Restore Verification Steps (future — not applicable in v0.1.0-alpha)
 
-After completing a restore, perform the following manual checks in Airtable:
+> These Airtable verification steps apply only after a successful live restore. In v0.1.0-alpha, runtime restore execution is disabled and no Airtable base, table, field, or record is created by any restore operation.
+
+After a future live restore completes, perform the following manual checks in Airtable:
 
 - [ ] Open the target base in Airtable and verify that all expected tables are present.
 - [ ] In each table, verify that all expected fields (name and type) are present.
