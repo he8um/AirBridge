@@ -168,6 +168,7 @@ AirBridge is in public alpha. The current build supports:
 
 See the full details in:
 
+- [v0.1.0-alpha Release Notes](docs/release/v0.1.0-alpha-release-notes.md)
 - [Feature Status](docs/product/feature-status.md)
 - [Known Limitations](docs/release/known-limitations.md)
 - [v0.1.0-alpha Readiness](docs/release/v0.1.0-alpha-readiness.md)
