@@ -19,7 +19,8 @@ Before triggering the release workflow, verify:
    - `apps/desktop/src-tauri/tauri.conf.json` → `"version"`
 3. **Alpha readiness document is current.** See `docs/release/v0.1.0-alpha-readiness.md`.
 4. **Known limitations are documented.** See `docs/release/known-limitations.md`.
-5. **Release notes draft is reviewed.** See `docs/release/v0.1.0-alpha-release-notes-draft.md`.
+5. **Release notes are reviewed.** See `docs/release/v0.1.0-alpha-release-notes.md`.
+   Use `docs/release/v0.1.0-alpha-publishing-checklist.md` for the complete pre-publish checklist.
 6. **No prohibited content in repository.** Run the prohibited-terms scan before tagging.
 7. **Restore write execution remains disabled.** No Airtable writes should occur from restore operations.
 8. **Token persistence is not implemented.** Tokens must be entered per-operation.
